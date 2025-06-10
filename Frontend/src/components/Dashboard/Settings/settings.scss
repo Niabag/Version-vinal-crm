@@ -65,6 +65,87 @@
   padding-bottom: 10px;
 }
 
+/* Subscription Section */
+.subscription-section {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.subscription-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.05) 100%);
+  border-radius: 0 0 0 100%;
+  z-index: 0;
+}
+
+.subscription-info {
+  position: relative;
+  z-index: 1;
+}
+
+.subscription-status,
+.subscription-period {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.subscription-period {
+  border-bottom: none;
+  margin-bottom: 25px;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #475569;
+}
+
+.status-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.period-value {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.manage-subscription-btn {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+}
+
+.manage-subscription-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.3);
+}
+
+.manage-subscription-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
