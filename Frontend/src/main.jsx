@@ -25,8 +25,8 @@ import "./utils/styles/global.scss";
 // Composant pour gérer l'affichage conditionnel du footer
 const FooterWrapper = () => {
   const path = window.location.pathname;
-  // Ne pas afficher le footer sur le dashboard
-  if (path === "/dashboard" || path.startsWith("/prospect/edit/")) {
+  // Ne pas afficher le footer sur le dashboard et les pages de scan QR code
+  if (path === "/dashboard" || path.startsWith("/prospect/edit/") || path.startsWith("/register-client/")) {
     return null;
   }
   return <Footer />;
