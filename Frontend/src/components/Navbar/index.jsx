@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
 import "./navbar.scss";
 
@@ -9,12 +9,28 @@ const Navbar = () => {
   const token = localStorage.getItem("token");
   const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     if (token) {
       fetchUser();
     }
   }, [token]);
+
+  // Fermer le menu utilisateur quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const fetchUser = async () => {
     try {
@@ -39,6 +55,10 @@ const Navbar = () => {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
   };
 
   // Masquer la navbar uniquement sur la page dashboard (elle a sa propre navigation)
@@ -71,7 +91,7 @@ const Navbar = () => {
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
           {!token ? (
             <>
-              <Link to="/\" className="nav-link\" onClick={closeMenu}>
+              <Link to="/" className="nav-link" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
               <Link to="/pricing" className="nav-link" onClick={closeMenu}>
@@ -91,7 +111,7 @@ const Navbar = () => {
               </Link>
             </>
           ) : (
-            <div className="user-menu">
+            <>
               <Link to="/" className="nav-link" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
@@ -110,19 +130,58 @@ const Navbar = () => {
               <Link to="/dashboard" className="nav-link dashboard-btn" onClick={closeMenu}>
                 📊 Dashboard
               </Link>
-              <div className="user-info">
+              
+              {/* Profil utilisateur */}
+              <div className="user-profile" onClick={toggleUserMenu} ref={userMenuRef}>
                 <div className="user-avatar">
                   {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </div>
-                <div className="user-details">
+                <div className="user-info">
                   <span className="user-name">{user?.name || "Utilisateur"}</span>
                   <span className="user-email">{user?.email || ""}</span>
                 </div>
+                
+                {/* Menu utilisateur */}
+                <div className={`user-menu ${isUserMenuOpen ? 'active' : ''}`}>
+                  <div className="user-menu-header">
+                    <div className="menu-avatar">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+                    </div>
+                    <h3 className="menu-user-name">{user?.name || "Utilisateur"}</h3>
+                    <p className="menu-user-email">{user?.email || ""}</p>
+                  </div>
+                  
+                  <div className="user-menu-items">
+                    <Link to="/dashboard" className="menu-item" onClick={() => {
+                      setIsUserMenuOpen(false);
+                      closeMenu();
+                    }}>
+                      <span className="menu-item-icon">📊</span>
+                      <span>Tableau de bord</span>
+                    </Link>
+                    <Link to="/dashboard#settings" className="menu-item" onClick={() => {
+                      setIsUserMenuOpen(false);
+                      closeMenu();
+                    }}>
+                      <span className="menu-item-icon">⚙️</span>
+                      <span>Paramètres</span>
+                    </Link>
+                    <Link to="/dashboard#carte" className="menu-item" onClick={() => {
+                      setIsUserMenuOpen(false);
+                      closeMenu();
+                    }}>
+                      <span className="menu-item-icon">💼</span>
+                      <span>Ma carte de visite</span>
+                    </Link>
+                    <div className="menu-divider"></div>
+                    <button onClick={() => { handleLogout(); closeMenu(); }} className="menu-logout">
+                      <span className="menu-item-icon">🚪</span>
+                      <span>Déconnexion</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => { handleLogout(); closeMenu(); }} className="logout-btn">
-                🚪 Déconnexion
-              </button>
-            </div>
+            </>
           )}
         </div>
 
