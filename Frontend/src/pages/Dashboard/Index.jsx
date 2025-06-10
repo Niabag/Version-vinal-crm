@@ -4,7 +4,6 @@ import Devis from "../../components/Dashboard/Devis/devisPage";
 import DevisListPage from "../../components/Dashboard/Devis/devisListPage";
 import ProspectsPage from "../../components/Dashboard/Prospects/prospectsPage";
 import ProspectEditPage from "../../components/Dashboard/Prospects/prospectEditPage";
-import ClientBilling from "../../components/Dashboard/ClientBilling/clientBilling";
 import Analytics from "../../components/Dashboard/Analytics/analytics";
 import Settings from "../../components/Dashboard/Settings/settings";
 import Notifications from "../../components/Dashboard/Notifications/notifications";
@@ -24,13 +23,11 @@ const Dashboard = () => {
   const [userId, setUserId] = useState(null);
   const [user, setUser] = useState({});
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
-  const [selectedClientForBilling, setSelectedClientForBilling] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
-  const [notificationSound] = useState(new Audio('/notification-sound.mp3'));
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -112,11 +109,6 @@ const Dashboard = () => {
     setActiveTab("devis-creation");
   };
 
-  const handleViewClientBilling = (client) => {
-    setSelectedClientForBilling(client);
-    setActiveTab("client-billing");
-  };
-
   const handleEditDevisFromList = (devis) => {
     setEditingDevis(devis);
     setActiveTab("devis-creation");
@@ -149,31 +141,17 @@ const Dashboard = () => {
     if (storedNotifications) {
       try {
         const notifications = JSON.parse(storedNotifications);
-        const previousUnread = unreadNotifications;
-        const newUnread = notifications.filter(n => !n.read).length;
-        
-        setUnreadNotifications(newUnread);
-        
-        // Jouer un son si le nombre de notifications non lues a augmenté
-        if (newUnread > previousUnread && previousUnread !== 0) {
-          notificationSound.play().catch(e => console.log("Erreur lecture son:", e));
-        }
+        const unreadCount = notifications.filter(n => !n.read).length;
+        setUnreadNotifications(unreadCount);
       } catch (err) {
         console.error('Erreur lors du calcul des notifications non lues:', err);
       }
     }
   };
 
-  // Mettre à jour le compteur au chargement et toutes les 30 secondes
+  // Mettre à jour le compteur au chargement
   useEffect(() => {
     updateUnreadNotifications();
-    
-    // Mettre à jour les notifications toutes les 30 secondes
-    const interval = setInterval(() => {
-      updateUnreadNotifications();
-    }, 30000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   // Gérer l'édition d'un prospect
@@ -189,8 +167,7 @@ const Dashboard = () => {
       items: [
         { id: "dashboard", icon: "📊", label: "Tableau de bord" },
         { id: "clients", icon: "👥", label: "Prospects" },
-        { id: "devis", icon: "📄", label: "Devis" },
-        { id: "billing", icon: "💰", label: "Facturation" },
+        { id: "devis", icon: "📄", label: "Devis et Facturation" },
       ]
     },
     {
@@ -212,10 +189,9 @@ const Dashboard = () => {
     switch (activeTab) {
       case "dashboard": return "Tableau de bord";
       case "clients": return "Mes Prospects";
-      case "devis": return "Mes Devis";
+      case "devis": return "Devis et Facturation";
       case "devis-creation": return "Création de Devis";
       case "billing": return "Facturation";
-      case "client-billing": return `Factures de ${selectedClientForBilling?.name || 'Client'}`;
       case "notifications": return "Notifications";
       case "carte": return "Carte de Visite";
       case "settings": return "Paramètres";
@@ -231,7 +207,6 @@ const Dashboard = () => {
       case "devis": return "📄";
       case "devis-creation": return "📝";
       case "billing": return "💰";
-      case "client-billing": return "💰";
       case "notifications": return "🔔";
       case "carte": return "💼";
       case "settings": return "⚙️";
@@ -264,7 +239,7 @@ const Dashboard = () => {
                     activeTab === item.id || 
                     (activeTab === "devis-creation" && item.id === "devis") ||
                     (activeTab === "prospect-edit" && item.id === "clients") ||
-                    (activeTab === "client-billing" && item.id === "billing")
+                    (activeTab === "billing" && item.id === "devis")
                       ? "active" 
                       : ""
                   }`}
@@ -278,9 +253,6 @@ const Dashboard = () => {
                     }
                     if (item.id !== "clients" && item.id !== "prospect-edit") {
                       setSelectedProspect(null);
-                    }
-                    if (item.id !== "billing" && item.id !== "client-billing") {
-                      setSelectedClientForBilling(null);
                     }
                   }}
                   title={item.label}
@@ -402,7 +374,6 @@ const Dashboard = () => {
                 clients={clients}
                 onRefresh={fetchClients}
                 onViewClientDevis={handleViewClientDevis}
-                onViewClientBilling={handleViewClientBilling}
                 onEditProspect={handleEditProspect}
               />
             )}
@@ -443,16 +414,6 @@ const Dashboard = () => {
                   setEditingDevis(null);
                   setActiveTab("devis");
                 } : null}
-              />
-            )}
-
-            {activeTab === "client-billing" && selectedClientForBilling && (
-              <ClientBilling 
-                client={selectedClientForBilling}
-                onBack={() => {
-                  setSelectedClientForBilling(null);
-                  setActiveTab("clients");
-                }}
               />
             )}
 
