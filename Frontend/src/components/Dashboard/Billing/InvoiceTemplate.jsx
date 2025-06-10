@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import './invoiceTemplate.scss';
 
 const InvoiceTemplate = ({ invoice, client, devisDetails = [], onClose }) => {
@@ -63,10 +62,9 @@ const InvoiceTemplate = ({ invoice, client, devisDetails = [], onClose }) => {
   };
 
   // Fonction pour imprimer la facture
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `Facture_${invoice.invoiceNumber}`,
-  });
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <div className="invoice-template-container">
