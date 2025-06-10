@@ -541,12 +541,8 @@
   }
 }
 
-.action-btn {
-  animation: fadeInUp 0.5s ease-out;
-}
-
-.action-btn:nth-child(2) {
-  animation-delay: 0.1s;
+.contact-container {
+  animation: fadeInUp 0.6s ease-out;
 }
 
 .form-group {
@@ -570,7 +566,7 @@
 }
 
 /* EFFETS VISUELS AVANCÉS */
-.action-btn {
+.submit-btn {
   position: relative;
   overflow: hidden;
 }

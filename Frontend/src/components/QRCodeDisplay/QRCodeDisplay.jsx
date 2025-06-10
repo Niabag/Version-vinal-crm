@@ -2,7 +2,7 @@ import React from 'react';
 import QRCode from 'react-qr-code';
 import './QRCodeDisplay.scss';
 
-const QRCodeDisplay = ({ value, title, description }) => {
+const QRCodeDisplay = ({ value, title, description, size = 200 }) => {
   if (!value) return null;
   
   return (
@@ -11,10 +11,11 @@ const QRCodeDisplay = ({ value, title, description }) => {
         <div className="qr-code-wrapper">
           <QRCode 
             value={value}
-            size={200}
+            size={size}
             bgColor="#FFFFFF"
             fgColor="#1f2937"
             level="M"
+            style={{ maxWidth: "100%", height: "auto" }}
           />
         </div>
         <div className="qr-code-info">

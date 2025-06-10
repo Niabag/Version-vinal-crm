@@ -12,9 +12,10 @@ const StatusMessages = ({ messages }) => {
             {status.status === 'completed' ? '✅' : 
              status.status === 'executing' ? '⏳' : 
              status.status === 'form-shown' ? '📝' : 
-             status.status === 'ready' ? '🔄' : '❓'}
+             status.status === 'ready' ? '🔄' : 
+             status.status === 'error' ? '❌' : '❓'}
           </span>
-          <span>{status.message}</span>
+          <span className="status-text">{status.message}</span>
         </div>
       ))}
     </div>

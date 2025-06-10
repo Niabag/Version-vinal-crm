@@ -18,6 +18,11 @@
   display: flex;
   justify-content: center;
   margin-bottom: 1.5rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .qr-code-info h3 {
@@ -31,4 +36,23 @@
   margin: 0;
   color: #64748b;
   font-size: 0.95rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .qr-code-display {
+    padding: 1rem;
+  }
+  
+  .qr-code-container {
+    padding: 1.5rem;
+  }
+  
+  .qr-code-info h3 {
+    font-size: 1rem;
+  }
+  
+  .qr-code-info p {
+    font-size: 0.85rem;
+  }
 }
