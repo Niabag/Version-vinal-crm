@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
-import InvoicePreview from './InvoicePreview';
+import DynamicInvoice from '../Billing/DynamicInvoice';
 import './clientBilling.scss';
 
 const ClientBilling = ({ client, onBack }) => {
@@ -618,7 +618,11 @@ const ClientBilling = ({ client, onBack }) => {
               const ttc = calculateTTC(devis);
               
               return (
-                <div key={devis._id} className="devis-card">
+                <div 
+                  key={devis._id} 
+                  className="devis-card"
+                  onClick={() => handleCreateInvoice(devis)}
+                >
                   <div className="devis-card-top">
                     <div className="devis-avatar">
                       {devis.title ? devis.title.charAt(0).toUpperCase() : "D"}
@@ -633,6 +637,10 @@ const ClientBilling = ({ client, onBack }) => {
                         right: '1rem'
                       }}
                       title={`Cliquer pour changer le statut`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Ici, vous ajouteriez la logique pour changer le statut
+                      }}
                     >
                       {getDevisStatusIcon(devis.status)}
                     </div>
@@ -671,26 +679,24 @@ const ClientBilling = ({ client, onBack }) => {
                     
                     <div className="devis-card-actions">
                       <button 
-                        onClick={() => navigate(`/dashboard/devis/${devis._id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Naviguer vers la page d'édition du devis
+                        }}
                         className="card-btn card-btn-edit"
                       >
                         ✏️
                       </button>
                       
                       <button 
-                        onClick={() => handleDownloadPDF(devis)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPDF(devis);
+                        }}
                         className="card-btn card-btn-pdf"
                         disabled={loading}
                       >
                         {loading ? "⏳" : "📄"}
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleCreateInvoice(devis)}
-                        className="card-btn card-btn-invoice"
-                        title="Créer une facture"
-                      >
-                        💰
                       </button>
                     </div>
                   </div>
@@ -783,9 +789,9 @@ const ClientBilling = ({ client, onBack }) => {
 
       {/* Modal de prévisualisation de facture */}
       {showInvoicePreview && selectedDevis && (
-        <div className="modal-overlay">
-          <div className="modal-content invoice-preview-modal">
-            <InvoicePreview
+        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
+          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <DynamicInvoice
               invoice={{
                 invoiceNumber: `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
