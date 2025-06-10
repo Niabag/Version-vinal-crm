@@ -1,0 +1,842 @@
+/* Design professionnel pour l'aperçu du devis */
+
+.devis-preview {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: white;
+  color: #0f172a;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9;
+}
+
+/* Barre d'outils */
+.preview-toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+}
+
+.toolbar-btn {
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 150px;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.add-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+.reset-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.reset-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.pdf-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.pdf-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+}
+
+/* Contenu principal */
+.preview-content {
+  background: white;
+  padding: 3rem;
+  border: 2px solid #f1f5f9;
+  border-radius: 12px;
+  margin: 1rem;
+  min-height: 800px;
+  position: relative;
+}
+
+/* En-tête du document */
+.document-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 3px solid #f1f5f9;
+}
+
+.logo-section {
+  flex: 1;
+}
+
+.company-logo {
+  max-width: 200px;
+  max-height: 100px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.logo-upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 100px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #64748b;
+  text-align: center;
+  padding: 1rem;
+}
+
+.logo-upload-area:hover {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+}
+
+.document-title {
+  flex: 1;
+  text-align: right;
+}
+
+.document-title h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  margin: 0 0 1rem 0;
+  color: #0f172a;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 2px;
+}
+
+.document-subtitle {
+  font-size: 1.5rem !important;
+  color: #3b82f6 !important;
+  font-weight: 600 !important;
+}
+
+/* Informations des parties */
+.parties-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.entreprise-section,
+.client-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 2rem;
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+}
+
+.entreprise-section h3,
+.client-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.info-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.company-name,
+.client-name {
+  font-weight: 600 !important;
+  font-size: 1.1rem !important;
+  color: #0f172a !important;
+}
+
+/* Client selector */
+.client-selector {
+  margin-bottom: 1rem;
+}
+
+.client-selector label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.client-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.client-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Champ d'adresse client */
+.client-address {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px dashed #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+  transition: all 0.3s ease !important;
+  white-space: pre-line !important; /* Permet les retours à la ligne */
+  resize: vertical !important;
+  min-height: 80px !important;
+  font-family: inherit !important;
+}
+
+.client-address:focus {
+  border-color: #3b82f6 !important;
+  background: white !important;
+  outline: none !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2) !important;
+}
+
+.client-address:hover {
+  border-color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Métadonnées du devis */
+.devis-metadata {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.metadata-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metadata-item label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.devis-number,
+.client-id {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.status-select {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.status-select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.status-select option {
+  background: #1e40af;
+  color: white;
+}
+
+/* Description du devis */
+.devis-description {
+  margin-bottom: 2rem;
+}
+
+.devis-description h3 {
+  margin: 0 0 1rem 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.description-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  background: #f8fafc;
+  transition: all 0.3s ease;
+}
+
+.description-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Section prestations */
+.prestations-section {
+  margin-bottom: 3rem;
+}
+
+.prestations-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: #0f172a;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 0.5rem;
+}
+
+.prestations-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
+}
+
+.prestations-table th {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  padding: 1rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.prestations-table td {
+  padding: 1rem 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.prestations-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.prestations-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.prestations-table tbody tr.even-row {
+  background: #f8fafc;
+}
+
+.prestations-table tbody tr.odd-row {
+  background: white;
+}
+
+.description-cell {
+  text-align: left !important;
+  max-width: 300px;
+}
+
+.total-cell {
+  font-weight: 600;
+  color: #10b981;
+}
+
+/* Bouton d'ajout d'article */
+.add-article-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem auto;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+
+.add-article-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+/* Champs éditables */
+.editable-input {
+  width: 100%;
+  border: 1px dashed #e2e8f0;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.editable-input:focus {
+  border-color: #3b82f6;
+  background: white;
+  outline: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+}
+
+.editable-input:hover {
+  border-color: #94a3b8;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Container pour le prix avec symbole € */
+.price-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.currency-symbol {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Sélecteur TVA */
+.tva-text-only {
+  display: none;
+}
+
+.tva-select {
+  width: 70px;
+  border: 1px dashed #e2e8f0;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem;
+  text-align: center;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tva-select:focus {
+  border-color: #3b82f6;
+  background: white;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+/* Bouton suppression */
+.remove-article-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+}
+
+.remove-article-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.actions-column {
+  width: 60px;
+}
+
+/* Section totaux */
+.totaux-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.totaux-detail h4 {
+  margin: 0 0 1rem 0;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.tva-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.tva-table th {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.tva-table td {
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  background: white;
+}
+
+.totaux-finaux {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-self: end;
+}
+
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-weight: 500;
+  min-width: 250px;
+}
+
+.final-total {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+/* Conditions et signature */
+.conditions-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 2rem;
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+  margin-bottom: 2rem;
+}
+
+.conditions-text {
+  margin-bottom: 2rem;
+}
+
+.conditions-text h4 {
+  margin: 0 0 1rem 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.conditions-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+}
+
+.conditions-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.signature-area {
+  text-align: center;
+}
+
+.signature-instruction {
+  font-style: italic;
+  color: #64748b;
+  margin-bottom: 2rem;
+}
+
+.signature-box {
+  display: flex;
+  justify-content: space-around;
+  gap: 2rem;
+}
+
+.signature-line {
+  flex: 1;
+  padding: 1rem;
+  border-bottom: 2px solid #0f172a;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Pied de page */
+.footer-section {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 0.85rem !important;
+  color: #64748b !important;
+  font-style: italic !important;
+  border: none !important;
+  background: transparent !important;
+  text-align: center !important;
+}
+
+.footer-text:focus {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Mode PDF - Masquer les éléments d'édition */
+.pdf-mode .editable-input,
+.pdf-mode .tva-select,
+.pdf-mode .logo-upload-area,
+.pdf-mode .client-select,
+.pdf-mode .status-select {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.pdf-mode .tva-select {
+  display: none !important;
+}
+
+.pdf-mode .tva-text-only {
+  display: inline !important;
+}
+
+.pdf-mode .remove-article-btn,
+.pdf-mode .add-article-btn {
+  display: none !important;
+}
+
+.pdf-mode .actions-column {
+  display: none !important;
+}
+
+.pdf-mode .prestations-table th:last-child {
+  display: none !important;
+}
+
+.pdf-mode .client-selector label {
+  display: none !important;
+}
+
+.pdf-mode .client-select {
+  display: none !important;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .preview-content {
+    padding: 2rem;
+  }
+  
+  .parties-info {
+    gap: 2rem;
+  }
+  
+  .totaux-section {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .totaux-finaux {
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 768px) {
+  .preview-content {
+    padding: 1.5rem;
+    margin: 0.5rem;
+  }
+  
+  .document-header {
+    flex-direction: column;
+    gap: 2rem;
+    text-align: center;
+  }
+  
+  .document-title {
+    text-align: center;
+  }
+  
+  .parties-info {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .metadata-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .prestations-table {
+    font-size: 0.85rem;
+  }
+  
+  .prestations-table th,
+  .prestations-table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .signature-box {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .document-title h1 {
+    font-size: 2.5rem;
+  }
+
+  .client-address {
+    min-height: 60px !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .toolbar-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .preview-content {
+    padding: 1rem;
+    margin: 0;
+  }
+  
+  .document-title h1 {
+    font-size: 2rem;
+  }
+  
+  .prestations-table {
+    font-size: 0.75rem;
+  }
+  
+  .prestations-table th,
+  .prestations-table td {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .actions-column {
+    width: 40px;
+  }
+  
+  .remove-article-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Animations */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.preview-content {
+  animation: slideInFromTop 0.5s ease-out;
+}
+
+/* Effets de focus */
+.editable-input:focus {
+  animation: focusPulse 0.3s ease-out;
+}
+
+@keyframes focusPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
