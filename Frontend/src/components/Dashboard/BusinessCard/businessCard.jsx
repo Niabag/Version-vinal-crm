@@ -160,24 +160,9 @@ const BusinessCard = ({ userId, user }) => {
           conversions: cardStats.conversions || 0
         });
         console.log("✅ Statistiques de carte chargées:", cardStats);
-      } else {
-        // Valeurs par défaut si aucune statistique n'est disponible
-        setStats({
-          scansToday: 0,
-          scansThisMonth: 0,
-          totalScans: 0,
-          conversions: 0
-        });
       }
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
-      // Valeurs par défaut en cas d'erreur
-      setStats({
-        scansToday: 0,
-        scansThisMonth: 0,
-        totalScans: 0,
-        conversions: 0
-      });
     }
   };
 

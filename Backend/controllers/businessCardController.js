@@ -395,7 +395,7 @@ const trackCardView = async (req, res) => {
   }
 };
 
-// ✅ NOUVELLE FONCTION: Obtenir les statistiques de la carte
+// ✅ FONCTION CORRIGÉE: Obtenir les statistiques de la carte
 const getCardStats = async (req, res) => {
   try {
     const userId = req.userId;
@@ -427,6 +427,9 @@ const getCardStats = async (req, res) => {
     const viewDates = Array.isArray(businessCard.stats.viewDates) ? 
       businessCard.stats.viewDates.map(date => new Date(date)) : [];
     
+    // ✅ CORRECTION: Utiliser le nombre total de vues stocké dans le compteur
+    const totalScans = businessCard.stats.views || 0;
+    
     const scansToday = viewDates.filter(date => date >= today).length;
     const scansThisMonth = viewDates.filter(date => date >= thisMonth).length;
     
@@ -437,10 +440,10 @@ const getCardStats = async (req, res) => {
     
     // Estimation des conversions basée sur les clients réels
     // On considère qu'environ 30% des clients viennent de la carte
-    const conversions = Math.min(Math.floor(clientsCount * 0.3), businessCard.stats.views || 0);
+    const conversions = Math.min(Math.floor(clientsCount * 0.3), totalScans || 0);
     
     const stats = {
-      totalScans: businessCard.stats.views || 0,
+      totalScans,
       scansToday,
       scansThisMonth,
       lastScan: businessCard.stats.lastViewed || null,

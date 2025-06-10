@@ -28,7 +28,6 @@ const Dashboard = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
-  const [notificationSound] = useState(new Audio('/notification.mp3'));
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -143,29 +142,10 @@ const Dashboard = () => {
       try {
         const notifications = JSON.parse(storedNotifications);
         const unreadCount = notifications.filter(n => !n.read).length;
-        
-        // Si le nombre de notifications non lues a augmenté, jouer un son
-        if (unreadCount > unreadNotifications) {
-          playNotificationSound();
-        }
-        
         setUnreadNotifications(unreadCount);
       } catch (err) {
         console.error('Erreur lors du calcul des notifications non lues:', err);
       }
-    }
-  };
-
-  // Jouer un son de notification
-  const playNotificationSound = () => {
-    try {
-      if (notificationSound) {
-        notificationSound.play().catch(e => {
-          console.log("Impossible de jouer le son de notification:", e);
-        });
-      }
-    } catch (error) {
-      console.error("Erreur lors de la lecture du son:", error);
     }
   };
 
