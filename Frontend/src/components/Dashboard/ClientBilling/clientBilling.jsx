@@ -301,7 +301,7 @@ const ClientBilling = () => {
         ) : (
           <div className="devis-grid">
             {devis.map(devis => (
-              <div className="devis-card" key={devis.id}>
+              <div className="devis-card\" key={devis.id}>
                 <div className="devis-card-top">
                   <div className="devis-avatar">{getClientInitials(client.name)}</div>
                 </div>
@@ -357,7 +357,7 @@ const ClientBilling = () => {
               const totalTTC = totalHT + totalTVA;
               
               return (
-                <div className="invoice-card" key={invoice.id}>
+                <div className="invoice-card\" key={invoice.id}>
                   <div className="invoice-header">
                     <div className="invoice-number">{invoice.invoiceNumber}</div>
                     <div className={`invoice-status ${invoice.status}`}>

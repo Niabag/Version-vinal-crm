@@ -408,7 +408,7 @@ const Billing = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button className="clear-search" onClick={() => setSearchTerm('')}>×</button>
+              <button className="clear-search\" onClick={() => setSearchTerm('')}>×</button>
             )}
           </div>
         </div>
@@ -475,7 +475,7 @@ const Billing = () => {
               const totalTTC = totalHT + totalTVA;
               
               return (
-                <div className="invoice-card" key={invoice.id}>
+                <div className="invoice-card\" key={invoice.id}>
                   <div className="invoice-header">
                     <div className="invoice-number">{invoice.invoiceNumber}</div>
                     <div className={`invoice-status ${invoice.status}`}>

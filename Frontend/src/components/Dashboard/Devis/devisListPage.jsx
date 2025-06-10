@@ -242,7 +242,7 @@ const DevisListPage = () => {
                 </div>
                 <div className="devis-grid">
                   {clientDevis.map(devis => (
-                    <div className="devis-card" key={devis.id}>
+                    <div className="devis-card\" key={devis.id}>
                       <div className="devis-card-top">
                         <div className="devis-avatar">{getClientInitials(devis.clientName)}</div>
                       </div>
@@ -288,7 +288,7 @@ const DevisListPage = () => {
       ) : (
         <div className="devis-grid">
           {devis.map(devis => (
-            <div className="devis-card" key={devis.id}>
+            <div className="devis-card\" key={devis.id}>
               <div className="devis-card-top">
                 <div className="devis-avatar">{getClientInitials(devis.clientName)}</div>
               </div>
