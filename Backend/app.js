@@ -18,6 +18,9 @@ const app = express();
 // ✅ Connexion à la base de données
 connectDB();
 
+// Stripe webhooks need the raw body. Apply this middleware before JSON parser
+app.use("/api/subscription/webhook", express.raw({ type: "application/json" }));
+
 // ✅ Middleware pour parser JSON avec limite augmentée
 app.use(express.json({ limit: "10mb" })); // ✅ AUGMENTÉ pour les images
 app.use(express.urlencoded({ extended: true, limit: "10mb" })); // ✅ AUGMENTÉ
