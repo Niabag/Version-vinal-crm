@@ -11,11 +11,15 @@ const userRoutes = require("./routes/userRoutes");
 const clientRoutes = require("./routes/clientRoutes");
 const devisRoutes = require("./routes/devisRoutes");
 const businessCardRoutes = require("./routes/businessCardRoutes"); // ✅ NOUVEAU
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
 
 const app = express();
 
 // ✅ Connexion à la base de données
 connectDB();
+
+// Stripe webhooks need the raw body. Apply this middleware before JSON parser
+app.use("/api/subscription/webhook", express.raw({ type: "application/json" }));
 
 // ✅ Middleware pour parser JSON avec limite augmentée
 app.use(express.json({ limit: "10mb" })); // ✅ AUGMENTÉ pour les images
@@ -30,6 +34,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/devis", devisRoutes);
 app.use("/api/business-cards", businessCardRoutes); // ✅ NOUVEAU
+app.use("/api/subscription", subscriptionRoutes);
 
 // ✅ Route de vérification du serveur
 app.get("/", (req, res) => {
