@@ -16,7 +16,7 @@ const BusinessCard = ({ userId, user }) => {
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
   
-  // ✅ États pour les schémas prédéfinis
+  // États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
   
   const [stats, setStats] = useState({
@@ -26,70 +26,70 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
+  // SCHÉMAS AMÉLIORÉS: Noms plus clairs et actions manuelles
   const actionSchemas = {
-    'form-website': {
-      name: '📝 Formulaire puis Site',
-      description: 'Collecte des informations avant de rediriger vers votre site web',
-      icon: '📝🌐',
-      sequence: 'Formulaire (1s) → Site web (2s)',
-      category: 'Engagement progressif',
+    'form-only': {
+      name: '📝 Formulaire de Contact',
+      description: 'Affiche uniquement un formulaire de contact pour collecter les informations de vos prospects',
+      icon: '📝',
+      sequence: 'Formulaire de contact',
+      category: 'Simple et Efficace',
       actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+        { type: 'form', order: 1, delay: 0, active: true }
       ]
     },
     'website-only': {
-      name: '🌐 Site Web Direct',
-      description: 'Redirection immédiate vers votre site web principal',
+      name: '🌐 Lien vers Site Web',
+      description: 'Propose un bouton pour visiter votre site web',
       icon: '🌐',
-      sequence: 'Site web (1s)',
-      category: 'Redirection simple',
+      sequence: 'Bouton vers site web',
+      category: 'Redirection Simple',
       actions: [
-        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
+        { type: 'website', order: 1, delay: 0, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    'contact-download': {
-      name: '📝 Contact → Carte',
-      description: 'Formulaire de contact puis téléchargement de votre carte de visite',
-      icon: '📝📥',
-      sequence: 'Formulaire (1s) → Téléchargement carte (2s)',
-      category: 'Capture de leads',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
-      ]
-    },
-    'funnel-site-last': {
-      name: '🎯 Formulaire → Carte → Site',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'contact-only': {
-      name: '📝 Contact Uniquement',
-      description: 'Formulaire de contact professionnel pour capturer les prospects',
-      icon: '📝',
-      sequence: 'Formulaire (1s)',
-      category: 'Capture simple',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true }
-      ]
-    },
-    'card-download': {
-      name: '📥 Carte de Visite',
-      description: 'Téléchargement direct de votre carte de visite personnalisée',
+    'download-only': {
+      name: '📥 Téléchargement Carte',
+      description: 'Propose un bouton pour télécharger votre carte de visite numérique',
       icon: '📥',
-      sequence: 'Téléchargement carte (1s)',
-      category: 'Partage direct',
+      sequence: 'Téléchargement carte',
+      category: 'Partage Direct',
       actions: [
-        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
+        { type: 'download', order: 1, delay: 0, active: true, file: 'carte-visite' }
+      ]
+    },
+    'form-website': {
+      name: '📝 Formulaire + Site Web',
+      description: 'Formulaire de contact avec bouton pour visiter votre site web',
+      icon: '📝🌐',
+      sequence: 'Formulaire + Bouton site web',
+      category: 'Conversion Complète',
+      actions: [
+        { type: 'form', order: 1, delay: 0, active: true },
+        { type: 'website', order: 2, delay: 0, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'form-download': {
+      name: '📝 Formulaire + Carte',
+      description: 'Formulaire de contact avec bouton pour télécharger votre carte',
+      icon: '📝📥',
+      sequence: 'Formulaire + Téléchargement carte',
+      category: 'Capture de Leads',
+      actions: [
+        { type: 'form', order: 1, delay: 0, active: true },
+        { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' }
+      ]
+    },
+    'complete-package': {
+      name: '🎯 Pack Complet',
+      description: 'Formulaire de contact avec boutons pour télécharger votre carte et visiter votre site',
+      icon: '📝📥🌐',
+      sequence: 'Formulaire + Carte + Site web',
+      category: 'Solution Complète',
+      actions: [
+        { type: 'form', order: 1, delay: 0, active: true },
+        { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 0, active: true, url: 'https://www.votre-site.com' }
       ]
     }
   };
@@ -172,7 +172,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Appliquer un schéma prédéfini
+  // Appliquer un schéma prédéfini
   const handleApplySchema = async (schemaKey) => {
     const schema = actionSchemas[schemaKey];
     if (!schema) return;
@@ -184,8 +184,7 @@ const BusinessCard = ({ userId, user }) => {
     const actionsWithIds = schema.actions.map((action, index) => ({
       ...action,
       id: Date.now() + index,
-      order: action.order || (index + 1),
-      delay: action.delay || ((index + 1) * 1000)
+      order: action.order || (index + 1)
     }));
 
     const updatedConfig = {
@@ -197,10 +196,10 @@ const BusinessCard = ({ userId, user }) => {
     await saveBusinessCardToDB(null, updatedConfig);
     
     setShowSchemasModal(false);
-    showSuccessMessage(`✅ Schéma "${schema.name}" appliqué avec succès !`);
+    showSuccessMessage(`✅ Stratégie "${schema.name}" appliquée avec succès !`);
   };
 
-  // ✅ FONCTION: Réinitialiser toutes les actions
+  // Réinitialiser toutes les actions
   const handleClearAllActions = async () => {
     const confirmClear = window.confirm(
       "❗ Supprimer toutes les actions configurées ?"
@@ -218,7 +217,7 @@ const BusinessCard = ({ userId, user }) => {
     showSuccessMessage('✅ Toutes les actions ont été supprimées');
   };
 
-  // ✅ FONCTION: Modifier l'URL d'un schéma
+  // Modifier l'URL d'un schéma
   const handleEditSchemaUrl = async (actionId, newUrl) => {
     const updatedActions = cardConfig.actions.map(action =>
       action.id === actionId ? { ...action, url: newUrl } : action
@@ -339,7 +338,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Téléchargement de la vraie carte de visite
+  // Téléchargement de la vraie carte de visite
   const downloadBusinessCard = async () => {
     try {
       setLoading(true);
@@ -363,7 +362,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Génération de la vraie carte avec les données utilisateur
+  // Génération de la vraie carte avec les données utilisateur
   const generateBusinessCardWithQR = async () => {
     return new Promise(async (resolve) => {
       try {
@@ -423,7 +422,7 @@ const BusinessCard = ({ userId, user }) => {
     });
   };
 
-  // ✅ NOUVELLE FONCTION: Ajouter les informations utilisateur sur la carte
+  // Ajouter les informations utilisateur sur la carte
   const addUserInfoToCard = async (ctx, canvas) => {
     try {
       // Zone de texte (côté gauche de la carte)
@@ -466,7 +465,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Ajouter le QR code sur la carte
+  // Ajouter le QR code sur la carte
   const addQRCodeToCard = async (ctx, canvas) => {
     try {
       const qrSize = cardConfig.qrSize || 120;
@@ -576,7 +575,7 @@ const BusinessCard = ({ userId, user }) => {
     console.log('✅ QR code fallback ajouté');
   };
 
-  // ✅ FONCTION CORRIGÉE: Générer une carte par défaut professionnelle
+  // Générer une carte par défaut professionnelle
   const generateDefaultBusinessCard = async (ctx, canvas) => {
     // Fond dégradé professionnel
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -828,11 +827,11 @@ const BusinessCard = ({ userId, user }) => {
             )}
           </div>
 
-          {/* ✅ SECTION CORRIGÉE: Schémas prédéfinis professionnels */}
+          {/* SECTION AMÉLIORÉE: Stratégies de conversion */}
           <div className="config-section">
             <h3>🚀 Stratégies de Conversion</h3>
             <p className="section-description">
-              Choisissez une stratégie optimisée pour maximiser vos conversions
+              Choisissez une stratégie pour votre page de contact QR code
             </p>
 
             <div className="schemas-actions">
@@ -863,12 +862,12 @@ const BusinessCard = ({ userId, user }) => {
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.length - 1 && ' → '}
+                        {index < cardConfig.actions.length - 1 && ' + '}
                       </span>
                     ))}
                 </div>
                 
-                {/* ✅ Édition rapide des URLs */}
+                {/* Édition rapide des URLs */}
                 <div className="schema-edit-section">
                   {cardConfig.actions
                     .filter(action => action.type === 'website')
@@ -959,7 +958,7 @@ const BusinessCard = ({ userId, user }) => {
                   )}
                   {cardConfig.actions.filter(a => a.active).length > 0 && (
                     <div className="qr-actions-info">
-                      <strong>Actions configurées :</strong>
+                      <strong>Éléments configurés :</strong>
                       <ul>
                         {cardConfig.actions
                           .filter(a => a.active)
@@ -967,7 +966,6 @@ const BusinessCard = ({ userId, user }) => {
                           .map((action) => (
                             <li key={action.id}>
                               {getActionIcon(action.type)} {getActionLabel(action.type)}
-                              {action.delay > 0 && ` (+${action.delay}ms)`}
                             </li>
                           ))}
                       </ul>
@@ -994,7 +992,7 @@ const BusinessCard = ({ userId, user }) => {
         </div>
       </div>
 
-      {/* ✅ MODAL CORRIGÉE: Sélection de schémas professionnels */}
+      {/* MODAL AMÉLIORÉE: Sélection de stratégies */}
       {showSchemasModal && (
         <div className="modal-overlay" onClick={() => setShowSchemasModal(false)}>
           <div className="modal-content schemas-modal" onClick={(e) => e.stopPropagation()}>
@@ -1010,7 +1008,7 @@ const BusinessCard = ({ userId, user }) => {
             
             <div className="modal-body">
               <p className="schemas-description">
-                Sélectionnez une stratégie optimisée pour maximiser la conversion de vos prospects :
+                Sélectionnez une stratégie pour la page que verront vos prospects après avoir scanné votre QR code :
               </p>
               
               <div className="schemas-grid">
@@ -1027,7 +1025,7 @@ const BusinessCard = ({ userId, user }) => {
                     <h4>{schema.name}</h4>
                     <p className="schema-description">{schema.description}</p>
                     <div className="schema-sequence-preview">
-                      <strong>Séquence :</strong>
+                      <strong>Éléments :</strong>
                       <span>{schema.sequence}</span>
                     </div>
                   </div>

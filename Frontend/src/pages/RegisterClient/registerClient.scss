@@ -157,6 +157,54 @@
   font-size: 1.2rem;
 }
 
+/* ✅ BOUTONS D'ACTION MANUELS */
+.pre-submit-actions,
+.post-submit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.download-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.download-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+.website-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.website-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.button-icon {
+  font-size: 1.2rem;
+}
+
 /* ✅ MESSAGE DE SUCCÈS SIMPLIFIÉ */
 .success-message {
   background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
@@ -182,7 +230,7 @@
 }
 
 .success-content p {
-  margin: 0;
+  margin: 0 0 1.5rem 0;
   color: #065f46;
   font-size: 0.95rem;
 }

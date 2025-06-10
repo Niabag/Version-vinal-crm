@@ -12,18 +12,19 @@ const RegisterClient = () => {
     email: '',
     phone: '',
     company: '',
-    address: '',
-    postalCode: '',
-    city: '',
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [businessCard, setBusinessCard] = useState(null);
+  const [showDownloadButton, setShowDownloadButton] = useState(false);
+  const [showWebsiteButton, setShowWebsiteButton] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
 
   useEffect(() => {
     if (userId) {
       trackCardView();
-      setLoading(false);
+      fetchBusinessCard();
     } else {
       setError('ID utilisateur manquant');
       setLoading(false);
@@ -38,6 +39,39 @@ const RegisterClient = () => {
       );
     } catch (err) {
       console.error('Erreur suivi carte:', err);
+    }
+  };
+
+  const fetchBusinessCard = async () => {
+    try {
+      setLoading(true);
+      const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
+      
+      if (response && response.businessCard) {
+        setBusinessCard(response.businessCard);
+        
+        // Vérifier les actions configurées
+        if (response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
+          const actions = response.businessCard.cardConfig.actions;
+          
+          // Vérifier s'il y a une action de téléchargement
+          const downloadAction = actions.find(a => a.type === 'download' && a.active);
+          if (downloadAction) {
+            setShowDownloadButton(true);
+          }
+          
+          // Vérifier s'il y a une action de site web
+          const websiteAction = actions.find(a => a.type === 'website' && a.active);
+          if (websiteAction && websiteAction.url) {
+            setShowWebsiteButton(true);
+            setWebsiteUrl(websiteAction.url);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la carte:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,6 +99,21 @@ const RegisterClient = () => {
       setError(err.message || 'Erreur lors de l\'inscription');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadCard = () => {
+    if (businessCard && businessCard.cardImage) {
+      const link = document.createElement('a');
+      link.download = 'carte-visite.png';
+      link.href = businessCard.cardImage;
+      link.click();
+    }
+  };
+
+  const handleVisitWebsite = () => {
+    if (websiteUrl) {
+      window.open(websiteUrl, '_blank');
     }
   };
 
@@ -111,6 +160,29 @@ const RegisterClient = () => {
             <div className="success-content">
               <h4>Merci pour votre inscription !</h4>
               <p>Nous avons bien reçu vos informations et vous recontacterons très prochainement.</p>
+              
+              {/* Boutons d'action après soumission */}
+              <div className="post-submit-actions">
+                {showDownloadButton && (
+                  <button 
+                    onClick={handleDownloadCard}
+                    className="action-button download-button"
+                  >
+                    <span className="button-icon">📥</span>
+                    <span className="button-text">Télécharger la carte de visite</span>
+                  </button>
+                )}
+                
+                {showWebsiteButton && (
+                  <button 
+                    onClick={handleVisitWebsite}
+                    className="action-button website-button"
+                  >
+                    <span className="button-icon">🌐</span>
+                    <span className="button-text">Visiter le site web</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -122,6 +194,31 @@ const RegisterClient = () => {
               <h2 className="form-title">📝 Formulaire de Contact</h2>
               <p className="form-description">Laissez-nous vos coordonnées et nous vous recontacterons rapidement</p>
             </div>
+
+            {/* Boutons d'action avant soumission */}
+            {(showDownloadButton || showWebsiteButton) && (
+              <div className="pre-submit-actions">
+                {showDownloadButton && (
+                  <button 
+                    onClick={handleDownloadCard}
+                    className="action-button download-button"
+                  >
+                    <span className="button-icon">📥</span>
+                    <span className="button-text">Télécharger la carte de visite</span>
+                  </button>
+                )}
+                
+                {showWebsiteButton && (
+                  <button 
+                    onClick={handleVisitWebsite}
+                    className="action-button website-button"
+                  >
+                    <span className="button-icon">🌐</span>
+                    <span className="button-text">Visiter le site web</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="contact-form">
               <div className="form-row">
