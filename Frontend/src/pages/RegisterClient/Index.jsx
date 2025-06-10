@@ -118,7 +118,7 @@ const RegisterClient = () => {
     if (hasWebsite && !hasForm && !hasDownload) {
       detectedSchema = 'website-only';
     } else if (hasWebsite && hasForm && !hasDownload) {
-      detectedSchema = websiteIndex > formIndex ? 'form-website' : 'lead-generation';
+      detectedSchema = websiteIndex > formIndex ? 'form-website' : 'website-form';
     } else if (!hasWebsite && hasForm && hasDownload) {
       detectedSchema = 'contact-download';
     } else if (hasWebsite && hasForm && hasDownload) {
@@ -140,8 +140,8 @@ const RegisterClient = () => {
         await executeWebsiteOnlySchema(sortedActions);
         break;
       
-      case 'lead-generation':
-        await executeLeadGenerationSchema(sortedActions);
+      case 'website-form':
+        await executeWebsiteFormSchema(sortedActions);
         break;
 
       case 'form-website':
@@ -203,9 +203,9 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 2: Génération de Leads (website → form)
-  const executeLeadGenerationSchema = async (actions) => {
-    console.log('🚀 Exécution: Génération de Leads');
+  // ✅ SCHÉMA 2: Site web puis Formulaire (website → form)
+  const executeWebsiteFormSchema = async (actions) => {
+    console.log('🚀 Exécution: Site web puis Formulaire');
     
     if (!hasRedirectedFromWebsite) {
       // Première visite: redirection vers le site web
@@ -494,7 +494,7 @@ const RegisterClient = () => {
     switch (schemaType) {
       case 'website-only': return '🌐 Site Web Direct';
 
-      case 'lead-generation': return 'Génération de Leads';
+      case 'website-form': return 'Site web → Formulaire';
       case 'form-website': return '📝→🌐 Formulaire puis Site';
 
       case 'contact-download': return '📝 Contact → Carte';
