@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSubscriptionStatus, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS } from '../../services/subscription';
+import { getSubscriptionStatus, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS, DEFAULT_TRIAL_DAYS } from '../../services/subscription';
 import './SubscriptionRequired.scss';
 
 const SubscriptionRequired = () => {
@@ -32,7 +32,7 @@ const SubscriptionRequired = () => {
     setError('');
     
     try {
-      await startFreeTrial();
+      await startFreeTrial(DEFAULT_TRIAL_DAYS);
       // Refresh status after starting trial
       const status = await getSubscriptionStatus();
       setSubscriptionStatus(status);
@@ -156,7 +156,7 @@ const SubscriptionRequired = () => {
           {canStartTrial && (
             <div className="trial-card">
               <div className="trial-icon">🎁</div>
-              <h2>Essai gratuit de 14 jours</h2>
+              <h2>Essai gratuit de {DEFAULT_TRIAL_DAYS} jours</h2>
               <p>Essayez toutes les fonctionnalités sans engagement</p>
               <button 
                 className="trial-button"

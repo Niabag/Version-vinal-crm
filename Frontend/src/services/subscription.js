@@ -1,6 +1,10 @@
 // Subscription service to handle Stripe payments and subscription status
 import { API_ENDPOINTS, apiRequest } from "../config/api";
 
+// Default trial duration from env
+export const DEFAULT_TRIAL_DAYS =
+  parseInt(import.meta.env.VITE_TRIAL_PERIOD_DAYS, 10) || 14;
+
 // Constants
 export const SUBSCRIPTION_STATUS = {
   ACTIVE: 'active',
@@ -22,10 +26,11 @@ export const getSubscriptionStatus = async () => {
 };
 
 // Start a free trial
-export const startFreeTrial = async () => {
+export const startFreeTrial = async (trialDays = DEFAULT_TRIAL_DAYS) => {
   try {
     const response = await apiRequest(API_ENDPOINTS.SUBSCRIPTION.START_TRIAL, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ trialDays })
     });
     return response;
   } catch (error) {
