@@ -120,7 +120,8 @@ const Billing = ({ clients = [], onRefresh }) => {
   };
 
   const getFinishedDevis = () => {
-    return devisList.filter(devis => devis.status === 'fini');
+    // Retourner tous les devis, pas seulement ceux qui sont finalisés
+    return devisList;
   };
 
   const filteredDevis = getFinishedDevis().filter(devis => {
@@ -447,8 +448,8 @@ const Billing = ({ clients = [], onRefresh }) => {
       {/* Section de création de factures */}
       <div className="billing-section">
         <div className="section-header">
-          <h2>📄 Devis finalisés</h2>
-          <p>Sélectionnez les devis à facturer</p>
+          <h2>📄 Devis disponibles</h2>
+          <p>Cliquez sur un devis pour générer une facture</p>
         </div>
 
         {/* Filtres et recherche */}
@@ -491,53 +492,10 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <span className="toggle-label">Affichage dynamique</span>
               </label>
             </div>
-
-            {selectedDevis.length > 0 && (
-              <div className="bulk-actions">
-                <button 
-                  onClick={() => {
-                    // Créer une facture à partir des devis sélectionnés
-                    const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
-                    if (!firstDevis) return;
-                    
-                    const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
-                    
-                    setNewInvoice({
-                      clientId,
-                      devisIds: selectedDevis,
-                      invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
-                      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                      notes: 'Merci pour votre confiance.',
-                      paymentTerms: '30',
-                      discount: 0,
-                      taxRate: 20
-                    });
-                  }}
-                  className="create-invoice-btn"
-                  disabled={loading}
-                >
-                  💰 Créer une facture ({selectedDevis.length})
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Sélection en masse */}
-        {filteredDevis.length > 0 && (
-          <div className="bulk-select-bar">
-            <label className="select-all-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedDevis.length === filteredDevis.length && filteredDevis.length > 0}
-                onChange={handleSelectAll}
-              />
-              <span>Sélectionner tous les devis ({filteredDevis.length})</span>
-            </label>
-          </div>
-        )}
-
-        {/* Liste des devis finalisés */}
+        {/* Liste des devis */}
         {loading && devisList.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner">⏳</div>
@@ -546,8 +504,8 @@ const Billing = ({ clients = [], onRefresh }) => {
         ) : filteredDevis.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📄</div>
-            <h3>Aucun devis finalisé</h3>
-            <p>Les devis avec le statut "Fini" apparaîtront ici pour être facturés</p>
+            <h3>Aucun devis disponible</h3>
+            <p>Créez d'abord un devis pour pouvoir générer une facture</p>
           </div>
         ) : (
           <div className="devis-grid">
@@ -560,17 +518,6 @@ const Billing = ({ clients = [], onRefresh }) => {
                   className={`devis-card ${selectedDevis.includes(devis._id) ? 'selected' : ''}`}
                   onClick={() => handleSelectDevis(devis._id)}
                 >
-                  <div className="card-select">
-                    <input
-                      type="checkbox"
-                      checked={selectedDevis.includes(devis._id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleSelectDevis(devis._id);
-                      }}
-                    />
-                  </div>
-
                   <div className="devis-card-content">
                     <h3 className="devis-card-title">{devis.title || "Devis sans titre"}</h3>
                     
@@ -591,10 +538,18 @@ const Billing = ({ clients = [], onRefresh }) => {
                       <span className="amount-value">{calculateTTC(devis).toFixed(2)} €</span>
                     </div>
 
-                    <div className="devis-status">
-                      <span className="status-badge fini">
-                        ✅ Finalisé
-                      </span>
+                    <div className="devis-card-actions">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Télécharger directement le PDF
+                          handleDownloadPDF(devis);
+                        }}
+                        className="card-btn card-btn-pdf"
+                        disabled={loading}
+                      >
+                        {loading ? "⏳" : "📄"} PDF
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -713,6 +668,293 @@ const Billing = ({ clients = [], onRefresh }) => {
       </div>
     </div>
   );
+};
+
+// Fonction pour générer un PDF à partir d'un devis
+const handleDownloadPDF = async (devis) => {
+  try {
+    // Créer un élément temporaire
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '-9999px';
+    tempDiv.style.width = '210mm';
+    tempDiv.style.background = 'white';
+    tempDiv.style.padding = '20px';
+    tempDiv.style.fontFamily = 'Arial, sans-serif';
+    tempDiv.style.color = 'black';
+    tempDiv.style.fontSize = '12px';
+    tempDiv.style.lineHeight = '1.4';
+    document.body.appendChild(tempDiv);
+
+    // Importer les modules nécessaires
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf')
+    ]);
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 10;
+    let currentY = margin;
+
+    // Fonction pour ajouter une section au PDF
+    const addSectionToPDF = async (htmlContent, isFirstPage = false) => {
+      tempDiv.innerHTML = htmlContent;
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = pageWidth - (margin * 2);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // Vérifier si on a besoin d'une nouvelle page
+      if (currentY + imgHeight > pageHeight - margin && !isFirstPage) {
+        pdf.addPage();
+        currentY = margin;
+      }
+
+      pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
+      currentY += imgHeight + 5;
+
+      return imgHeight;
+    };
+
+    // 1. EN-TÊTE
+    await addSectionToPDF(`
+      <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="flex: 1;">
+            ${devis.logoUrl ? `<img src="${devis.logoUrl}" alt="Logo" style="max-width: 200px; max-height: 100px; object-fit: contain; border-radius: 8px;">` : ''}
+          </div>
+          <div style="flex: 1; text-align: right;">
+            <h1 style="font-size: 3rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: 2px;">FACTURE</h1>
+          </div>
+        </div>
+      </div>
+    `, true);
+
+    // 2. INFORMATIONS PARTIES
+    const clientInfo = {
+      name: "Client",
+      email: "client@example.com",
+      phone: "06 12 34 56 78",
+      address: "123 Rue Client",
+      postalCode: "75000",
+      city: "Paris"
+    };
+    
+    await addSectionToPDF(`
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 30px;">
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
+          <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">ÉMETTEUR</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${devis.entrepriseName || 'Nom de l\'entreprise'}</div>
+            <div>${devis.entrepriseAddress || 'Adresse'}</div>
+            <div>${devis.entrepriseCity || 'Code postal et ville'}</div>
+            <div>${devis.entreprisePhone || 'Téléphone'}</div>
+            <div>${devis.entrepriseEmail || 'Email'}</div>
+          </div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
+          <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">DESTINATAIRE</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
+            <div>${clientInfo.email || devis.clientEmail || 'Email du client'}</div>
+            <div>${clientInfo.phone || devis.clientPhone || 'Téléphone du client'}</div>
+            <div>${devis.clientAddress || clientInfo.address || 'Adresse du client'}</div>
+            <div>${clientInfo.postalCode || ''} ${clientInfo.city || ''}</div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // 3. MÉTADONNÉES
+    await addSectionToPDF(`
+      <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Date de la facture :</div>
+            <div style="font-weight: 600; color: #0f172a;">${new Date().toLocaleDateString('fr-FR')}</div>
+          </div>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Numéro de facture :</div>
+            <div style="font-weight: 600; color: #0f172a;">FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</div>
+          </div>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Date d'échéance :</div>
+            <div style="font-weight: 600; color: #0f172a;">${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}</div>
+          </div>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Client :</div>
+            <div style="font-weight: 600; color: #0f172a;">${clientInfo.name || devis.clientName || 'Client non défini'}</div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // 4. TABLEAU - TRAITEMENT LIGNE PAR LIGNE
+    // En-tête du tableau
+    await addSectionToPDF(`
+      <div style="margin-bottom: 10px;">
+        <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">DÉTAIL DES PRESTATIONS</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white;">
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 35%;">Description</th>
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Unité</th>
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Qté</th>
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;">Prix unitaire HT</th>
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">TVA</th>
+              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;">Total HT</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    `);
+
+    // TRAITER CHAQUE LIGNE INDIVIDUELLEMENT
+    for (let i = 0; i < devis.articles.length; i++) {
+      const article = devis.articles[i];
+      const price = parseFloat(article.unitPrice || "0");
+      const qty = parseFloat(article.quantity || "0");
+      const total = isNaN(price) || isNaN(qty) ? 0 : price * qty;
+      const bgColor = i % 2 === 0 ? '#ffffff' : '#f8f9fa';
+
+      const rowHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>
+            <tr style="background: ${bgColor};">
+              <td style="padding: 1rem 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; width: 35%;">${article.description || ''}</td>
+              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${article.unit || ''}</td>
+              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${qty}</td>
+              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 15%;">${price.toFixed(2)} €</td>
+              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${article.tvaRate || "20"}%</td>
+              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 20%; font-weight: 600; color: #48bb78;">${total.toFixed(2)} €</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      await addSectionToPDF(rowHTML);
+    }
+
+    // 5. TOTAUX
+    const tauxTVA = {
+      "20": { ht: 0, tva: 0 },
+      "10": { ht: 0, tva: 0 },
+      "5.5": { ht: 0, tva: 0 },
+    };
+
+    devis.articles.forEach((item) => {
+      const price = parseFloat(item.unitPrice || "0");
+      const qty = parseFloat(item.quantity || "0");
+      const taux = item.tvaRate || "20";
+
+      if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux]) {
+        const ht = price * qty;
+        tauxTVA[taux].ht += ht;
+        tauxTVA[taux].tva += ht * (parseFloat(taux) / 100);
+      }
+    });
+
+    const totalHT = Object.values(tauxTVA).reduce((sum, t) => sum + t.ht, 0);
+    const totalTVA = Object.values(tauxTVA).reduce((sum, t) => sum + t.tva, 0);
+    const totalTTC = totalHT + totalTVA;
+
+    await addSectionToPDF(`
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 30px 0;">
+        <div>
+          <h4 style="margin: 0 0 1rem 0; color: #2d3748; font-weight: 600;">Récapitulatif TVA</h4>
+          <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+            <thead>
+              <tr style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: white;">
+                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Base HT</th>
+                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Taux TVA</th>
+                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Montant TVA</th>
+                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Total TTC</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.entries(tauxTVA)
+                .filter(([, { ht }]) => ht > 0)
+                .map(([rate, { ht, tva }]) => `
+                  <tr>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${ht.toFixed(2)} €</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${rate}%</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${tva.toFixed(2)} €</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${(ht + tva).toFixed(2)} €</td>
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; align-self: end;">
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
+            <span>Total HT :</span>
+            <span>${totalHT.toFixed(2)} €</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
+            <span>Total TVA :</span>
+            <span>${totalTVA.toFixed(2)} €</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 700; font-size: 1.1rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); min-width: 250px;">
+            <span>Total TTC :</span>
+            <span>${totalTTC.toFixed(2)} €</span>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // 6. CONDITIONS
+    await addSectionToPDF(`
+      <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin-top: 30px;">
+        <div style="margin-bottom: 2rem;">
+          <h4 style="margin: 0 0 1rem 0; color: #0f172a; font-size: 1.1rem; font-weight: 600;">Conditions</h4>
+          <div style="color: #475569; line-height: 1.6; white-space: pre-line;">
+            ${devis.conditions || `• Facture valable jusqu'au ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI (si applicable)`}
+          </div>
+        </div>
+        
+        <div style="text-align: center;">
+          <p style="font-style: italic; color: #64748b; margin-bottom: 2rem;">
+            <em>Merci pour votre confiance</em>
+          </p>
+        </div>
+      </div>
+    `);
+
+    // 7. PIED DE PAGE
+    await addSectionToPDF(`
+      <div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; text-align: center;">
+        <p style="font-size: 0.85rem; color: #64748b; font-style: italic; margin: 0;">
+          ${devis.footerText || `${devis.entrepriseName || 'Votre entreprise'} - ${devis.entrepriseAddress || 'Adresse'} - ${devis.entrepriseCity || 'Ville'}`}
+        </p>
+      </div>
+    `);
+
+    // Télécharger le PDF
+    const fileName = devis.title?.replace(/[^a-zA-Z0-9]/g, '-') || `facture-${devis._id}`;
+    pdf.save(`${fileName}.pdf`);
+
+    // Nettoyer
+    document.body.removeChild(tempDiv);
+    
+    console.log("✅ PDF généré avec succès");
+
+  } catch (error) {
+    console.error('❌ Erreur génération PDF:', error);
+    alert('❌ Erreur lors de la génération du PDF: ' + error.message);
+  }
 };
 
 export default Billing;

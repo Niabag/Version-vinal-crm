@@ -36,7 +36,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
-  const [selectedDevis, setSelectedDevis] = useState([]);
   
   // États pour pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,11 +54,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, sortBy]);
-
-  // Réinitialiser la sélection quand on change de page
-  useEffect(() => {
-    setSelectedDevis([]);
-  }, [currentPage]);
 
   // Effet pour faire défiler jusqu'à la prévisualisation quand un devis est sélectionné
   useEffect(() => {
@@ -194,39 +188,18 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
     }
   };
 
-  // Suppression en masse
-  const handleBulkDelete = async () => {
-    if (selectedDevis.length === 0) return;
-    
-    const confirmDelete = window.confirm(
-      `❗ Supprimer ${selectedDevis.length} devis sélectionné(s) ?`
-    );
-    if (!confirmDelete) return;
+  // Créer une facture à partir d'un devis
+  const handleCreateInvoice = (devis) => {
+    const client = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId));
+    setSelectedDevisForInvoice(devis);
+    setSelectedClient(client);
+  };
 
-    setLoading(true);
-    try {
-      await Promise.all(
-        selectedDevis.map(id => 
-          apiRequest(API_ENDPOINTS.DEVIS.DELETE(id), { method: "DELETE" })
-        )
-      );
-
-      setSelectedDevis([]);
-      await fetchAllDevis();
-      alert(`✅ ${selectedDevis.length} devis supprimé(s)`);
-      
-      // Ajuster la page après suppression en masse
-      const newFilteredLength = filteredDevis.length - selectedDevis.length;
-      const newTotalPages = Math.ceil(newFilteredLength / ITEMS_PER_PAGE);
-      if (currentPage > newTotalPages && newTotalPages > 0) {
-        setCurrentPage(newTotalPages);
-      }
-    } catch (err) {
-      console.error("Erreur suppression en masse:", err);
-      alert(`❌ Erreur lors de la suppression: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
+  // Enregistrer la facture
+  const handleSaveInvoice = (invoice) => {
+    alert('✅ Facture créée avec succès !');
+    setSelectedDevisForInvoice(null);
+    setSelectedClient(null);
   };
 
   // Fonctions de navigation de pagination
@@ -310,20 +283,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
     }
   };
 
-  // Créer une facture à partir d'un devis
-  const handleCreateInvoice = (devis) => {
-    const client = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId));
-    setSelectedDevisForInvoice(devis);
-    setSelectedClient(client);
-  };
-
-  // Enregistrer la facture
-  const handleSaveInvoice = (invoice) => {
-    alert('✅ Facture créée avec succès !');
-    setSelectedDevisForInvoice(null);
-    setSelectedClient(null);
-  };
-
   // ✅ GÉNÉRATION PDF AVEC COUPURES AU NIVEAU DES LIGNES DE TABLEAU
   const handleDownloadPDF = async (devis) => {
     try {
@@ -355,7 +314,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
       const margin = 10;
       let currentY = margin;
 
-      // Fonction pour ajouter une section au PDF
+      // ✅ FONCTION POUR AJOUTER UNE SECTION AU PDF
       const addSectionToPDF = async (htmlContent, isFirstPage = false) => {
         tempDiv.innerHTML = htmlContent;
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -383,9 +342,9 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         return imgHeight;
       };
 
-      // 1. EN-TÊTE
+      // ✅ 1. EN-TÊTE
       await addSectionToPDF(`
-        <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #f1f5f9;">
+        <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #e2e8f0;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
               ${devis.logoUrl ? `<img src="${devis.logoUrl}" alt="Logo" style="max-width: 200px; max-height: 100px; object-fit: contain; border-radius: 8px;">` : ''}
@@ -397,14 +356,15 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         </div>
       `, true);
 
-      // 2. INFORMATIONS PARTIES
+      // ✅ 2. INFORMATIONS PARTIES
       const clientInfo = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId)) || {};
+      
       await addSectionToPDF(`
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 30px;">
-          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
-            <h3 style="margin: 0 0 1.5rem 0; color: #0f172a; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">ÉMETTEUR</h3>
+          <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
+            <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">ÉMETTEUR</h3>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <div style="font-weight: 600; font-size: 1.1rem; color: #0f172a;">${devis.entrepriseName || 'Nom de l\'entreprise'}</div>
+              <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${devis.entrepriseName || 'Nom de l\'entreprise'}</div>
               <div>${devis.entrepriseAddress || 'Adresse'}</div>
               <div>${devis.entrepriseCity || 'Code postal et ville'}</div>
               <div>${devis.entreprisePhone || 'Téléphone'}</div>
@@ -412,10 +372,10 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
             </div>
           </div>
           
-          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
-            <h3 style="margin: 0 0 1.5rem 0; color: #0f172a; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">DESTINATAIRE</h3>
+          <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
+            <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">DESTINATAIRE</h3>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <div style="font-weight: 600; font-size: 1.1rem; color: #0f172a;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
+              <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
               <div>${clientInfo.email || devis.clientEmail || 'Email du client'}</div>
               <div>${clientInfo.phone || devis.clientPhone || 'Téléphone du client'}</div>
               <div>${devis.clientAddress || clientInfo.address || 'Adresse du client'}</div>
@@ -425,7 +385,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         </div>
       `);
 
-      // 3. MÉTADONNÉES
+      // ✅ 3. MÉTADONNÉES
       await addSectionToPDF(`
         <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -449,14 +409,14 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         </div>
       `);
 
-      // 4. TABLEAU - TRAITEMENT LIGNE PAR LIGNE
+      // ✅ 4. TABLEAU - TRAITEMENT LIGNE PAR LIGNE
       // En-tête du tableau
       await addSectionToPDF(`
         <div style="margin-bottom: 10px;">
-          <h3 style="margin: 0 0 1.5rem 0; color: #0f172a; font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem;">DÉTAIL DES PRESTATIONS</h3>
+          <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">DÉTAIL DES PRESTATIONS</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
-              <tr style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white;">
+              <tr style="background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white;">
                 <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 35%;">Description</th>
                 <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Unité</th>
                 <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Qté</th>
@@ -486,7 +446,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                 <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${qty}</td>
                 <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 15%;">${price.toFixed(2)} €</td>
                 <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${article.tvaRate || "20"}%</td>
-                <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 20%; font-weight: 600; color: #10b981;">${total.toFixed(2)} €</td>
+                <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 20%; font-weight: 600; color: #48bb78;">${total.toFixed(2)} €</td>
               </tr>
             </tbody>
           </table>
@@ -495,12 +455,11 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         await addSectionToPDF(rowHTML);
       }
 
-      // 5. TOTAUX
+      // ✅ 5. TOTAUX
       const tauxTVA = {
         "20": { ht: 0, tva: 0 },
         "10": { ht: 0, tva: 0 },
         "5.5": { ht: 0, tva: 0 },
-        "0": { ht: 0, tva: 0 }
       };
 
       devis.articles.forEach((item) => {
@@ -508,7 +467,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         const qty = parseFloat(item.quantity || "0");
         const taux = item.tvaRate || "20";
 
-        if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux] !== undefined) {
+        if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux]) {
           const ht = price * qty;
           tauxTVA[taux].ht += ht;
           tauxTVA[taux].tva += ht * (parseFloat(taux) / 100);
@@ -522,10 +481,10 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
       await addSectionToPDF(`
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 30px 0;">
           <div>
-            <h4 style="margin: 0 0 1rem 0; color: #0f172a; font-weight: 600;">Récapitulatif TVA</h4>
-            <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);">
+            <h4 style="margin: 0 0 1rem 0; color: #2d3748; font-weight: 600;">Récapitulatif TVA</h4>
+            <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
               <thead>
-                <tr style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white;">
+                <tr style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: white;">
                   <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Base HT</th>
                   <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Taux TVA</th>
                   <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Montant TVA</th>
@@ -536,7 +495,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                 ${Object.entries(tauxTVA)
                   .filter(([, { ht }]) => ht > 0)
                   .map(([rate, { ht, tva }]) => `
-                    <tr style="background: white;">
+                    <tr>
                       <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${ht.toFixed(2)} €</td>
                       <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${rate}%</td>
                       <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${tva.toFixed(2)} €</td>
@@ -564,7 +523,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         </div>
       `);
 
-      // 6. CONDITIONS
+      // ✅ 6. CONDITIONS
       await addSectionToPDF(`
         <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin-top: 30px;">
           <div style="margin-bottom: 2rem;">
@@ -581,8 +540,8 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
           </div>
         </div>
       `);
-      
-      // 7. PIED DE PAGE
+
+      // ✅ 7. PIED DE PAGE
       await addSectionToPDF(`
         <div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; text-align: center;">
           <p style="font-size: 0.85rem; color: #64748b; font-style: italic; margin: 0;">
@@ -598,7 +557,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
       // Nettoyer
       document.body.removeChild(tempDiv);
       
-      console.log("✅ PDF généré avec coupures au niveau des lignes");
+      console.log("✅ PDF généré avec succès");
 
     } catch (error) {
       console.error('❌ Erreur génération PDF:', error);
@@ -631,10 +590,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
             <div className="stat-item">
               <span className="stat-number">{filteredDevis.length}</span>
               <span className="stat-label">Affichés</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">{selectedDevis.length}</span>
-              <span className="stat-label">Sélectionnés</span>
             </div>
             <div className="stat-item">
               <span className="stat-number">{devisList.filter(d => d.status === 'nouveau').length}</span>
@@ -710,16 +665,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
           </div>
 
           <div className="filter-actions">
-            {selectedDevis.length > 0 && (
-              <button 
-                onClick={handleBulkDelete}
-                className="bulk-delete-btn"
-                disabled={loading}
-              >
-                🗑️ Supprimer ({selectedDevis.length})
-              </button>
-            )}
-            
             <button 
               onClick={onCreateDevis}
               className="cta-button"
@@ -860,18 +805,6 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                       >
                         {loading ? "⏳" : "📄"}
                       </button>
-                      
-                      {devisItem.status === 'fini' && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCreateInvoice(devisItem);
-                          }}
-                          className="card-btn card-btn-invoice"
-                        >
-                          💰
-                        </button>
-                      )}
                       
                       <button 
                         onClick={(e) => {
