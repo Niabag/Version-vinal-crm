@@ -41,6 +41,10 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  trialStartDate: {
+    type: Date,
+    default: null
+  },
   hasHadTrial: {
     type: Boolean,
     default: false
@@ -75,8 +79,17 @@ UserSchema.methods.hasValidAccess = function() {
   if (this.subscriptionStatus === 'trial' && this.trialEndDate > now) {
     return true;
   }
-  
+
   return false;
+};
+
+// Ensure subscriptionStatus is updated when trial expires
+UserSchema.methods.updateTrialStatus = async function() {
+  const now = new Date();
+  if (this.subscriptionStatus === 'trial' && this.trialEndDate && this.trialEndDate <= now) {
+    this.subscriptionStatus = 'expired';
+    await this.save();
+  }
 };
 
 // Method to compare password

@@ -4,14 +4,17 @@ const User = require('../models/User');
 exports.checkSubscription = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
+    // Update trial status if expired
+    await user.updateTrialStatus();
+
     // Check if user has valid access (subscription or trial)
     if (!user.hasValidAccess()) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: 'Subscription required',
         subscriptionStatus: user.subscriptionStatus
       });

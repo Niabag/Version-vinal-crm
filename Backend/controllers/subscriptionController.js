@@ -11,12 +11,16 @@ exports.getSubscriptionStatus = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
+    // Update trial status if expired
+    await user.updateTrialStatus();
+
     // Return subscription status
     return res.json({
       status: user.subscriptionStatus,
       customerId: user.stripeCustomerId,
       subscriptionId: user.stripeSubscriptionId,
       currentPeriodEnd: user.subscriptionEndDate,
+      trialStartDate: user.trialStartDate,
       trialEndDate: user.trialEndDate,
       hasHadTrial: user.hasHadTrial
     });
@@ -41,11 +45,13 @@ exports.startFreeTrial = async (req, res) => {
     }
     
     // Set trial period (14 days)
-    const trialEndDate = new Date();
+    const trialStartDate = new Date();
+    const trialEndDate = new Date(trialStartDate);
     trialEndDate.setDate(trialEndDate.getDate() + 14);
     
     // Update user with trial information
     user.subscriptionStatus = 'trial';
+    user.trialStartDate = trialStartDate;
     user.trialEndDate = trialEndDate;
     user.hasHadTrial = true;
     
@@ -53,6 +59,7 @@ exports.startFreeTrial = async (req, res) => {
     
     return res.json({
       status: 'trial',
+      trialStartDate,
       trialEndDate
     });
   } catch (error) {
