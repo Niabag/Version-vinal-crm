@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
-import DynamicInvoice from './DynamicInvoice';
+import InvoicePreview from './invoicePreview';
+import InvoiceTemplate from './InvoiceTemplate';
 import './billing.scss';
 
 const Billing = ({ clients = [], onRefresh }) => {
@@ -11,6 +12,12 @@ const Billing = ({ clients = [], onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [showCreateInvoice, setShowCreateInvoice] = useState(false);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [showInvoiceTemplate, setShowInvoiceTemplate] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
+  const [previewDevis, setPreviewDevis] = useState([]);
+  const [previewClient, setPreviewClient] = useState({});
   const [newInvoice, setNewInvoice] = useState({
     clientId: '',
     devisIds: [],
@@ -21,7 +28,8 @@ const Billing = ({ clients = [], onRefresh }) => {
     discount: 0,
     taxRate: 20
   });
-  
+  // État pour activer/désactiver la prévisualisation automatique
+  const [autoPreview, setAutoPreview] = useState(true);
   // Référence pour le conteneur de prévisualisation
   const previewContainerRef = useRef(null);
   // État pour la prévisualisation dynamique
@@ -37,15 +45,10 @@ const Billing = ({ clients = [], onRefresh }) => {
 
   // Effet pour prévisualiser automatiquement quand des devis sont sélectionnés
   useEffect(() => {
-    if (selectedDevis.length > 0 && dynamicPreview) {
-      // Faire défiler jusqu'à la prévisualisation si elle est visible
-      if (previewContainerRef.current) {
-        setTimeout(() => {
-          previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
-      }
+    if (selectedDevis.length > 0 && autoPreview) {
+      handlePreviewInvoice();
     }
-  }, [selectedDevis, dynamicPreview]);
+  }, [selectedDevis, autoPreview]);
 
   const fetchDevis = async () => {
     try {
@@ -120,8 +123,7 @@ const Billing = ({ clients = [], onRefresh }) => {
   };
 
   const getFinishedDevis = () => {
-    // Retourner tous les devis, pas seulement ceux qui sont finalisés
-    return devisList;
+    return devisList.filter(devis => devis.status === 'fini');
   };
 
   const filteredDevis = getFinishedDevis().filter(devis => {
@@ -171,6 +173,103 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const handlePreviewInvoice = async () => {
+    if (selectedDevis.length === 0) {
+      alert('Veuillez sélectionner au moins un devis');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Déterminer le client principal
+      const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
+      const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
+      const client = clients.find(c => c._id === clientId);
+      
+      // Générer un numéro de facture
+      const invoiceNumber = `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
+      
+      // Date d'échéance par défaut (30 jours)
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      // Récupérer les détails des devis sélectionnés
+      const selectedDevisDetails = await Promise.all(
+        selectedDevis.map(async (id) => {
+          try {
+            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
+          } catch (err) {
+            console.error('Erreur récupération devis:', err);
+            return null;
+          }
+        })
+      );
+      const validDevis = selectedDevisDetails.filter(Boolean);
+
+      // Créer l'objet facture pour la prévisualisation
+      const invoice = {
+        clientId,
+        devisIds: selectedDevis,
+        invoiceNumber,
+        dueDate: dueDate.toISOString().split('T')[0],
+        notes: 'Merci pour votre confiance.',
+        paymentTerms: '30',
+        discount: 0,
+        taxRate: 20,
+        status: 'draft'
+      };
+
+      setPreviewInvoice(invoice);
+      setPreviewDevis(validDevis);
+      setPreviewClient(client || {});
+      setShowInvoicePreview(true);
+    } catch (error) {
+      console.error('Erreur lors de la prévisualisation:', error);
+      alert('❌ Erreur lors de la prévisualisation de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateInvoice = () => {
+    if (selectedDevis.length === 0) {
+      alert('Veuillez sélectionner au moins un devis');
+      return;
+    }
+
+    // Déterminer le client principal
+    const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
+    const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
+    
+    // Générer un numéro de facture
+    const invoiceNumber = `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
+    
+    // Date d'échéance par défaut (30 jours)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    setNewInvoice({
+      clientId,
+      devisIds: selectedDevis,
+      invoiceNumber,
+      dueDate: dueDate.toISOString().split('T')[0],
+      notes: '',
+      paymentTerms: '30',
+      discount: 0,
+      taxRate: 20
+    });
+
+    setShowCreateInvoice(true);
+  };
+
+  const calculateInvoiceTotal = () => {
+    const selectedDevisData = devisList.filter(d => newInvoice.devisIds.includes(d._id));
+    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateTTC(devis), 0);
+    const discountAmount = subtotal * (newInvoice.discount / 100);
+    return subtotal - discountAmount;
+  };
+
   const saveInvoice = async (updatedInvoice = null) => {
     try {
       setLoading(true);
@@ -201,6 +300,8 @@ const Billing = ({ clients = [], onRefresh }) => {
       
       // Réinitialiser
       setSelectedDevis([]);
+      setShowCreateInvoice(false);
+      setShowInvoicePreview(false);
       setNewInvoice({
         clientId: '',
         devisIds: [],
@@ -216,6 +317,33 @@ const Billing = ({ clients = [], onRefresh }) => {
     } catch (error) {
       console.error('Erreur lors de la création de la facture:', error);
       alert('❌ Erreur lors de la création de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewInvoice = async (invoice) => {
+    try {
+      setLoading(true);
+      const devisDetails = await Promise.all(
+        invoice.devisIds.map(async (id) => {
+          try {
+            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
+          } catch (err) {
+            console.error('Erreur récupération devis:', err);
+            return null;
+          }
+        })
+      );
+      const validDevis = devisDetails.filter(Boolean);
+      const client = clients.find(c => c._id === invoice.clientId) || {};
+
+      setPreviewInvoice(invoice);
+      setPreviewDevis(validDevis);
+      setPreviewClient(client);
+      setShowInvoiceTemplate(true);
+    } catch (err) {
+      console.error('Erreur affichage facture:', err);
     } finally {
       setLoading(false);
     }
@@ -240,6 +368,7 @@ const Billing = ({ clients = [], onRefresh }) => {
           }
         })
       );
+
       const validDevis = devisDetails.filter(Boolean);
 
       // Fusionner tous les articles
@@ -305,53 +434,9 @@ const Billing = ({ clients = [], onRefresh }) => {
   };
 
   const handleDeleteInvoice = (invoiceId) => {
-    if (window.confirm("Supprimer cette facture ?")) {
+    if (window.confirm('Supprimer cette facture ?')) {
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
     }
-  };
-
-  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
-    let newStatus;
-    switch (currentStatus) {
-      case 'draft':
-        newStatus = 'pending';
-        break;
-      case 'pending':
-        newStatus = 'paid';
-        break;
-      case 'paid':
-        newStatus = 'overdue';
-        break;
-      case 'overdue':
-        newStatus = 'draft';
-        break;
-      default:
-        newStatus = 'pending';
-    }
-
-    setInvoices(prev =>
-      prev.map(inv =>
-        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
-      )
-    );
-
-    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString("fr-FR");
-    } catch (error) {
-      return "";
-    }
-  };
-
-  const calculateInvoiceTotal = () => {
-    const selectedDevisData = devisList.filter(d => selectedDevis.includes(d._id));
-    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateTTC(devis), 0);
-    const discountAmount = subtotal * (newInvoice.discount / 100);
-    return subtotal - discountAmount;
   };
 
   const getStatusColor = (status) => {
@@ -399,6 +484,49 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
+    let newStatus;
+    switch (currentStatus) {
+      case 'draft':
+        newStatus = 'pending';
+        break;
+      case 'pending':
+        newStatus = 'paid';
+        break;
+      case 'paid':
+        newStatus = 'overdue';
+        break;
+      case 'overdue':
+        newStatus = 'draft';
+        break;
+      default:
+        newStatus = 'pending';
+    }
+
+    setInvoices(prev =>
+      prev.map(inv =>
+        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+      )
+    );
+
+    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("fr-FR");
+    } catch (error) {
+      return "";
+    }
+  };
+
+  // Calculs pour les statistiques
+  const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0);
+  const pendingRevenue = invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0);
+  const overdueRevenue = invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0);
+  const totalInvoices = invoices.length;
+
   return (
     <div className="billing-container">
       {/* En-tête avec statistiques */}
@@ -409,7 +537,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card revenue">
               <div className="stat-icon">💰</div>
               <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
+                <h3>{totalRevenue.toLocaleString('fr-FR')} €</h3>
                 <p>Chiffre d'affaires</p>
                 <span className="stat-trend">Factures payées</span>
               </div>
@@ -418,7 +546,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card pending">
               <div className="stat-icon">⏳</div>
               <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
+                <h3>{pendingRevenue.toLocaleString('fr-FR')} €</h3>
                 <p>En attente</p>
                 <span className="stat-trend">À encaisser</span>
               </div>
@@ -427,7 +555,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card overdue">
               <div className="stat-icon">⚠️</div>
               <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
+                <h3>{overdueRevenue.toLocaleString('fr-FR')} €</h3>
                 <p>En retard</p>
                 <span className="stat-trend">Relances nécessaires</span>
               </div>
@@ -436,7 +564,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card total">
               <div className="stat-icon">📊</div>
               <div className="stat-content">
-                <h3>{invoices.length}</h3>
+                <h3>{totalInvoices}</h3>
                 <p>Factures totales</p>
                 <span className="stat-trend">Toutes périodes</span>
               </div>
@@ -448,8 +576,8 @@ const Billing = ({ clients = [], onRefresh }) => {
       {/* Section de création de factures */}
       <div className="billing-section">
         <div className="section-header">
-          <h2>📄 Devis disponibles</h2>
-          <p>Cliquez sur un devis pour générer une facture</p>
+          <h2>📄 Devis finalisés</h2>
+          <p>Sélectionnez les devis à facturer</p>
         </div>
 
         {/* Filtres et recherche */}
@@ -481,6 +609,17 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <option value="amount">Montant décroissant</option>
               </select>
             </div>
+
+            <div className="filter-group">
+              <label className="auto-preview-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={autoPreview} 
+                  onChange={() => setAutoPreview(!autoPreview)}
+                />
+                <span className="toggle-label">Prévisualisation automatique</span>
+              </label>
+            </div>
             
             <div className="filter-group">
               <label className="auto-preview-toggle">
@@ -492,10 +631,37 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <span className="toggle-label">Affichage dynamique</span>
               </label>
             </div>
+
+            {selectedDevis.length > 0 && (
+              <div className="bulk-actions">
+                <button 
+                  onClick={handlePreviewInvoice}
+                  className="preview-invoice-btn"
+                  disabled={loading}
+                >
+                  👁️ Prévisualiser ({selectedDevis.length})
+                </button>
+                
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Liste des devis */}
+        {/* Sélection en masse */}
+        {filteredDevis.length > 0 && (
+          <div className="bulk-select-bar">
+            <label className="select-all-checkbox">
+              <input
+                type="checkbox"
+                checked={selectedDevis.length === filteredDevis.length && filteredDevis.length > 0}
+                onChange={handleSelectAll}
+              />
+              <span>Sélectionner tous les devis ({filteredDevis.length})</span>
+            </label>
+          </div>
+        )}
+
+        {/* Liste des devis finalisés */}
         {loading && devisList.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner">⏳</div>
@@ -504,8 +670,8 @@ const Billing = ({ clients = [], onRefresh }) => {
         ) : filteredDevis.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📄</div>
-            <h3>Aucun devis disponible</h3>
-            <p>Créez d'abord un devis pour pouvoir générer une facture</p>
+            <h3>Aucun devis finalisé</h3>
+            <p>Les devis avec le statut "Fini" apparaîtront ici pour être facturés</p>
           </div>
         ) : (
           <div className="devis-grid">
@@ -518,6 +684,17 @@ const Billing = ({ clients = [], onRefresh }) => {
                   className={`devis-card ${selectedDevis.includes(devis._id) ? 'selected' : ''}`}
                   onClick={() => handleSelectDevis(devis._id)}
                 >
+                  <div className="card-select">
+                    <input
+                      type="checkbox"
+                      checked={selectedDevis.includes(devis._id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectDevis(devis._id);
+                      }}
+                    />
+                  </div>
+
                   <div className="devis-card-content">
                     <h3 className="devis-card-title">{devis.title || "Devis sans titre"}</h3>
                     
@@ -538,18 +715,10 @@ const Billing = ({ clients = [], onRefresh }) => {
                       <span className="amount-value">{calculateTTC(devis).toFixed(2)} €</span>
                     </div>
 
-                    <div className="devis-card-actions">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Télécharger directement le PDF
-                          handleDownloadPDF(devis);
-                        }}
-                        className="card-btn card-btn-pdf"
-                        disabled={loading}
-                      >
-                        {loading ? "⏳" : "📄"} PDF
-                      </button>
+                    <div className="devis-status">
+                      <span className="status-badge fini">
+                        ✅ Finalisé
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -568,11 +737,12 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
           
           <div className="dynamic-preview-content">
-            <DynamicInvoice
+            <InvoicePreview
               invoice={{
                 invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 createdAt: new Date().toISOString().split('T')[0],
+                status: 'draft',
                 devisIds: selectedDevis
               }}
               client={(() => {
@@ -582,7 +752,9 @@ const Billing = ({ clients = [], onRefresh }) => {
                 return clients.find(c => c._id === clientId) || {};
               })()}
               devisDetails={devisList.filter(d => selectedDevis.includes(d._id))}
+              onClose={() => setSelectedDevis([])}
               onSave={saveInvoice}
+              editable={true}
             />
           </div>
         </div>
@@ -644,6 +816,13 @@ const Billing = ({ clients = [], onRefresh }) => {
 
                 <div className="invoice-actions">
                   <button
+                    onClick={() => handleViewInvoice(invoice)}
+                    className="action-btn view-btn"
+                    title="Voir la facture"
+                  >
+                    👁️
+                  </button>
+                  <button
                     onClick={() => handleDownloadInvoicePDF(invoice)}
                     className="action-btn download-btn"
                     title="Télécharger PDF"
@@ -666,295 +845,204 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
         )}
       </div>
+
+      {/* Modal de création de facture */}
+      {showCreateInvoice && (
+        <div className="modal-overlay" onClick={() => setShowCreateInvoice(false)}>
+          <div className="modal-content create-invoice-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>💰 Créer une nouvelle facture</h3>
+              <button 
+                onClick={() => setShowCreateInvoice(false)}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="invoice-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Numéro de facture :</label>
+                    <input
+                      type="text"
+                      value={newInvoice.invoiceNumber}
+                      onChange={(e) => setNewInvoice(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Date d'échéance :</label>
+                    <input
+                      type="date"
+                      value={newInvoice.dueDate}
+                      onChange={(e) => setNewInvoice(prev => ({ ...prev, dueDate: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Conditions de paiement :</label>
+                    <select
+                      value={newInvoice.paymentTerms}
+                      onChange={(e) => setNewInvoice(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                      className="form-select"
+                    >
+                      <option value="15">15 jours</option>
+                      <option value="30">30 jours</option>
+                      <option value="45">45 jours</option>
+                      <option value="60">60 jours</option>
+                    </select>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Remise (%) :</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={newInvoice.discount}
+                      onChange={(e) => setNewInvoice(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Notes :</label>
+                  <textarea
+                    value={newInvoice.notes}
+                    onChange={(e) => setNewInvoice(prev => ({ ...prev, notes: e.target.value }))}
+                    className="form-textarea"
+                    rows={3}
+                    placeholder="Notes ou conditions particulières..."
+                  />
+                </div>
+
+                <div className="invoice-summary">
+                  <h4>Résumé de la facture :</h4>
+                  <div className="summary-details">
+                    <div className="summary-line">
+                      <span>Devis sélectionnés :</span>
+                      <span>{newInvoice.devisIds.length}</span>
+                    </div>
+                    <div className="summary-line">
+                      <span>Sous-total :</span>
+                      <span>{(calculateInvoiceTotal() / (1 - newInvoice.discount / 100)).toFixed(2)} €</span>
+                    </div>
+                    {newInvoice.discount > 0 && (
+                      <div className="summary-line discount">
+                        <span>Remise ({newInvoice.discount}%) :</span>
+                        <span>-{((calculateInvoiceTotal() / (1 - newInvoice.discount / 100)) * newInvoice.discount / 100).toFixed(2)} €</span>
+                      </div>
+                    )}
+                    <div className="summary-line total">
+                      <span>Total TTC :</span>
+                      <span>{calculateInvoiceTotal().toFixed(2)} €</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                onClick={() => setShowCreateInvoice(false)}
+                className="btn-cancel"
+              >
+                Annuler
+              </button>
+              <button 
+                onClick={() => saveInvoice()}
+                className="btn-save"
+                disabled={loading}
+              >
+                {loading ? 'Création...' : '💰 Créer la facture'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+<<<<<<< Updated upstream
+      {/* Modal d'aperçu de facture */}
+      {showInvoicePreview && (
+        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
+          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📄 Aperçu de la facture</h3>
+              <button onClick={() => setShowInvoicePreview(false)} className="modal-close">✕</button>
+            </div>
+            <div className="modal-body">
+              <InvoicePreview
+                invoice={previewInvoice}
+                devisDetails={previewDevis}
+                client={previewClient}
+                onClose={() => setShowInvoicePreview(false)}
+                onSave={saveInvoice}
+                editable={true}
+              />
+            </div>
+          </div>
+=======
+      {/* Aperçu dynamique directement affiché à la fin */}
+      {previewInvoice && previewDevis.length > 0 && (
+        <div className="invoice-live-preview">
+          <h4>Aperçu dynamique de la facture :</h4>
+          <InvoicePreview
+            invoice={previewInvoice}
+            devisDetails={previewDevis}
+            client={previewClient}
+            onClose={() => setPreviewInvoice(null)}
+            onSave={saveInvoice}
+            editable={true}
+          />
+>>>>>>> Stashed changes
+        </div>
+      )}
+
+      {/* Modal de facture professionnelle */}
+      {showInvoiceTemplate && (
+        <div className="modal-overlay" onClick={() => setShowInvoiceTemplate(false)}>
+          <div className="modal-content invoice-template-modal" onClick={(e) => e.stopPropagation()}>
+            <InvoiceTemplate
+              invoice={previewInvoice}
+              devisDetails={previewDevis}
+              client={previewClient}
+              onClose={() => setShowInvoiceTemplate(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// Fonction pour générer un PDF à partir d'un devis
-const handleDownloadPDF = async (devis) => {
-  try {
-    // Créer un élément temporaire
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    tempDiv.style.top = '-9999px';
-    tempDiv.style.width = '210mm';
-    tempDiv.style.background = 'white';
-    tempDiv.style.padding = '20px';
-    tempDiv.style.fontFamily = 'Arial, sans-serif';
-    tempDiv.style.color = 'black';
-    tempDiv.style.fontSize = '12px';
-    tempDiv.style.lineHeight = '1.4';
-    document.body.appendChild(tempDiv);
-
-    // Importer les modules nécessaires
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf')
-    ]);
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const margin = 10;
-    let currentY = margin;
-
-    // Fonction pour ajouter une section au PDF
-    const addSectionToPDF = async (htmlContent, isFirstPage = false) => {
-      tempDiv.innerHTML = htmlContent;
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = pageWidth - (margin * 2);
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Vérifier si on a besoin d'une nouvelle page
-      if (currentY + imgHeight > pageHeight - margin && !isFirstPage) {
-        pdf.addPage();
-        currentY = margin;
-      }
-
-      pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-      currentY += imgHeight + 5;
-
-      return imgHeight;
-    };
-
-    // 1. EN-TÊTE
-    await addSectionToPDF(`
-      <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #e2e8f0;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div style="flex: 1;">
-            ${devis.logoUrl ? `<img src="${devis.logoUrl}" alt="Logo" style="max-width: 200px; max-height: 100px; object-fit: contain; border-radius: 8px;">` : ''}
-          </div>
-          <div style="flex: 1; text-align: right;">
-            <h1 style="font-size: 3rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: 2px;">FACTURE</h1>
+export default Billing;
+iv>
           </div>
         </div>
-      </div>
-    `, true);
+      )}
 
-    // 2. INFORMATIONS PARTIES
-    const clientInfo = {
-      name: "Client",
-      email: "client@example.com",
-      phone: "06 12 34 56 78",
-      address: "123 Rue Client",
-      postalCode: "75000",
-      city: "Paris"
-    };
-    
-    await addSectionToPDF(`
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 30px;">
-        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
-          <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">ÉMETTEUR</h3>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${devis.entrepriseName || 'Nom de l\'entreprise'}</div>
-            <div>${devis.entrepriseAddress || 'Adresse'}</div>
-            <div>${devis.entrepriseCity || 'Code postal et ville'}</div>
-            <div>${devis.entreprisePhone || 'Téléphone'}</div>
-            <div>${devis.entrepriseEmail || 'Email'}</div>
+      {/* Modal de facture professionnelle */}
+      {showInvoiceTemplate && (
+        <div className="modal-overlay" onClick={() => setShowInvoiceTemplate(false)}>
+          <div className="modal-content invoice-template-modal" onClick={(e) => e.stopPropagation()}>
+            <InvoiceTemplate
+              invoice={previewInvoice}
+              devisDetails={previewDevis}
+              client={previewClient}
+              onClose={() => setShowInvoiceTemplate(false)}
+            />
           </div>
         </div>
-        
-        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
-          <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">DESTINATAIRE</h3>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
-            <div>${clientInfo.email || devis.clientEmail || 'Email du client'}</div>
-            <div>${clientInfo.phone || devis.clientPhone || 'Téléphone du client'}</div>
-            <div>${devis.clientAddress || clientInfo.address || 'Adresse du client'}</div>
-            <div>${clientInfo.postalCode || ''} ${clientInfo.city || ''}</div>
-          </div>
-        </div>
-      </div>
-    `);
-
-    // 3. MÉTADONNÉES
-    await addSectionToPDF(`
-      <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-          <div>
-            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Date de la facture :</div>
-            <div style="font-weight: 600; color: #0f172a;">${new Date().toLocaleDateString('fr-FR')}</div>
-          </div>
-          <div>
-            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Numéro de facture :</div>
-            <div style="font-weight: 600; color: #0f172a;">FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</div>
-          </div>
-          <div>
-            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Date d'échéance :</div>
-            <div style="font-weight: 600; color: #0f172a;">${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}</div>
-          </div>
-          <div>
-            <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Client :</div>
-            <div style="font-weight: 600; color: #0f172a;">${clientInfo.name || devis.clientName || 'Client non défini'}</div>
-          </div>
-        </div>
-      </div>
-    `);
-
-    // 4. TABLEAU - TRAITEMENT LIGNE PAR LIGNE
-    // En-tête du tableau
-    await addSectionToPDF(`
-      <div style="margin-bottom: 10px;">
-        <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">DÉTAIL DES PRESTATIONS</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white;">
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 35%;">Description</th>
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Unité</th>
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">Qté</th>
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;">Prix unitaire HT</th>
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;">TVA</th>
-              <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;">Total HT</th>
-            </tr>
-          </thead>
-        </table>
-      </div>
-    `);
-
-    // TRAITER CHAQUE LIGNE INDIVIDUELLEMENT
-    for (let i = 0; i < devis.articles.length; i++) {
-      const article = devis.articles[i];
-      const price = parseFloat(article.unitPrice || "0");
-      const qty = parseFloat(article.quantity || "0");
-      const total = isNaN(price) || isNaN(qty) ? 0 : price * qty;
-      const bgColor = i % 2 === 0 ? '#ffffff' : '#f8f9fa';
-
-      const rowHTML = `
-        <table style="width: 100%; border-collapse: collapse;">
-          <tbody>
-            <tr style="background: ${bgColor};">
-              <td style="padding: 1rem 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; width: 35%;">${article.description || ''}</td>
-              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${article.unit || ''}</td>
-              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${qty}</td>
-              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 15%;">${price.toFixed(2)} €</td>
-              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 10%;">${article.tvaRate || "20"}%</td>
-              <td style="padding: 1rem 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0; width: 20%; font-weight: 600; color: #48bb78;">${total.toFixed(2)} €</td>
-            </tr>
-          </tbody>
-        </table>
-      `;
-
-      await addSectionToPDF(rowHTML);
-    }
-
-    // 5. TOTAUX
-    const tauxTVA = {
-      "20": { ht: 0, tva: 0 },
-      "10": { ht: 0, tva: 0 },
-      "5.5": { ht: 0, tva: 0 },
-    };
-
-    devis.articles.forEach((item) => {
-      const price = parseFloat(item.unitPrice || "0");
-      const qty = parseFloat(item.quantity || "0");
-      const taux = item.tvaRate || "20";
-
-      if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux]) {
-        const ht = price * qty;
-        tauxTVA[taux].ht += ht;
-        tauxTVA[taux].tva += ht * (parseFloat(taux) / 100);
-      }
-    });
-
-    const totalHT = Object.values(tauxTVA).reduce((sum, t) => sum + t.ht, 0);
-    const totalTVA = Object.values(tauxTVA).reduce((sum, t) => sum + t.tva, 0);
-    const totalTTC = totalHT + totalTVA;
-
-    await addSectionToPDF(`
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 30px 0;">
-        <div>
-          <h4 style="margin: 0 0 1rem 0; color: #2d3748; font-weight: 600;">Récapitulatif TVA</h4>
-          <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
-            <thead>
-              <tr style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: white;">
-                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Base HT</th>
-                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Taux TVA</th>
-                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Montant TVA</th>
-                <th style="padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Total TTC</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${Object.entries(tauxTVA)
-                .filter(([, { ht }]) => ht > 0)
-                .map(([rate, { ht, tva }]) => `
-                  <tr>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${ht.toFixed(2)} €</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${rate}%</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${tva.toFixed(2)} €</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${(ht + tva).toFixed(2)} €</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 0.75rem; align-self: end;">
-          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
-            <span>Total HT :</span>
-            <span>${totalHT.toFixed(2)} €</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
-            <span>Total TVA :</span>
-            <span>${totalTVA.toFixed(2)} €</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 700; font-size: 1.1rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); min-width: 250px;">
-            <span>Total TTC :</span>
-            <span>${totalTTC.toFixed(2)} €</span>
-          </div>
-        </div>
-      </div>
-    `);
-
-    // 6. CONDITIONS
-    await addSectionToPDF(`
-      <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin-top: 30px;">
-        <div style="margin-bottom: 2rem;">
-          <h4 style="margin: 0 0 1rem 0; color: #0f172a; font-size: 1.1rem; font-weight: 600;">Conditions</h4>
-          <div style="color: #475569; line-height: 1.6; white-space: pre-line;">
-            ${devis.conditions || `• Facture valable jusqu'au ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI (si applicable)`}
-          </div>
-        </div>
-        
-        <div style="text-align: center;">
-          <p style="font-style: italic; color: #64748b; margin-bottom: 2rem;">
-            <em>Merci pour votre confiance</em>
-          </p>
-        </div>
-      </div>
-    `);
-
-    // 7. PIED DE PAGE
-    await addSectionToPDF(`
-      <div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; text-align: center;">
-        <p style="font-size: 0.85rem; color: #64748b; font-style: italic; margin: 0;">
-          ${devis.footerText || `${devis.entrepriseName || 'Votre entreprise'} - ${devis.entrepriseAddress || 'Adresse'} - ${devis.entrepriseCity || 'Ville'}`}
-        </p>
-      </div>
-    `);
-
-    // Télécharger le PDF
-    const fileName = devis.title?.replace(/[^a-zA-Z0-9]/g, '-') || `facture-${devis._id}`;
-    pdf.save(`${fileName}.pdf`);
-
-    // Nettoyer
-    document.body.removeChild(tempDiv);
-    
-    console.log("✅ PDF généré avec succès");
-
-  } catch (error) {
-    console.error('❌ Erreur génération PDF:', error);
-    alert('❌ Erreur lors de la génération du PDF: ' + error.message);
-  }
+      )}
+    </div>
+  );
 };
 
 export default Billing;

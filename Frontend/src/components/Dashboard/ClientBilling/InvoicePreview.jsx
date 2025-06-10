@@ -1,237 +1,113 @@
 import React, { useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import './InvoicePreview.scss';
 
-const InvoicePreview = ({ invoice, client, devisDetails = [], onSave, onCancel }) => {
+const InvoicePreview = ({ invoice, onClose }) => {
   const invoiceRef = useRef(null);
-  
-  const [formData, setFormData] = React.useState({
-    invoiceNumber: invoice?.invoiceNumber || `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-    dueDate: invoice?.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    createdAt: invoice?.createdAt || new Date().toISOString().split('T')[0],
-    notes: invoice?.notes || 'Merci pour votre confiance.',
-    paymentTerms: invoice?.paymentTerms || '30',
-    discount: invoice?.discount || 0,
-    taxRate: invoice?.taxRate || 20,
-    status: invoice?.status || 'pending',
-    entrepriseName: devisDetails[0]?.entrepriseName || "Votre Entreprise",
-    entrepriseAddress: devisDetails[0]?.entrepriseAddress || "123 Rue Exemple",
-    entrepriseCity: devisDetails[0]?.entrepriseCity || "75000 Paris",
-    entreprisePhone: devisDetails[0]?.entreprisePhone || "01 23 45 67 89",
-    entrepriseEmail: devisDetails[0]?.entrepriseEmail || "contact@entreprise.com",
-    logoUrl: devisDetails[0]?.logoUrl || ""
-  });
 
-  const handlePrint = useReactToPrint({
-    content: () => invoiceRef.current,
-    documentTitle: `facture-${formData.invoiceNumber}`,
-    onAfterPrint: () => console.log('Impression terminée')
-  });
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handlePrint = () => {
+    window.print();
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        handleInputChange("logoUrl", reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleDownloadPDF = () => {
+    const input = invoiceRef.current;
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+      
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`facture_${invoice.invoiceNumber}.pdf`);
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
   };
 
   // Calcul des totaux
-  const calculateTotals = () => {
-    let subtotal = 0;
-    let totalTax = 0;
-
-    devisDetails.forEach(devis => {
-      if (devis.articles && Array.isArray(devis.articles)) {
-        devis.articles.forEach(article => {
-          const price = parseFloat(article.unitPrice || 0);
-          const qty = parseFloat(article.quantity || 0);
-          const tvaRate = parseFloat(article.tvaRate || 0);
-          
-          if (!isNaN(price) && !isNaN(qty)) {
-            const lineTotal = price * qty;
-            subtotal += lineTotal;
-            totalTax += lineTotal * (tvaRate / 100);
-          }
-        });
-      }
-    });
-
-    // Appliquer la remise
-    const discountAmount = subtotal * (formData.discount / 100);
-    const discountedSubtotal = subtotal - discountAmount;
-    
-    // Recalculer la TVA après remise si nécessaire
-    const finalTax = totalTax * (1 - formData.discount / 100);
-    
-    const total = discountedSubtotal + finalTax;
-    return { subtotal, discountAmount, discountedSubtotal, totalTax: finalTax, total };
+  const calculateSubtotal = () => {
+    return invoice.items.reduce((total, item) => {
+      return total + (parseFloat(item.quantity || 0) * parseFloat(item.unitPrice || 0));
+    }, 0);
   };
 
-  const { subtotal, discountAmount, discountedSubtotal, totalTax, total } = calculateTotals();
-
-  // Formatage de la date
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString("fr-FR");
-    } catch (error) {
-      return dateStr;
-    }
+  const calculateTVA = () => {
+    return invoice.items.reduce((total, item) => {
+      const itemTotal = parseFloat(item.quantity || 0) * parseFloat(item.unitPrice || 0);
+      return total + (itemTotal * (parseFloat(item.tva || 0) / 100));
+    }, 0);
   };
 
-  const handleSave = () => {
-    if (onSave) {
-      const updatedInvoice = {
-        ...invoice,
-        ...formData,
-        amount: total
-      };
-      onSave(updatedInvoice);
-    }
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const tva = calculateTVA();
+    return subtotal + tva;
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'paid': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'overdue': return '#ef4444';
-      case 'draft': return '#6b7280';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'paid': return 'Payée';
-      case 'pending': return 'En attente';
-      case 'overdue': return 'En retard';
-      case 'draft': return 'Brouillon';
-      default: return 'Inconnu';
-    }
-  };
+  const subtotal = calculateSubtotal();
+  const tva = calculateTVA();
+  const total = calculateTotal();
 
   return (
     <div className="invoice-preview-container">
       <div className="preview-toolbar">
-        <button onClick={handlePrint} className="toolbar-btn print-btn">
-          📄 Imprimer / PDF
+        <button className="toolbar-btn print-btn" onClick={handlePrint}>
+          <i className="fas fa-print"></i> Imprimer
         </button>
-        <button onClick={handleSave} className="toolbar-btn save-btn">
-          💾 Enregistrer
+        <button className="toolbar-btn pdf-btn" onClick={handleDownloadPDF}>
+          <i className="fas fa-file-pdf"></i> Télécharger PDF
         </button>
-        <button onClick={onCancel} className="toolbar-btn cancel-btn">
-          ✕ Annuler
+        <button className="toolbar-btn cancel-btn" onClick={onClose}>
+          <i className="fas fa-times"></i> Fermer
         </button>
       </div>
 
       <div className="invoice-document" ref={invoiceRef}>
-        <div className="invoice-header">
+        <div className="document-header">
           <div className="company-info">
-            {formData.logoUrl ? (
-              <img src={formData.logoUrl} alt="Logo" className="company-logo" />
+            {invoice.logo ? (
+              <img src={invoice.logo} alt="Logo" className="company-logo" />
             ) : (
-              <label className="logo-upload-area">
-                📷 Cliquez pour ajouter un logo
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={handleLogoUpload}
-                />
-              </label>
+              <div className="company-name">
+                {invoice.companyName || "Nom de l'entreprise"}
+              </div>
             )}
             <div className="company-details">
-              <input
-                type="text"
-                className="editable-input company-name"
-                value={formData.entrepriseName}
-                onChange={(e) => handleInputChange("entrepriseName", e.target.value)}
-                placeholder="Nom de l'entreprise"
-              />
-              <input
-                type="text"
-                className="editable-input"
-                value={formData.entrepriseAddress}
-                onChange={(e) => handleInputChange("entrepriseAddress", e.target.value)}
-                placeholder="Adresse"
-              />
-              <input
-                type="text"
-                className="editable-input"
-                value={formData.entrepriseCity}
-                onChange={(e) => handleInputChange("entrepriseCity", e.target.value)}
-                placeholder="Code postal et ville"
-              />
-              <input
-                type="text"
-                className="editable-input"
-                value={formData.entreprisePhone}
-                onChange={(e) => handleInputChange("entreprisePhone", e.target.value)}
-                placeholder="Téléphone"
-              />
-              <input
-                type="text"
-                className="editable-input"
-                value={formData.entrepriseEmail}
-                onChange={(e) => handleInputChange("entrepriseEmail", e.target.value)}
-                placeholder="Email"
-              />
+              <p>{invoice.companyAddress || "123 Rue Exemple"}</p>
+              <p>{invoice.companyCity || "75000 Paris"}</p>
+              <p>{invoice.companyPhone || "01 23 45 67 89"}</p>
+              <p>{invoice.companyEmail || "contact@entreprise.com"}</p>
             </div>
           </div>
           <div className="invoice-info">
             <h1>FACTURE</h1>
             <div className="invoice-number-container">
               <span className="label">N°</span>
-              <input
-                type="text"
-                className="editable-input invoice-number-input"
-                value={formData.invoiceNumber}
-                onChange={(e) => handleInputChange("invoiceNumber", e.target.value)}
-                placeholder="Numéro de facture"
-              />
-            </div>
-            <div className="invoice-status-selector">
-              <span className="label">Statut:</span>
-              <select
-                value={formData.status}
-                onChange={(e) => handleInputChange("status", e.target.value)}
-                className="status-select"
-                style={{ backgroundColor: getStatusColor(formData.status), color: 'white' }}
-              >
-                <option value="draft">Brouillon</option>
-                <option value="pending">En attente</option>
-                <option value="paid">Payée</option>
-                <option value="overdue">En retard</option>
-              </select>
+              <span className="invoice-number">{invoice.invoiceNumber}</span>
             </div>
             <div className="invoice-date-container">
               <span className="label">Date:</span>
-              <input
-                type="date"
-                className="editable-input date-input"
-                value={formData.createdAt}
-                onChange={(e) => handleInputChange("createdAt", e.target.value)}
-              />
+              <span className="invoice-date">{new Date(invoice.date).toLocaleDateString('fr-FR')}</span>
             </div>
             <div className="invoice-due-container">
               <span className="label">Échéance:</span>
-              <input
-                type="date"
-                className="editable-input date-input"
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange("dueDate", e.target.value)}
-              />
+              <span className="invoice-due">{new Date(invoice.dueDate).toLocaleDateString('fr-FR')}</span>
+            </div>
+            <div className="invoice-status-selector">
+              <span className="label">Statut:</span>
+              <span className={`invoice-status status-${invoice.status}`}>
+                {invoice.status === 'paid' ? 'Payée' : 
+                 invoice.status === 'pending' ? 'En attente' : 
+                 invoice.status === 'overdue' ? 'En retard' : 'Brouillon'}
+              </span>
             </div>
           </div>
         </div>
@@ -239,12 +115,12 @@ const InvoicePreview = ({ invoice, client, devisDetails = [], onSave, onCancel }
         <div className="client-section">
           <div className="section-title">FACTURER À</div>
           <div className="client-details">
-            <p className="client-name">{client?.name}</p>
-            <p>{client?.email}</p>
-            <p>{client?.phone}</p>
-            <p>{client?.address}</p>
-            <p>{client?.postalCode} {client?.city}</p>
-            {client?.company && <p className="client-company">{client.company}</p>}
+            <p className="client-name">{invoice.client.name || 'Nom du client'}</p>
+            <p>{invoice.client.email || 'email@client.com'}</p>
+            <p>{invoice.client.phone || '01 23 45 67 89'}</p>
+            <p>{invoice.client.address || 'Adresse du client'}</p>
+            <p>{invoice.client.postalCode || '75000'} {invoice.client.city || 'Ville'}</p>
+            {invoice.client.company && <p className="client-company">{invoice.client.company}</p>}
           </div>
         </div>
 
@@ -260,24 +136,18 @@ const InvoicePreview = ({ invoice, client, devisDetails = [], onSave, onCancel }
               </tr>
             </thead>
             <tbody>
-              {devisDetails.flatMap((devis, devisIndex) => 
-                devis.articles && Array.isArray(devis.articles) ? 
-                  devis.articles.map((article, index) => {
-                    const price = parseFloat(article.unitPrice || 0);
-                    const qty = parseFloat(article.quantity || 0);
-                    const lineTotal = isNaN(price) || isNaN(qty) ? 0 : price * qty;
-                    
-                    return (
-                      <tr key={`${devisIndex}-${index}`}>
-                        <td>{article.description || "Article sans description"}</td>
-                        <td>{qty}</td>
-                        <td>{price.toFixed(2)} €</td>
-                        <td>{article.tvaRate || 0}%</td>
-                        <td>{lineTotal.toFixed(2)} €</td>
-                      </tr>
-                    );
-                  }) : []
-              )}
+              {invoice.items.map((item, index) => {
+                const itemTotal = (parseFloat(item.quantity || 0) * parseFloat(item.unitPrice || 0)).toFixed(2);
+                return (
+                  <tr key={index}>
+                    <td>{item.description || 'Article sans description'}</td>
+                    <td>{item.quantity || 0}</td>
+                    <td>{formatCurrency(item.unitPrice || 0)}</td>
+                    <td>{item.tva || 0}%</td>
+                    <td>{formatCurrency(itemTotal)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -285,58 +155,33 @@ const InvoicePreview = ({ invoice, client, devisDetails = [], onSave, onCancel }
         <div className="invoice-summary">
           <div className="summary-row">
             <span>Sous-total:</span>
-            <span>{subtotal.toFixed(2)} €</span>
+            <span>{formatCurrency(subtotal)}</span>
           </div>
-          {formData.discount > 0 && (
-            <div className="summary-row discount">
-              <span>Remise ({formData.discount}%):</span>
-              <span>-{discountAmount.toFixed(2)} €</span>
-            </div>
-          )}
           <div className="summary-row">
             <span>TVA:</span>
-            <span>{totalTax.toFixed(2)} €</span>
+            <span>{formatCurrency(tva)}</span>
           </div>
           <div className="summary-row total">
             <span>Total TTC:</span>
-            <span>{total.toFixed(2)} €</span>
+            <span>{formatCurrency(total)}</span>
           </div>
         </div>
 
         <div className="invoice-notes">
           <div className="section-title">NOTES</div>
-          <textarea
-            className="editable-textarea"
-            value={formData.notes}
-            onChange={(e) => handleInputChange("notes", e.target.value)}
-            placeholder="Notes ou conditions particulières..."
-            rows={3}
-          />
+          <p>{invoice.notes || 'Aucune note'}</p>
         </div>
 
         <div className="payment-terms">
           <div className="section-title">CONDITIONS DE PAIEMENT</div>
           <div className="terms-row">
             <span className="terms-label">Délai de paiement:</span>
-            <select
-              value={formData.paymentTerms}
-              onChange={(e) => handleInputChange("paymentTerms", e.target.value)}
-              className="terms-select"
-            >
-              <option value="15">15 jours</option>
-              <option value="30">30 jours</option>
-              <option value="45">45 jours</option>
-              <option value="60">60 jours</option>
-            </select>
+            <span className="terms-value">{invoice.paymentTerms || '30'} jours</span>
           </div>
         </div>
 
         <div className="invoice-footer">
-          <p>
-            {formData.entrepriseName} - 
-            {formData.entrepriseAddress} - 
-            {formData.entrepriseCity}
-          </p>
+          <p>{invoice.companyName || "Nom de l'entreprise"} - {invoice.companyAddress || "123 Rue Exemple"} - {invoice.companyCity || "75000 Paris"}</p>
         </div>
       </div>
     </div>
