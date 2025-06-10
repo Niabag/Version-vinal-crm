@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
+
 import { getSubscriptionStatus, createPortalSession, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS, getTrialDaysRemaining, DEFAULT_TRIAL_DAYS } from '../../services/subscription';
+
 import './settings.scss';
 
 const Settings = () => {
@@ -152,6 +154,7 @@ const Settings = () => {
       setProcessingCheckout(false);
     }
   };
+
 
   const handleStartTrial = async () => {
     setProcessingCheckout(true);

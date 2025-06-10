@@ -232,7 +232,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Allow dropdown menus to extend beyond the main container */
+  overflow: visible;
   background: #ffffff;
 }
 
@@ -476,12 +477,14 @@
 .user-menu {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  /* Pull slightly away from the screen edge */
+  right: 10px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   border: 1px solid #e2e8f0;
-  width: 240px;
+  /* Increased width so email addresses fit */
+  width: 260px;
   z-index: 100;
   overflow: hidden;
   opacity: 0;
@@ -494,6 +497,7 @@
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  width: 500px;
 }
 
 .user-menu-header {
