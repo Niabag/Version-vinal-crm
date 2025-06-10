@@ -115,7 +115,7 @@ const RegisterClient = () => {
       return;
     }
 
-    // ✅ DÉTECTION DU TYPE DE SCHÉMA
+    // Détection du type de schéma
     const hasWebsite = sortedActions.some(a => a.type === 'website');
     const hasForm = sortedActions.some(a => a.type === 'form');
     const hasDownload = sortedActions.some(a => a.type === 'download');
@@ -134,8 +134,6 @@ const RegisterClient = () => {
       detectedSchema = (websiteIndex > formIndex && websiteIndex > downloadIndex) ? 'funnel-site-last' : 'complete-funnel';
     } else if (!hasWebsite && hasForm && !hasDownload) {
       detectedSchema = 'contact-only';
-    } else if (!hasWebsite && !hasDownload && hasForm) {
-      detectedSchema = 'contact-only';
     } else if (!hasWebsite && !hasForm && hasDownload) {
       detectedSchema = 'card-download';
     } else {
@@ -145,7 +143,7 @@ const RegisterClient = () => {
     setSchemaType(detectedSchema);
     console.log(`📋 Schéma détecté: ${detectedSchema}`);
 
-    // ✅ EXÉCUTION SELON LE SCHÉMA
+    // Exécution selon le schéma
     switch (detectedSchema) {
       case 'website-only':
         await executeWebsiteOnlySchema(sortedActions);
@@ -187,7 +185,7 @@ const RegisterClient = () => {
     setLoading(false);
   };
 
-  // ✅ SCHÉMA 1: Site Web Direct (website uniquement)
+  // SCHÉMA 1: Site Web Direct (website uniquement)
   const executeWebsiteOnlySchema = async (actions) => {
     console.log('🌐 Exécution: Site Web Direct');
     const websiteAction = actions.find(a => a.type === 'website');
@@ -207,7 +205,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 2: Site web puis Formulaire (website → form)
+  // SCHÉMA 2: Site web puis Formulaire (website → form)
   const executeWebsiteFormSchema = async (actions) => {
     console.log('🚀 Exécution: Site web puis Formulaire');
     
@@ -237,7 +235,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 3: Formulaire puis Site Web (form → website)
+  // SCHÉMA 3: Formulaire puis Site Web (form → website)
   const executeFormWebsiteSchema = async (actions) => {
     console.log('📝🌐 Exécution: Formulaire puis Site Web');
     setShowForm(true);
@@ -254,7 +252,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 4: Contact → Carte (form → download)
+  // SCHÉMA 4: Contact → Carte (form → download)
   const executeContactDownloadSchema = async (actions) => {
     console.log('📝 Exécution: Contact → Carte');
     setShowForm(true);
@@ -271,7 +269,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 5: Tunnel Complet (website → form → download)
+  // SCHÉMA 5: Tunnel Complet (website → form → download)
   const executeCompleteFunnelSchema = async (actions) => {
     console.log('🎯 Exécution: Tunnel Complet');
     
@@ -307,7 +305,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 5bis: Tunnel Complet, site en dernier (form → download → website)
+  // SCHÉMA 5bis: Tunnel Complet, site en dernier (form → download → website)
   const executeFunnelSiteLastSchema = async (actions) => {
     console.log('🎯🌐 Exécution: Tunnel Complet - Site en dernier');
     setShowForm(true);
@@ -329,7 +327,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 6: Contact Uniquement (form seulement)
+  // SCHÉMA 6: Contact Uniquement (form seulement)
   const executeContactOnlySchema = async (actions) => {
     console.log('📝 Exécution: Contact Uniquement');
     setShowForm(true);
@@ -340,7 +338,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 7: Carte de Visite (download seulement)
+  // SCHÉMA 7: Carte de Visite (download seulement)
   const executeCardDownloadSchema = async (actions) => {
     console.log('📥 Exécution: Carte de Visite');
     const downloadAction = actions.find(a => a.type === 'download');
@@ -357,7 +355,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA PERSONNALISÉ
+  // SCHÉMA PERSONNALISÉ
   const executeCustomSchema = async (actions) => {
     console.log('🔧 Exécution: Schéma Personnalisé');
     // Pour les schémas personnalisés, on affiche le formulaire par défaut
