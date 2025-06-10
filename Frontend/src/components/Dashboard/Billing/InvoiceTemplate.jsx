@@ -1,35 +1,15 @@
 import React, { useRef } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { useReactToPrint } from "react-to-print";
 import "./invoiceTemplate.scss";
 
 const InvoiceTemplate = ({ invoice, client, devisDetails = [], onClose }) => {
   const invoiceRef = useRef(null);
 
-  const handlePrint = async () => {
-    try {
-      const canvas = await html2canvas(invoiceRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
-      const imgX = (pdfWidth - canvas.width * ratio) / 2;
-      const imgY = 0;
-      
-      pdf.addImage(imgData, 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
-      pdf.save(`facture-${invoice.invoiceNumber || 'sans-numero'}.pdf`);
-    } catch (error) {
-      console.error('Erreur génération PDF:', error);
-      alert('Erreur lors de la génération du PDF: ' + error.message);
-    }
-  };
+  const handlePrint = useReactToPrint({
+    content: () => invoiceRef.current,
+    documentTitle: `facture-${invoice.invoiceNumber || 'sans-numero'}`,
+    onAfterPrint: () => console.log('Impression terminée')
+  });
 
   // Calcul des totaux
   const calculateTotals = () => {
@@ -72,7 +52,7 @@ const InvoiceTemplate = ({ invoice, client, devisDetails = [], onClose }) => {
     <div className="invoice-template-container">
       <div className="invoice-actions">
         <button onClick={handlePrint} className="print-btn">
-          📄 Télécharger PDF
+          📄 Imprimer / PDF
         </button>
         <button onClick={onClose} className="close-btn">
           ✕ Fermer

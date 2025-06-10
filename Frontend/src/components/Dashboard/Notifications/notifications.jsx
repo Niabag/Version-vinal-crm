@@ -69,7 +69,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       ]);
 
       const notifications = [];
-      let notificationId = 1;
+      let notificationId = Date.now();
 
       // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS CLIENTS
       clients.forEach(client => {
@@ -86,7 +86,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `${client.name} s'est inscrit via votre QR code`,
             details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
             date: new Date(client.createdAt),
-            read: Math.random() > 0.7, // 30% lues
+            read: false, // Toujours non lu pour les nouveaux clients
             actionUrl: `/prospect/edit/${client._id}`,
             actionLabel: 'Voir le prospect',
             clientId: client._id,
@@ -105,7 +105,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `${client.name} est inactif depuis plus de 30 jours`,
             details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
             date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.5,
+            read: false, // Non lu pour encourager l'action
             actionUrl: `/prospect/edit/${client._id}`,
             actionLabel: 'Relancer le client',
             clientId: client._id,
@@ -124,7 +124,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `${client.name} nécessite un suivi commercial`,
             details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
             date: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.6,
+            read: false, // Non lu pour encourager l'action
             actionUrl: `/prospect/edit/${client._id}`,
             actionLabel: 'Suivre le prospect',
             clientId: client._id,
@@ -149,7 +149,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `Devis "${devisItem.title}" créé pour ${client?.name || 'Client inconnu'}`,
             details: `Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC • Statut: ${getStatusLabel(devisItem.status)}`,
             date: new Date(devisItem.dateDevis || devisItem.date),
-            read: Math.random() > 0.8,
+            read: false, // Non lu pour les nouveaux devis
             actionUrl: '#devis',
             actionLabel: 'Voir le devis',
             devisId: devisItem._id,
@@ -169,7 +169,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `Le devis "${devisItem.title}" attend une réponse depuis ${daysSinceCreation} jours`,
             details: `Client: ${client?.name || 'Inconnu'} • Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
             date: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.4,
+            read: false, // Non lu pour encourager l'action
             actionUrl: '#devis',
             actionLabel: 'Relancer le client',
             devisId: devisItem._id,
@@ -189,7 +189,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             message: `Le devis "${devisItem.title}" a été finalisé`,
             details: `Client: ${client?.name || 'Inconnu'} • CA réalisé: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
             date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.3,
+            read: false, // Non lu pour les bonnes nouvelles aussi
             actionUrl: '#devis',
             actionLabel: 'Voir le devis',
             devisId: devisItem._id,
@@ -211,7 +211,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               message: `Le devis "${devisItem.title}" expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
               details: `Client: ${client?.name || 'Inconnu'} • Date limite: ${new Date(devisItem.dateValidite).toLocaleDateString('fr-FR')}`,
               date: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000),
-              read: Math.random() > 0.8,
+              read: false, // Non lu pour encourager l'action
               actionUrl: '#devis',
               actionLabel: 'Prolonger le devis',
               devisId: devisItem._id,
@@ -240,7 +240,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
           message: `Félicitations ! Vous avez dépassé les 10 000 € de CA`,
           details: `CA total réalisé: ${totalCA.toFixed(2)} € • ${devis.filter(d => d.status === 'fini').length} devis finalisés`,
           date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: Math.random() > 0.9,
+          read: false, // Non lu pour les bonnes nouvelles
           actionUrl: '#dashboard',
           actionLabel: 'Voir le tableau de bord'
         });
@@ -257,7 +257,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
           message: `${newClientsThisWeek} nouveaux prospects se sont inscrits cette semaine`,
           details: 'Votre QR code fonctionne bien ! Pensez à les contacter rapidement.',
           date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: Math.random() > 0.7,
+          read: false, // Non lu pour encourager l'action
           actionUrl: '#clients',
           actionLabel: 'Voir les prospects'
         });
@@ -273,7 +273,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         message: 'Il est recommandé d\'exporter vos données régulièrement',
         details: `${clients.length} prospects et ${devis.length} devis à sauvegarder`,
         date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        read: Math.random() > 0.5,
+        read: false, // Non lu pour encourager l'action
         actionUrl: '#settings',
         actionLabel: 'Exporter les données'
       });
@@ -599,6 +599,9 @@ const Notifications = ({ onNotificationsUpdate }) => {
                 : "Vous n'avez aucune notification pour le moment"
               }
             </p>
+            <button onClick={handleRefresh} className="action-link">
+              Actualiser les notifications
+            </button>
           </div>
         ) : (
           filteredNotifications.map(notification => (
