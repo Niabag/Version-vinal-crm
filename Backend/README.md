@@ -13,3 +13,4 @@ This API requires Node.js with pnpm or npm.
    ```
 
 The server includes Stripe support. Ensure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are defined in your `.env`.
+You can customize the trial duration with `TRIAL_PERIOD_DAYS`.
