@@ -28,6 +28,8 @@ const Dashboard = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
+  const notificationSoundRef = useRef(null);
+  const lastNotificationCountRef = useRef(0);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -75,6 +77,20 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
+
+    // Créer l'élément audio pour les notifications
+    const audioElement = document.createElement('audio');
+    audioElement.src = '/notification-sound.mp3'; // Assurez-vous que ce fichier existe dans le dossier public
+    audioElement.preload = 'auto';
+    notificationSoundRef.current = audioElement;
+    document.body.appendChild(audioElement);
+
+    // Nettoyage
+    return () => {
+      if (audioElement && document.body.contains(audioElement)) {
+        document.body.removeChild(audioElement);
+      }
+    };
   }, [location]);
 
   const fetchUserData = async () => {
@@ -102,6 +118,14 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchClients();
+    updateUnreadNotifications();
+    
+    // Mettre en place un intervalle pour vérifier les nouvelles notifications
+    const checkInterval = setInterval(() => {
+      updateUnreadNotifications();
+    }, 30000); // Vérifier toutes les 30 secondes
+    
+    return () => clearInterval(checkInterval);
   }, []);
 
   const handleViewClientDevis = (client) => {
@@ -142,17 +166,30 @@ const Dashboard = () => {
       try {
         const notifications = JSON.parse(storedNotifications);
         const unreadCount = notifications.filter(n => !n.read).length;
+        
+        // Jouer un son si le nombre de notifications non lues a augmenté
+        if (unreadCount > lastNotificationCountRef.current && lastNotificationCountRef.current > 0) {
+          playNotificationSound();
+        }
+        
+        // Mettre à jour le compteur et la référence
         setUnreadNotifications(unreadCount);
+        lastNotificationCountRef.current = unreadCount;
       } catch (err) {
         console.error('Erreur lors du calcul des notifications non lues:', err);
       }
     }
   };
 
-  // Mettre à jour le compteur au chargement
-  useEffect(() => {
-    updateUnreadNotifications();
-  }, []);
+  // Fonction pour jouer le son de notification
+  const playNotificationSound = () => {
+    if (notificationSoundRef.current) {
+      notificationSoundRef.current.currentTime = 0;
+      notificationSoundRef.current.play().catch(err => {
+        console.error("Erreur lors de la lecture du son:", err);
+      });
+    }
+  };
 
   // Gérer l'édition d'un prospect
   const handleEditProspect = (prospect) => {

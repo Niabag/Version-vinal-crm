@@ -472,6 +472,17 @@ const Notifications = ({ onNotificationsUpdate }) => {
       // Trier par date (plus récent en premier)
       filteredNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+      // Vérifier si de nouvelles notifications non lues ont été ajoutées
+      const oldUnreadCount = existingNotifications.filter(n => !n.read).length;
+      const newUnreadCount = filteredNotifications.filter(n => !n.read).length;
+      
+      // Si de nouvelles notifications non lues ont été ajoutées, jouer un son
+      if (newUnreadCount > oldUnreadCount && !isFirstLoad) {
+        // Émettre un événement pour jouer un son
+        const event = new CustomEvent('newNotification');
+        document.dispatchEvent(event);
+      }
+
       setNotifications(filteredNotifications);
       setLastGeneratedTime(new Date());
       

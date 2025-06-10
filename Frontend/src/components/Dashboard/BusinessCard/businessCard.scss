@@ -1238,3 +1238,42 @@
 .schemas-btn:hover {
   animation: pulse 2s infinite;
 }
+
+/* Message d'erreur */
+.error-message-container {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.error-icon {
+  font-size: 2rem;
+  color: #b91c1c;
+}
+
+.error-text {
+  flex: 1;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.error-dismiss {
+  background: white;
+  color: #b91c1c;
+  border: 2px solid #b91c1c;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.error-dismiss:hover {
+  background: #b91c1c;
+  color: white;
+}
