@@ -90,7 +90,7 @@ const Navbar = () => {
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
           {!token ? (
             <>
-              <Link to="/" className="nav-link\" onClick={closeMenu}>
+              <Link to="/\" className="nav-link\" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
               <Link to="/pricing" className="nav-link" onClick={closeMenu}>
