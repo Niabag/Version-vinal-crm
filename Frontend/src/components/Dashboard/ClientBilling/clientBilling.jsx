@@ -9,6 +9,7 @@ const ClientBilling = ({ client, onBack }) => {
   const [error, setError] = useState(null);
   const [showInvoiceTemplate, setShowInvoiceTemplate] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [previewDevis, setPreviewDevis] = useState([]);
   const [devisForClient, setDevisForClient] = useState([]);
   const [newInvoice, setNewInvoice] = useState({
     clientId: client?._id || '',
@@ -123,6 +124,7 @@ const ClientBilling = ({ client, onBack }) => {
       }
 
       setSelectedInvoice(invoice);
+      setPreviewDevis(devisDetails);
       setShowInvoiceTemplate(true);
     } catch (err) {
       console.error("Erreur affichage facture:", err);
@@ -712,7 +714,7 @@ const ClientBilling = ({ client, onBack }) => {
           <div className="modal-content invoice-template-modal" onClick={(e) => e.stopPropagation()}>
             <InvoiceTemplate
               invoice={selectedInvoice}
-              devisDetails={devisForClient.filter(d => selectedInvoice.devisIds.includes(d._id))}
+              devisDetails={previewDevis}
               client={client}
               onClose={() => setShowInvoiceTemplate(false)}
             />
