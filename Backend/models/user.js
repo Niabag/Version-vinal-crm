@@ -86,3 +86,4 @@ UserSchema.methods.comparePassword = async function(password) {
 
 // Avoid OverwriteModelError in development by reusing existing model if loaded
 module.exports = mongoose.models.User || mongoose.model('User', UserSchema);
+
