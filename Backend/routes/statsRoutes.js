@@ -2,11 +2,13 @@ import express from 'express';
 import { Client } from '../models/Client.js';
 import { Service } from '../models/Service.js';
 import { Appointment } from '../models/Appointment.js';
+import authMiddleware from '../middleware/auth.js';
+import { checkSubscription } from '../middleware/subscription.js';
 
 const router = express.Router();
 
 // Récupérer les statistiques du tableau de bord
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, checkSubscription, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -70,7 +72,7 @@ router.get('/', async (req, res) => {
 });
 
 // Statistiques par période
-router.get('/period/:period', async (req, res) => {
+router.get('/period/:period', authMiddleware, checkSubscription, async (req, res) => {
   try {
     const { period } = req.params;
     const now = new Date();
