@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
-import { startFreeTrial } from "../../services/subscription";
+import { startFreeTrial, DEFAULT_TRIAL_DAYS } from "../../services/subscription";
 import "./registerUser.scss";
 
 const RegisterUser = () => {
@@ -100,7 +100,7 @@ const RegisterUser = () => {
       localStorage.setItem("user", JSON.stringify(userData.user));
       
       // 3. Start the free trial
-      await startFreeTrial();
+      await startFreeTrial(DEFAULT_TRIAL_DAYS);
 
       console.log("✅ Inscription et période d'essai activées");
       
