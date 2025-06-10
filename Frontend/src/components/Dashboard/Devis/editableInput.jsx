@@ -1,26 +1,13 @@
+// ✅ EditableInput.jsx
 import React from 'react';
 
-const EditableInput = ({ 
-  name, 
-  value = '', 
-  placeholder, 
-  type = 'text', 
-  onChange, 
-  index = null, 
-  className = '',
-  min,
-  max,
-  step
-}) => (
+const EditableInput = ({ name, value = '', placeholder, type = 'text', onChange, index = null }) => (
   <input
     type={type}
-    className={`editable-input ${className}`}
+    className="editable-input"
     placeholder={placeholder}
     value={value}
     onChange={(e) => onChange(name, e.target.value, index)}
-    min={min}
-    max={max}
-    step={step}
   />
 );
 

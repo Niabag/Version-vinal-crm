@@ -1,31 +1,24 @@
 export const DEFAULT_DEVIS = {
   logoUrl: "",
-  title: "Devis",
-  description: "",
+  title: "Modèle de devis",
+  description: "Description de l'article",
   amount: 0,
   clientId: "",
-  entrepriseName: "Votre Entreprise",
+  entrepriseName: "Nom de l’entreprise",
   entrepriseAddress: "123 Rue Exemple",
   entrepriseCity: "75000 Paris",
   entreprisePhone: "01 23 45 67 89",
-  entrepriseEmail: "contact@votre-entreprise.com",
+  entrepriseEmail: "contact@entreprise.com",
   dateDevis: new Date().toISOString().slice(0, 10),
-  dateValidite: (() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    return date.toISOString().slice(0, 10);
-  })(),
-  devisNumber: `DEV-${Date.now().toString().slice(-6)}`,
-  status: "nouveau",
-  conditions: "• Devis valable 30 jours à compter de sa date d'émission\n• Acompte de 30% à la commande\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI",
-  footerText: "",
+  dateValidite: "",
+  devisNumber: `DEV-${Date.now()}`,
   articles: [
     {
-      description: "Prestation / Article",
+      description: "Article 1",
       unitPrice: "0",
       quantity: "1",
       unit: "u",
-      tvaRate: "20"
+      tvaRate: "20" // ✅ TVA par article (string pour select)
     }
   ]
 };

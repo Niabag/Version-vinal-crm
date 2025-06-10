@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, memo } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import EditableInput from './editableInput';
@@ -13,23 +13,15 @@ const DevisPreview = ({
   clients = [] 
 }) => {
   const previewRef = useRef();
-  const [pdfMode, setPdfMode] = useState(false);
-  const [logoPreview, setLogoPreview] = useState(devisData.logoUrl || '');
-
-  useEffect(() => {
-    setLogoPreview(devisData.logoUrl || '');
-  }, [devisData.logoUrl]);
 
   if (!devisData || !Array.isArray(devisData.articles)) {
     return <div className="devis-preview error-message">⚠️ Données du devis invalides ou incomplètes.</div>;
   }
 
-  // Calculs des totaux
   const tauxTVA = {
     "20": { ht: 0, tva: 0 },
     "10": { ht: 0, tva: 0 },
     "5.5": { ht: 0, tva: 0 },
-    "0": { ht: 0, tva: 0 }
   };
 
   devisData.articles.forEach((item) => {
@@ -37,7 +29,7 @@ const DevisPreview = ({
     const qty = parseFloat(item.quantity || "0");
     const taux = item.tvaRate || "20";
 
-    if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux] !== undefined) {
+    if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux]) {
       const ht = price * qty;
       tauxTVA[taux].ht += ht;
       tauxTVA[taux].tva += ht * (parseFloat(taux) / 100);
@@ -48,7 +40,7 @@ const DevisPreview = ({
   const totalTVA = Object.values(tauxTVA).reduce((sum, t) => sum + t.tva, 0);
   const totalTTC = totalHT + totalTVA;
 
-  // Récupération des infos client
+  // ✅ CORRECTION: Fonction sécurisée pour récupérer les infos client
   const getClientInfo = () => {
     if (!devisData.clientId || !clients.length) {
       return { name: '', email: '', phone: '', address: '', postalCode: '', city: '' };
@@ -65,7 +57,7 @@ const DevisPreview = ({
 
   const clientInfo = getClientInfo();
 
-  // Formatage de l'adresse complète du client
+  // ✅ NOUVELLE FONCTION: Formater l'adresse complète du client
   const formatClientAddress = () => {
     const parts = [];
     if (clientInfo.address) parts.push(clientInfo.address);
@@ -77,95 +69,20 @@ const DevisPreview = ({
     return parts.join('\n');
   };
 
-  // Génération du PDF
-  const handleGeneratePDF = async () => {
-    try {
-      setPdfMode(true);
-      
-      // Attendre que le DOM soit mis à jour avec la classe pdf-mode
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const content = previewRef.current;
-      const canvas = await html2canvas(content, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 0;
-      
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-      pdf.save(`devis-${devisData.title || 'sans-titre'}.pdf`);
-      
-      setPdfMode(false);
-    } catch (error) {
-      console.error('Erreur génération PDF:', error);
-      setPdfMode(false);
-      alert('Erreur lors de la génération du PDF: ' + error.message);
-    }
-  };
-
-  // Formatage de la date
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
-
-  // Calcul de la date de validité par défaut (30 jours après la date du devis)
-  const calculateDefaultValidityDate = () => {
-    if (!devisData.dateDevis) return '';
-    
-    try {
-      const devisDate = new Date(devisData.dateDevis);
-      const validityDate = new Date(devisDate);
-      validityDate.setDate(validityDate.getDate() + 30);
-      
-      return validityDate.toISOString().split('T')[0];
-    } catch (e) {
-      return '';
-    }
-  };
-
   return (
     <div className="devis-preview">
       <div className="preview-toolbar">
         <button onClick={onAddArticle} className="toolbar-btn add-btn">
           ➕ Ajouter une ligne
         </button>
-        <button onClick={handleGeneratePDF} className="toolbar-btn pdf-btn">
-          📄 Générer PDF
-        </button>
-        {devisData._id && (
-          <button onClick={onReset} className="toolbar-btn reset-btn">
-            🔄 Nouveau devis
-          </button>
-        )}
       </div>
 
-      <div className={`preview-content ${pdfMode ? 'pdf-mode' : ''}`} ref={previewRef}>
+      <div className="preview-content" ref={previewRef}>
         {/* En-tête avec logo et titre */}
         <div className="document-header">
           <div className="logo-section">
-            {logoPreview ? (
-              <img src={logoPreview} alt="Logo entreprise" className="company-logo" />
+            {devisData.logoUrl ? (
+              <img src={devisData.logoUrl} alt="Logo entreprise" className="company-logo" />
             ) : (
               <label className="logo-upload-area">
                 📷 Cliquez pour ajouter un logo
@@ -177,10 +94,7 @@ const DevisPreview = ({
                     const file = e.target.files[0];
                     if (file) {
                       const reader = new FileReader();
-                      reader.onloadend = () => {
-                        onFieldChange("logoUrl", reader.result);
-                        setLogoPreview(reader.result);
-                      };
+                      reader.onloadend = () => onFieldChange("logoUrl", reader.result);
                       reader.readAsDataURL(file);
                     }
                   }}
@@ -191,13 +105,6 @@ const DevisPreview = ({
           
           <div className="document-title">
             <h1>DEVIS</h1>
-            <EditableInput 
-              name="title" 
-              value={devisData.title || ""} 
-              placeholder="Titre du devis" 
-              onChange={onFieldChange}
-              className="document-subtitle"
-            />
           </div>
         </div>
 
@@ -243,22 +150,6 @@ const DevisPreview = ({
           <div className="client-section">
             <h3>Destinataire</h3>
             <div className="info-group">
-              <div className="client-selector">
-                <label>Client</label>
-                <select
-                  value={devisData.clientId || ""}
-                  onChange={(e) => onFieldChange("clientId", e.target.value)}
-                  className="client-select"
-                >
-                  <option value="">Sélectionner un client</option>
-                  {clients.map(client => (
-                    <option key={client._id} value={client._id}>
-                      {client.name} {client.company ? `(${client.company})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
               <EditableInput 
                 name="clientName" 
                 value={devisData.clientName || clientInfo.name || ""} 
@@ -278,12 +169,19 @@ const DevisPreview = ({
                 placeholder="Téléphone du client" 
                 onChange={onFieldChange} 
               />
+              {/* ✅ NOUVEAU: Champ d'adresse automatiquement rempli */}
               <textarea
                 className="editable-input client-address"
                 placeholder="Adresse du client"
                 value={devisData.clientAddress || formatClientAddress()}
                 onChange={(e) => onFieldChange("clientAddress", e.target.value)}
                 rows={3}
+                style={{
+                  resize: 'vertical',
+                  minHeight: '80px',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.5'
+                }}
               />
             </div>
           </div>
@@ -297,54 +195,29 @@ const DevisPreview = ({
               <EditableInput 
                 type="date" 
                 name="dateDevis" 
-                value={devisData.dateDevis || new Date().toISOString().split('T')[0]} 
+                value={devisData.dateDevis || ""} 
                 onChange={onFieldChange} 
               />
             </div>
             <div className="metadata-item">
               <label>Numéro de devis :</label>
-              <EditableInput 
-                name="devisNumber" 
-                value={devisData.devisNumber || `DEV-${Date.now().toString().slice(-6)}`} 
-                onChange={onFieldChange} 
-                className="devis-number"
-              />
+              <span className="devis-number">{devisData._id || devisData.devisNumber || "À définir"}</span>
             </div>
             <div className="metadata-item">
               <label>Date de validité :</label>
               <EditableInput 
                 type="date" 
                 name="dateValidite" 
-                value={devisData.dateValidite || calculateDefaultValidityDate()} 
+                value={devisData.dateValidite || ""} 
                 onChange={onFieldChange} 
               />
             </div>
             <div className="metadata-item">
-              <label>Statut :</label>
-              <select
-                className="status-select"
-                value={devisData.status || "nouveau"}
-                onChange={(e) => onFieldChange("status", e.target.value)}
-              >
-                <option value="nouveau">🔵 Nouveau</option>
-                <option value="en_attente">🟣 En attente</option>
-                <option value="fini">🟢 Finalisé</option>
-                <option value="inactif">🔴 Inactif</option>
-              </select>
+              <label>Client :</label>
+              {/* ✅ CORRECTION: Affichage sécurisé du nom du client */}
+              <span className="client-id">{clientInfo.name || "Client non défini"}</span>
             </div>
           </div>
-        </div>
-
-        {/* Description du devis */}
-        <div className="devis-description">
-          <h3>Description</h3>
-          <textarea
-            className="editable-input description-textarea"
-            placeholder="Description du projet ou commentaires généraux..."
-            value={devisData.description || ""}
-            onChange={(e) => onFieldChange("description", e.target.value)}
-            rows={3}
-          />
         </div>
 
         {/* Tableau des prestations */}
@@ -369,7 +242,7 @@ const DevisPreview = ({
                 const total = isNaN(price) || isNaN(qty) ? 0 : price * qty;
                 
                 return (
-                  <tr key={index} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
+                  <tr key={index}>
                     <td className="description-cell">
                       <EditableInput 
                         name="article-description" 
@@ -396,12 +269,10 @@ const DevisPreview = ({
                         index={index} 
                         type="number"
                         placeholder="1"
-                        min="0"
-                        step="1"
                       />
                     </td>
                     <td>
-                      <div className="price-input-container">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <EditableInput 
                           name="article-unitPrice" 
                           value={article.unitPrice || ""} 
@@ -409,10 +280,8 @@ const DevisPreview = ({
                           index={index} 
                           type="number"
                           placeholder="0"
-                          min="0"
-                          step="0.01"
                         />
-                        <span className="currency-symbol">€</span>
+                        <span>€</span>
                       </div>
                     </td>
                     <td>
@@ -426,7 +295,6 @@ const DevisPreview = ({
                         <option value="20">20%</option>
                         <option value="10">10%</option>
                         <option value="5.5">5.5%</option>
-                        <option value="0">0%</option>
                       </select>
                     </td>
                     <td className="total-cell">{total.toFixed(2)} €</td>
@@ -435,7 +303,6 @@ const DevisPreview = ({
                         className="remove-article-btn"
                         onClick={() => onRemoveArticle && onRemoveArticle(index)}
                         title="Supprimer cette ligne"
-                        type="button"
                       >
                         🗑️
                       </button>
@@ -445,14 +312,6 @@ const DevisPreview = ({
               })}
             </tbody>
           </table>
-          
-          <button 
-            className="add-article-btn"
-            onClick={onAddArticle}
-            type="button"
-          >
-            + Ajouter une ligne
-          </button>
         </div>
 
         {/* Récapitulatif des totaux */}
@@ -502,14 +361,10 @@ const DevisPreview = ({
         {/* Conditions et signature */}
         <div className="conditions-section">
           <div className="conditions-text">
-            <h4>Conditions</h4>
-            <textarea
-              className="editable-input conditions-textarea"
-              placeholder="Conditions de vente, modalités de paiement, etc."
-              value={devisData.conditions || "• Devis valable jusqu'au " + formatDate(devisData.dateValidite) + "\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI (si applicable)"}
-              onChange={(e) => onFieldChange("conditions", e.target.value)}
-              rows={4}
-            />
+            <p><strong>Conditions :</strong></p>
+            <p>• Devis valable jusqu'au {devisData.dateValidite ? new Date(devisData.dateValidite).toLocaleDateString('fr-FR') : "date à définir"}</p>
+            <p>• Règlement à 30 jours fin de mois</p>
+            <p>• TVA non applicable, art. 293 B du CGI (si applicable)</p>
           </div>
           
           <div className="signature-area">
@@ -526,21 +381,9 @@ const DevisPreview = ({
             </div>
           </div>
         </div>
-
-        {/* Pied de page */}
-        <div className="footer-section">
-          <div className="footer-content">
-            <EditableInput 
-              name="footerText" 
-              value={devisData.footerText || `${devisData.entrepriseName || 'Votre entreprise'} - ${devisData.entrepriseAddress || 'Adresse'} - ${devisData.entrepriseCity || 'Ville'}`} 
-              onChange={onFieldChange}
-              className="footer-text"
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
 };
 
-export default React.memo(DevisPreview);
+export default memo(DevisPreview);
