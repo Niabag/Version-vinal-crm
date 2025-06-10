@@ -381,6 +381,47 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const getNextStatusLabel = (status) => {
+    switch (status) {
+      case 'draft':
+        return 'Passer en Attente';
+      case 'pending':
+        return 'Marquer Payée';
+      case 'paid':
+        return 'Marquer En retard';
+      case 'overdue':
+        return 'Repasser en Brouillon';
+      default:
+        return 'Changer le statut';
+    }
+  };
+
+  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
+    let newStatus;
+    switch (currentStatus) {
+      case 'draft':
+        newStatus = 'pending';
+        break;
+      case 'pending':
+        newStatus = 'paid';
+        break;
+      case 'paid':
+        newStatus = 'overdue';
+        break;
+      case 'overdue':
+        newStatus = 'draft';
+        break;
+      default:
+        newStatus = 'pending';
+    }
+
+    setInvoices(prev =>
+      prev.map(inv =>
+        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+      )
+    );
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     try {
@@ -589,9 +630,11 @@ const Billing = ({ clients = [], onRefresh }) => {
               <div key={invoice.id} className="invoice-card">
                 <div className="invoice-header">
                   <div className="invoice-number">{invoice.invoiceNumber}</div>
-                  <div 
-                    className="invoice-status"
+                  <div
+                    className="invoice-status clickable"
                     style={{ backgroundColor: getStatusColor(invoice.status), color: 'white' }}
+                    title={getNextStatusLabel(invoice.status)}
+                    onClick={() => handleInvoiceStatusClick(invoice.id, invoice.status)}
                   >
                     {getStatusIcon(invoice.status)} {getStatusLabel(invoice.status)}
                   </div>
