@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import InvoicePreview from './invoicePreview';
+import InvoiceTemplate from './InvoiceTemplate';
 import './billing.scss';
 
 const Billing = ({ clients = [], onRefresh }) => {
@@ -13,6 +14,7 @@ const Billing = ({ clients = [], onRefresh }) => {
   const [sortBy, setSortBy] = useState('date');
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [showInvoiceTemplate, setShowInvoiceTemplate] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState(null);
   const [previewDevis, setPreviewDevis] = useState([]);
   const [previewClient, setPreviewClient] = useState({});
@@ -258,7 +260,7 @@ const Billing = ({ clients = [], onRefresh }) => {
       setPreviewInvoice(invoice);
       setPreviewDevis(validDevis);
       setPreviewClient(client);
-      setShowInvoicePreview(true);
+      setShowInvoiceTemplate(true);
     } catch (err) {
       console.error('Erreur affichage facture:', err);
     } finally {
@@ -827,6 +829,7 @@ const Billing = ({ clients = [], onRefresh }) => {
         </div>
       )}
 
+      {/* Modal d'aperçu de facture (ancienne version) */}
       {showInvoicePreview && (
         <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -842,6 +845,20 @@ const Billing = ({ clients = [], onRefresh }) => {
                 onClose={() => setShowInvoicePreview(false)}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de facture professionnelle */}
+      {showInvoiceTemplate && (
+        <div className="modal-overlay" onClick={() => setShowInvoiceTemplate(false)}>
+          <div className="modal-content invoice-template-modal" onClick={(e) => e.stopPropagation()}>
+            <InvoiceTemplate
+              invoice={previewInvoice}
+              devisDetails={previewDevis}
+              client={previewClient}
+              onClose={() => setShowInvoiceTemplate(false)}
+            />
           </div>
         </div>
       )}

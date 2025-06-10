@@ -317,7 +317,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   position: relative;
-  border: 2px solid #f1f5f9;
+  border: 1px solid #f1f5f9;
   overflow: hidden;
   min-height: 200px;
   display: flex;
@@ -327,7 +327,6 @@
 .devis-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  border-color: #3b82f6;
 }
 
 .devis-card.selected {
@@ -599,6 +598,14 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.invoice-template-modal {
+  max-width: 1000px;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -786,33 +793,7 @@
   box-shadow: none;
 }
 
-/* ✅ ÉTATS VIDES */
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #64748b;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1.5rem;
-  opacity: 0.6;
-}
-
-.empty-state h3 {
-  color: #0f172a;
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-/* ✅ LOADING */
+/* États */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -833,8 +814,55 @@
   to { transform: rotate(360deg); }
 }
 
-/* ✅ RESPONSIVE */
-@media (max-width: 1024px) {
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  max-width: 500px;
+  margin: 0 auto;
+  border: 1px solid #f1f5f9;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+}
+
+.empty-state h3 {
+  color: #0f172a;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.empty-state p {
+  color: #64748b;
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.cta-button {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
   .billing-container {
     padding: 0;
   }
