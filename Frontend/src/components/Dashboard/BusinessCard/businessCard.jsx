@@ -1156,5 +1156,3 @@ const BusinessCard = ({ userId, user }) => {
 };
 
 export default BusinessCard;
-
-export default BusinessCard
