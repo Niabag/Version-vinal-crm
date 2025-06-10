@@ -60,7 +60,13 @@ const Notifications = ({ onNotificationsUpdate }) => {
             ...n,
             date: n.date ? new Date(n.date) : new Date(),
           }));
-          setNotifications(withDates);
+          
+          // Filtrer les notifications supprimées
+          const filteredNotifications = withDates.filter(
+            notif => !deletedNotificationIds.includes(notif.id)
+          );
+          
+          setNotifications(filteredNotifications);
           
           if (lastGenTime) {
             setLastGeneratedTime(new Date(lastGenTime));

@@ -35,6 +35,7 @@ const Analytics = () => {
   const [monthlyData, setMonthlyData] = useState([]);
   const [refreshInterval, setRefreshInterval] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchAnalytics();
@@ -71,6 +72,7 @@ const Analytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Récupérer les clients et devis
       const [clients, devis] = await Promise.all([
@@ -210,6 +212,7 @@ const Analytics = () => {
 
     } catch (error) {
       console.error('Erreur lors du chargement des analytics:', error);
+      setError('Erreur lors du chargement des données. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -296,6 +299,14 @@ const Analytics = () => {
         </div>
         <p className="dashboard-subtitle">Vue d'ensemble de votre activité commerciale</p>
       </div>
+      
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
+          <button onClick={fetchAnalytics} className="retry-button">Réessayer</button>
+        </div>
+      )}
       
       {/* ✅ SECTION 1: KPIs PRINCIPAUX */}
       <div className="kpi-section">
