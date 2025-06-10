@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const userMenuRef = useRef(null);
+  const [notificationCheckInterval, setNotificationCheckInterval] = useState(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -73,6 +74,19 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
+
+    // Configurer la vérification périodique des notifications (toutes les 30 secondes)
+    const interval = setInterval(() => {
+      updateUnreadNotificationsCount();
+    }, 30 * 1000); // 30 secondes
+    
+    setNotificationCheckInterval(interval);
+    
+    return () => {
+      if (notificationCheckInterval) {
+        clearInterval(notificationCheckInterval);
+      }
+    };
   }, [location]);
 
   const fetchUserData = async () => {
@@ -111,6 +125,13 @@ const Dashboard = () => {
         const notifications = JSON.parse(stored);
         const unreadCount = notifications.filter(n => !n.read).length;
         setUnreadNotifications(unreadCount);
+        
+        // Mettre à jour le titre de la page avec le nombre de notifications non lues
+        if (unreadCount > 0) {
+          document.title = `(${unreadCount}) CRM Pro - Notifications`;
+        } else {
+          document.title = 'CRM Pro';
+        }
       } catch (err) {
         console.error('Erreur lors du comptage des notifications non lues:', err);
         setUnreadNotifications(0);

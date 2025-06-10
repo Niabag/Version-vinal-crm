@@ -15,6 +15,7 @@ const BusinessCard = ({ userId, user }) => {
   const [qrValue, setQrValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
+  const [refreshInterval, setRefreshInterval] = useState(null);
   
   // ✅ États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
@@ -29,19 +30,25 @@ const BusinessCard = ({ userId, user }) => {
 
   // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
   const actionSchemas = {
-
+    'website-only': {
+      name: '🌐 Site Web Direct',
+      description: 'Redirection immédiate vers votre site web principal',
+      icon: '🌐',
+      sequence: 'Site web (1s)',
+      category: 'Redirection simple',
+      actions: [
+        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
     'website-form': {
       name: 'Site web → Formulaire',
       description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
       icon: '🚀📝',
       sequence: 'Site web (1s) → Formulaire (2s)',
       category: 'Conversion maximale',
-
       actions: [
         { type: 'form', order: 1, delay: 1000, active: true },
         { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
-
-
       ]
     },
     'form-website': {
@@ -55,16 +62,6 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    'website-only': {
-      name: '🌐 Site Web Direct',
-      description: 'Redirection immédiate vers votre site web principal',
-      icon: '🌐',
-      sequence: 'Site web (1s)',
-      category: 'Redirection simple',
-      actions: [
-        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
     'contact-download': {
       name: '📝 Contact → Carte',
       description: 'Formulaire de contact puis téléchargement de votre carte de visite',
@@ -76,21 +73,7 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
       ]
     },
-
     'site-last-funnel': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-
-    'funnel-site-last': {
       name: '🎯 Site en Dernier',
       description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
       icon: '📝📥🌐',
@@ -129,6 +112,20 @@ const BusinessCard = ({ userId, user }) => {
       generateQRCode();
       fetchStats();
       loadSavedBusinessCard();
+      
+      // Configurer l'actualisation automatique des statistiques toutes les 30 secondes
+      const interval = setInterval(() => {
+        fetchStats();
+        console.log("🔄 Actualisation automatique des statistiques de carte");
+      }, 30 * 1000); // 30 secondes
+      
+      setRefreshInterval(interval);
+      
+      return () => {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
+      };
     }
   }, [userId]);
 

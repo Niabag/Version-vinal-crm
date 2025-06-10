@@ -12,6 +12,9 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const [error, setError] = useState(null);
   const [lastGeneratedTime, setLastGeneratedTime] = useState(null);
   const [deletedNotificationIds, setDeletedNotificationIds] = useState([]);
+  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [nextRefreshIn, setNextRefreshIn] = useState(60);
 
   // Charger les notifications au démarrage
   useEffect(() => {
@@ -27,7 +30,35 @@ const Notifications = ({ onNotificationsUpdate }) => {
         setDeletedNotificationIds([]);
       }
     }
-  }, []);
+
+    // Configurer l'actualisation automatique toutes les 60 secondes
+    const interval = setInterval(() => {
+      if (autoRefreshEnabled) {
+        generateNotifications(false);
+        console.log("🔄 Actualisation automatique des notifications");
+      }
+    }, 60 * 1000); // 60 secondes
+    
+    setRefreshInterval(interval);
+
+    // Configurer le compte à rebours
+    const countdownInterval = setInterval(() => {
+      if (autoRefreshEnabled) {
+        setNextRefreshIn(prev => {
+          if (prev <= 1) {
+            return 60;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+
+    // Nettoyage
+    return () => {
+      clearInterval(interval);
+      clearInterval(countdownInterval);
+    };
+  }, [autoRefreshEnabled]);
 
   // Persistance des notifications et des IDs supprimés
   useEffect(() => {
@@ -674,6 +705,11 @@ const Notifications = ({ onNotificationsUpdate }) => {
 
   const handleRefresh = () => {
     generateNotifications(false);
+    setNextRefreshIn(60);
+  };
+
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(!autoRefreshEnabled);
   };
 
   const handleClearAllDeleted = () => {
@@ -684,7 +720,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
     }
   };
 
-  if (loading) {
+  if (loading && notifications.length === 0) {
     return (
       <div className="notifications-loading">
         <div className="loading-spinner">⏳</div>
@@ -698,7 +734,23 @@ const Notifications = ({ onNotificationsUpdate }) => {
       {/* En-tête avec statistiques */}
       <div className="notifications-header">
         <div className="header-content">
-          <h1 className="page-title">🔔 Centre de Notifications</h1>
+          <div className="header-top">
+            <h1 className="page-title">🔔 Centre de Notifications</h1>
+            <div className="auto-refresh-control">
+              <div className="refresh-status">
+                <span className={`refresh-indicator ${autoRefreshEnabled ? 'active' : 'inactive'}`}></span>
+                {autoRefreshEnabled 
+                  ? `Actualisation dans ${nextRefreshIn}s` 
+                  : 'Actualisation auto désactivée'}
+              </div>
+              <button 
+                onClick={toggleAutoRefresh} 
+                className={`auto-refresh-toggle ${autoRefreshEnabled ? 'enabled' : 'disabled'}`}
+              >
+                {autoRefreshEnabled ? '⏸️ Pause' : '▶️ Activer'}
+              </button>
+            </div>
+          </div>
           <div className="notifications-stats">
             <div className="stat-item">
               <span className="stat-number">{notifications.length}</span>
