@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Footer from "./components/Footer/Footer";
 import Home from "./pages/Home/Index";
 import Login from "./pages/Login/Index";
 import RegisterUser from "./pages/RegisterUser/Index";
@@ -21,16 +20,6 @@ import Cookies from "./pages/Cookies/Index";
 import Gdpr from "./pages/Gdpr/Index";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess/Index";
 import "./utils/styles/global.scss";
-
-// Composant pour gérer l'affichage conditionnel du footer
-const FooterWrapper = () => {
-  const path = window.location.pathname;
-  // Ne pas afficher le footer sur le dashboard et les pages de scan QR code
-  if (path === "/dashboard" || path.startsWith("/prospect/edit/") || path.startsWith("/register-client/")) {
-    return null;
-  }
-  return <Footer />;
-};
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -81,7 +70,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="*" element={<Error />} />
           </Routes>
         </main>
-        <FooterWrapper />
       </div>
     </BrowserRouter>
   </React.StrictMode>

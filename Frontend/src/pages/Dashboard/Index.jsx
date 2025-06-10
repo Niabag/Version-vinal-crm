@@ -24,9 +24,8 @@ const Dashboard = () => {
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
   const userMenuRef = useRef(null);
-  const [notificationCheckInterval, setNotificationCheckInterval] = useState(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -74,19 +73,6 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
-
-    // Configurer la vérification périodique des notifications (toutes les 30 secondes)
-    const interval = setInterval(() => {
-      updateUnreadNotificationsCount();
-    }, 30 * 1000); // 30 secondes
-    
-    setNotificationCheckInterval(interval);
-    
-    return () => {
-      if (notificationCheckInterval) {
-        clearInterval(notificationCheckInterval);
-      }
-    };
   }, [location]);
 
   const fetchUserData = async () => {
@@ -114,36 +100,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchClients();
-    updateUnreadNotificationsCount();
   }, []);
-
-  const updateUnreadNotificationsCount = () => {
-    // Récupérer les notifications du localStorage
-    const stored = localStorage.getItem('notificationsData');
-    if (stored) {
-      try {
-        const notifications = JSON.parse(stored);
-        const unreadCount = notifications.filter(n => !n.read).length;
-        setUnreadNotifications(unreadCount);
-        
-        // Mettre à jour le titre de la page avec le nombre de notifications non lues
-        if (unreadCount > 0) {
-          document.title = `(${unreadCount}) CRM Pro - Notifications`;
-        } else {
-          document.title = 'CRM Pro';
-        }
-      } catch (err) {
-        console.error('Erreur lors du comptage des notifications non lues:', err);
-        setUnreadNotifications(0);
-      }
-    } else {
-      setUnreadNotifications(0);
-    }
-  };
-
-  const handleNotificationsUpdate = () => {
-    updateUnreadNotificationsCount();
-  };
 
   const handleViewClientDevis = (client) => {
     setSelectedClientForDevis(client);
@@ -269,7 +226,7 @@ const Dashboard = () => {
                 >
                   <span className="nav-icon">
                     {item.icon}
-                    {item.badge && item.badge > 0 && (
+                    {item.badge && (
                       <span className="notifications-badge">{item.badge}</span>
                     )}
                   </span>
@@ -418,14 +375,8 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "notifications" && (
-              <Notifications 
-                onNotificationsUpdate={handleNotificationsUpdate}
-              />
-            )}
-            
+            {activeTab === "notifications" && <Notifications />}
             {activeTab === "settings" && <Settings />}
-            
             {activeTab === "carte" && (
               <BusinessCard 
                 userId={userId} 
