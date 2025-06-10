@@ -13,7 +13,7 @@
 
 .header-content {
   background: white;
-  border-radius: 24px;
+  border-radius: 20px;
   padding: 2.5rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   border: 1px solid #f1f5f9;
@@ -50,7 +50,7 @@
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
 }
 
@@ -266,15 +266,34 @@
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
-.create-invoice-btn:hover:not(:disabled) {
+.preview-invoice-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.create-invoice-btn:hover:not(:disabled),
+.preview-invoice-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
-.create-invoice-btn:disabled {
+.create-invoice-btn:disabled,
+.preview-invoice-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* ✅ SÉLECTION EN MASSE */
@@ -322,6 +341,7 @@
   min-height: 200px;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
 .devis-card:hover {
@@ -361,15 +381,16 @@
   font-size: 1.2rem;
   font-weight: 700;
   color: #0f172a;
-  margin: 0;
+  margin: 0 0 0.75rem 0;
   line-height: 1.3;
   padding-top: 1rem;
 }
 
 .devis-meta {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
 }
 
 .devis-client,
@@ -377,7 +398,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #475569;
   font-weight: 500;
 }
@@ -534,7 +555,7 @@
 }
 
 .action-btn {
-  width: 350px;
+  width: 40px;
   height: 40px;
   border: none;
   border-radius: 10px;
@@ -599,6 +620,14 @@
 }
 
 .invoice-template-modal {
+  max-width: 1000px;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+.invoice-preview-modal {
   max-width: 1000px;
   background: transparent;
   box-shadow: none;
@@ -1043,4 +1072,35 @@
 
 .create-invoice-btn:hover {
   animation: pulse 2s infinite;
+}
+
+/* ✅ TOGGLE POUR LA PRÉVISUALISATION AUTOMATIQUE */
+.auto-preview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.auto-preview-toggle:hover {
+  border-color: #3b82f6;
+  background: white;
+}
+
+.auto-preview-toggle input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.toggle-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
 }

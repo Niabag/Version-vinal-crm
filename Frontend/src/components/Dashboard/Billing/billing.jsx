@@ -28,6 +28,8 @@ const Billing = ({ clients = [], onRefresh }) => {
     discount: 0,
     taxRate: 20
   });
+  // État pour activer/désactiver la prévisualisation automatique
+  const [autoPreview, setAutoPreview] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -36,6 +38,13 @@ const Billing = ({ clients = [], onRefresh }) => {
     };
     loadData();
   }, []);
+
+  // Effet pour prévisualiser automatiquement quand des devis sont sélectionnés
+  useEffect(() => {
+    if (selectedDevis.length > 0 && autoPreview) {
+      handlePreviewInvoice();
+    }
+  }, [selectedDevis, autoPreview]);
 
   const fetchDevis = async () => {
     try {
@@ -153,6 +162,65 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const handlePreviewInvoice = async () => {
+    if (selectedDevis.length === 0) {
+      alert('Veuillez sélectionner au moins un devis');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Déterminer le client principal
+      const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
+      const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
+      const client = clients.find(c => c._id === clientId);
+      
+      // Générer un numéro de facture
+      const invoiceNumber = `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
+      
+      // Date d'échéance par défaut (30 jours)
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      // Récupérer les détails des devis sélectionnés
+      const selectedDevisDetails = await Promise.all(
+        selectedDevis.map(async (id) => {
+          try {
+            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
+          } catch (err) {
+            console.error('Erreur récupération devis:', err);
+            return null;
+          }
+        })
+      );
+      const validDevis = selectedDevisDetails.filter(Boolean);
+
+      // Créer l'objet facture pour la prévisualisation
+      const invoice = {
+        clientId,
+        devisIds: selectedDevis,
+        invoiceNumber,
+        dueDate: dueDate.toISOString().split('T')[0],
+        notes: 'Merci pour votre confiance.',
+        paymentTerms: '30',
+        discount: 0,
+        taxRate: 20,
+        status: 'draft'
+      };
+
+      setPreviewInvoice(invoice);
+      setPreviewDevis(validDevis);
+      setPreviewClient(client || {});
+      setShowInvoicePreview(true);
+    } catch (error) {
+      console.error('Erreur lors de la prévisualisation:', error);
+      alert('❌ Erreur lors de la prévisualisation de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateInvoice = () => {
     if (selectedDevis.length === 0) {
       alert('Veuillez sélectionner au moins un devis');
@@ -221,6 +289,7 @@ const Billing = ({ clients = [], onRefresh }) => {
       // Réinitialiser
       setSelectedDevis([]);
       setShowCreateInvoice(false);
+      setShowInvoicePreview(false);
       setNewInvoice({
         clientId: '',
         devisIds: [],
@@ -530,8 +599,26 @@ const Billing = ({ clients = [], onRefresh }) => {
               </select>
             </div>
 
+            <div className="filter-group">
+              <label className="auto-preview-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={autoPreview} 
+                  onChange={() => setAutoPreview(!autoPreview)}
+                />
+                <span className="toggle-label">Prévisualisation automatique</span>
+              </label>
+            </div>
+
             {selectedDevis.length > 0 && (
               <div className="bulk-actions">
+                <button 
+                  onClick={handlePreviewInvoice}
+                  className="preview-invoice-btn"
+                  disabled={loading}
+                >
+                  👁️ Prévisualiser ({selectedDevis.length})
+                </button>
                 <button 
                   onClick={handleCreateInvoice}
                   className="create-invoice-btn"
@@ -559,7 +646,7 @@ const Billing = ({ clients = [], onRefresh }) => {
         )}
 
         {/* Liste des devis finalisés */}
-        {loading ? (
+        {loading && devisList.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner">⏳</div>
             <p>Chargement...</p>
@@ -579,12 +666,16 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <div 
                   key={devis._id} 
                   className={`devis-card ${selectedDevis.includes(devis._id) ? 'selected' : ''}`}
+                  onClick={() => handleSelectDevis(devis._id)}
                 >
                   <div className="card-select">
                     <input
                       type="checkbox"
                       checked={selectedDevis.includes(devis._id)}
-                      onChange={() => handleSelectDevis(devis._id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectDevis(devis._id);
+                      }}
                     />
                   </div>
 
@@ -832,7 +923,7 @@ const Billing = ({ clients = [], onRefresh }) => {
       {/* Modal d'aperçu de facture (ancienne version) */}
       {showInvoicePreview && (
         <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>📄 Aperçu de la facture</h3>
               <button onClick={() => setShowInvoicePreview(false)} className="modal-close">✕</button>
@@ -843,6 +934,8 @@ const Billing = ({ clients = [], onRefresh }) => {
                 devisDetails={previewDevis}
                 client={previewClient}
                 onClose={() => setShowInvoicePreview(false)}
+                onSave={saveInvoice}
+                editable={true}
               />
             </div>
           </div>
