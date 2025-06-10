@@ -5,7 +5,7 @@ const { FRONTEND_URL } = process.env;
 // Get subscription status
 exports.getSubscriptionStatus = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -29,7 +29,7 @@ exports.getSubscriptionStatus = async (req, res) => {
 // Start free trial
 exports.startFreeTrial = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -71,7 +71,7 @@ exports.createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: 'Price ID is required' });
     }
     
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -122,7 +122,7 @@ exports.createCheckoutSession = async (req, res) => {
 // Create Stripe customer portal session
 exports.createPortalSession = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -148,7 +148,7 @@ exports.createPortalSession = async (req, res) => {
 // Cancel subscription
 exports.cancelSubscription = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
