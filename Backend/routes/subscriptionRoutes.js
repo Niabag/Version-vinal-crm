@@ -16,6 +16,6 @@ router.post('/trial', auth, startTrial);
 router.post('/create-checkout', auth, createCheckoutSession);
 router.post('/create-portal', auth, createPortalSession);
 router.post('/cancel', auth, cancelSubscription);
-router.post('/webhook', express.raw({ type: 'application/json' }), webhook);
+router.post('/webhook', webhook);
 
 module.exports = router;
