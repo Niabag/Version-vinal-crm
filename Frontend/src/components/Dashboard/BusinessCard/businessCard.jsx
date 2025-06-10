@@ -16,7 +16,7 @@ const BusinessCard = ({ userId, user }) => {
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
   
-  // États pour les schémas prédéfinis
+  // ✅ États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
   
   const [stats, setStats] = useState({
@@ -26,75 +26,70 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies avec noms plus clairs
+  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies avec noms améliorés
   const actionSchemas = {
-    'form-only': {
-      name: '📝 Formulaire Simple',
-      description: 'Affiche uniquement un formulaire de contact pour capturer les informations du prospect',
-      icon: '📝',
-      sequence: 'Formulaire de contact',
-      category: 'Capture de leads',
-      actions: [
-        { type: 'form', order: 1, delay: 0, active: true }
-      ]
-    },
-    
-    'download-only': {
-      name: '📥 Téléchargement Direct',
-      description: 'Propose uniquement le téléchargement de votre carte de visite',
-      icon: '📥',
-      sequence: 'Téléchargement carte',
-      category: 'Partage direct',
-      actions: [
-        { type: 'download', order: 1, delay: 0, active: true, file: 'carte-visite' }
-      ]
-    },
-    
     'website-only': {
       name: '🌐 Site Web Direct',
-      description: 'Propose uniquement un lien vers votre site web principal',
+      description: 'Redirection immédiate vers votre site web principal',
       icon: '🌐',
-      sequence: 'Site web',
+      sequence: 'Site web (1s)',
       category: 'Redirection simple',
       actions: [
-        { type: 'website', order: 1, delay: 0, active: true, url: 'https://www.votre-site.com' }
+        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    
-    'form-download': {
-      name: '📝 Formulaire + Carte',
-      description: 'Formulaire de contact avec option de téléchargement de votre carte',
-      icon: '📝📥',
-      sequence: 'Formulaire + Téléchargement',
+    'form-only': {
+      name: '📝 Formulaire Simple',
+      description: 'Formulaire de contact professionnel pour capturer les prospects',
+      icon: '📝',
+      sequence: 'Formulaire (1s)',
       category: 'Capture de leads',
       actions: [
-        { type: 'form', order: 1, delay: 0, active: true },
-        { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' }
+        { type: 'form', order: 1, delay: 1000, active: true }
       ]
     },
-    
-    'form-website': {
-      name: '📝 Formulaire + Site',
-      description: 'Formulaire de contact avec lien vers votre site web',
-      icon: '📝🌐',
-      sequence: 'Formulaire + Site web',
-      category: 'Conversion maximale',
+    'download-only': {
+      name: '📥 Carte de Visite',
+      description: 'Téléchargement direct de votre carte de visite personnalisée',
+      icon: '📥',
+      sequence: 'Téléchargement carte (1s)',
+      category: 'Partage direct',
       actions: [
-        { type: 'form', order: 1, delay: 0, active: true },
-        { type: 'website', order: 2, delay: 0, active: true, url: 'https://www.votre-site.com' }
+        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
       ]
     },
-    
+    'form-website': {
+      name: '📝 Formulaire puis Site',
+      description: 'Collecte des informations avant de proposer votre site web',
+      icon: '📝🌐',
+      sequence: 'Formulaire (1s) → Site web (2s)',
+      category: 'Engagement progressif',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'form-download': {
+      name: '📝 Contact → Carte',
+      description: 'Formulaire de contact puis téléchargement de votre carte de visite',
+      icon: '📝📥',
+      sequence: 'Formulaire (1s) → Téléchargement carte (2s)',
+      category: 'Capture de leads',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
+      ]
+    },
     'complete-funnel': {
       name: '🎯 Tunnel Complet',
-      description: 'Formulaire de contact avec options de téléchargement et lien vers votre site',
+      description: 'Formulaire, téléchargement puis site web pour une conversion maximale',
       icon: '📝📥🌐',
-      sequence: 'Formulaire + Carte + Site web',
+      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
       category: 'Tunnel de conversion',
       actions: [
-        { type: 'form', order: 1, delay: 0, active: true },
-        { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 0, active: true, url: 'https://www.votre-site.com' }
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
       ]
     }
   };
@@ -139,9 +134,20 @@ const BusinessCard = ({ userId, user }) => {
     }
     
     try {
-      // Toujours rediriger vers la page d'inscription client, peu importe les actions configurées
-      // Les actions seront présentées comme des boutons sur cette page
+      const redirectAction = cardConfig.actions.find(action => 
+        action.active && action.type === 'website'
+      );
+      
       const targetUrl = `${FRONTEND_ROUTES.CLIENT_REGISTER(userId)}`;
+
+      if (redirectAction && redirectAction.url) {
+        try {
+          new URL(redirectAction.url); // validation simple
+          console.log("🌐 URL de redirection détectée:", redirectAction.url);
+        } catch (urlError) {
+          console.error("❌ URL invalide:", redirectAction.url);
+        }
+      }
       
       setQrValue(targetUrl);
       console.log("✅ QR code généré:", targetUrl);
@@ -193,7 +199,7 @@ const BusinessCard = ({ userId, user }) => {
       ...action,
       id: Date.now() + index,
       order: action.order || (index + 1),
-      delay: 0 // Tous les délais sont à 0 pour éviter l'exécution automatique
+      delay: action.delay || ((index + 1) * 1000)
     }));
 
     const updatedConfig = {
@@ -508,7 +514,7 @@ const BusinessCard = ({ userId, user }) => {
       console.log(`📍 Position QR: ${position} (${qrX}, ${qrY}) taille: ${qrSize}px`);
       
       // Générer le QR code avec la vraie URL
-      const qrUrl = qrValue;
+      const qrUrl = window.location.href;
       
       // Utiliser la bibliothèque QRCode
       try {
@@ -867,12 +873,11 @@ const BusinessCard = ({ userId, user }) => {
                 <h4>🎯 Stratégie Active :</h4>
                 <div className="schema-sequence">
                   {cardConfig.actions
-                    .filter(a => a.active)
                     .sort((a, b) => (a.order || 1) - (b.order || 1))
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.filter(a => a.active).length - 1 && ' →'}
+                        {index < cardConfig.actions.length - 1 && ' →'}
                       </span>
                     ))}
                 </div>
@@ -976,6 +981,7 @@ const BusinessCard = ({ userId, user }) => {
                           .map((action) => (
                             <li key={action.id}>
                               {getActionIcon(action.type)} {getActionLabel(action.type)}
+                              {action.delay > 0 && ` (+${action.delay}ms)`}
                             </li>
                           ))}
                       </ul>

@@ -23,12 +23,9 @@ const RegisterClient = () => {
   const [businessCard, setBusinessCard] = useState(null);
   const [executionStatus, setExecutionStatus] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [showWebsiteButton, setShowWebsiteButton] = useState(false);
-  const [showDownloadButton, setShowDownloadButton] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [pendingActions, setPendingActions] = useState([]);
+  const [hasRedirectedFromWebsite, setHasRedirectedFromWebsite] = useState(false);
   const [schemaType, setSchemaType] = useState('');
-  const [currentStep, setCurrentStep] = useState(1);
-  const [totalSteps, setTotalSteps] = useState(1);
 
   const trackCardView = async () => {
     try {
@@ -45,23 +42,38 @@ const RegisterClient = () => {
     if (userId) {
       trackCardView();
       fetchBusinessCard();
+      checkRedirectionSource();
     } else {
       setError('ID utilisateur manquant');
       setLoading(false);
     }
   }, [userId]);
 
+  const checkRedirectionSource = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromWebsite = urlParams.get('from') === 'website' || 
+                       urlParams.get('from') === 'qr' ||
+                       document.referrer.includes('votre-site.com') ||
+                       sessionStorage.getItem('redirectedFromWebsite') === 'true';
+    
+    if (fromWebsite) {
+      setHasRedirectedFromWebsite(true);
+      sessionStorage.setItem('redirectedFromWebsite', 'true');
+      console.log('✅ Détection: Retour depuis le site web');
+    }
+  };
+
   const fetchBusinessCard = async () => {
     try {
       setLoading(true);
-      // Utiliser l'userId directement dans l'URL
+      // Utiliser l'API publique pour récupérer la carte
       const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
       
       if (response && response.businessCard) {
         setBusinessCard(response.businessCard);
         
         if (response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
-          analyzeActions(response.businessCard.cardConfig.actions);
+          await executeActions(response.businessCard.cardConfig.actions);
         } else {
           console.log('Aucune action configurée - Affichage du formulaire par défaut');
           setShowForm(true);
@@ -79,8 +91,7 @@ const RegisterClient = () => {
     }
   };
 
-  // Nouvelle fonction pour analyser les actions et configurer l'interface
-  const analyzeActions = (actions) => {
+  const executeActions = async (actions) => {
     if (!actions || actions.length === 0) {
       console.log('Aucune action - Formulaire par défaut');
       setShowForm(true);
@@ -91,7 +102,7 @@ const RegisterClient = () => {
     const activeActions = actions.filter(action => action.active);
     const sortedActions = activeActions.sort((a, b) => (a.order || 1) - (b.order || 1));
 
-    console.log('🎯 Actions actives à analyser:', sortedActions);
+    console.log('🎯 Actions actives à exécuter:', sortedActions);
 
     if (sortedActions.length === 0) {
       console.log('Aucune action active - Formulaire par défaut');
@@ -100,60 +111,167 @@ const RegisterClient = () => {
       return;
     }
 
-    // Détection du type de schéma
+    // ✅ DÉTECTION DU TYPE DE SCHÉMA
     const hasWebsite = sortedActions.some(a => a.type === 'website');
     const hasForm = sortedActions.some(a => a.type === 'form');
     const hasDownload = sortedActions.some(a => a.type === 'download');
-
+    
+    // Identifier le schéma en fonction des actions présentes
     let detectedSchema = '';
     
-    if (hasWebsite && !hasForm && !hasDownload) {
-      detectedSchema = 'website-only';
-    } else if (!hasWebsite && hasForm && !hasDownload) {
-      detectedSchema = 'form-only';
-    } else if (!hasWebsite && !hasForm && hasDownload) {
-      detectedSchema = 'download-only';
-    } else if (hasWebsite && hasForm) {
-      detectedSchema = 'form-website';
-    } else if (hasForm && hasDownload) {
-      detectedSchema = 'form-download';
-    } else if (hasWebsite && hasForm && hasDownload) {
-      detectedSchema = 'complete-funnel';
-    } else {
+    if (sortedActions.length === 1) {
+      // Schémas à action unique
+      if (hasWebsite && !hasForm && !hasDownload) {
+        detectedSchema = 'website-only';
+      } else if (!hasWebsite && hasForm && !hasDownload) {
+        detectedSchema = 'form-only';
+      } else if (!hasWebsite && !hasForm && hasDownload) {
+        detectedSchema = 'download-only';
+      }
+    } else if (sortedActions.length === 2) {
+      // Schémas à deux actions
+      if (hasForm && hasWebsite) {
+        detectedSchema = 'form-website';
+      } else if (hasForm && hasDownload) {
+        detectedSchema = 'form-download';
+      }
+    } else if (sortedActions.length >= 3) {
+      // Schéma complet
+      if (hasForm && hasDownload && hasWebsite) {
+        detectedSchema = 'complete-funnel';
+      }
+    }
+    
+    // Si aucun schéma n'a été identifié, utiliser un schéma personnalisé
+    if (!detectedSchema) {
       detectedSchema = 'custom';
     }
 
     setSchemaType(detectedSchema);
     console.log(`📋 Schéma détecté: ${detectedSchema}`);
 
-    // Définir le nombre total d'étapes
-    setTotalSteps(sortedActions.length);
-
-    // Configuration de l'interface en fonction du schéma
-    // Commencer par la première étape
-    const firstAction = sortedActions[0];
-    
-    if (firstAction.type === 'form') {
-      setShowForm(true);
-    } else if (firstAction.type === 'website') {
+    // ✅ AFFICHER LE FORMULAIRE PAR DÉFAUT POUR TOUS LES SCHÉMAS
+    // Sauf pour les schémas website-only et download-only
+    if (detectedSchema === 'website-only') {
+      // Pour website-only, afficher un bouton pour visiter le site
+      setExecutionStatus([{
+        action: 'website',
+        status: 'form-shown',
+        message: 'Cliquez sur le bouton pour visiter notre site web'
+      }]);
+      
+      // Trouver l'action website
       const websiteAction = sortedActions.find(a => a.type === 'website');
-      if (websiteAction && websiteAction.url) {
-        setWebsiteUrl(websiteAction.url);
-        setShowWebsiteButton(true);
+      if (websiteAction) {
+        setPendingActions([websiteAction]);
       }
-    } else if (firstAction.type === 'download') {
-      setShowDownloadButton(true);
+    } 
+    else if (detectedSchema === 'download-only') {
+      // Pour download-only, afficher un bouton pour télécharger la carte
+      setExecutionStatus([{
+        action: 'download',
+        status: 'form-shown',
+        message: 'Cliquez sur le bouton pour télécharger notre carte de visite'
+      }]);
+      
+      // Trouver l'action download
+      const downloadAction = sortedActions.find(a => a.type === 'download');
+      if (downloadAction) {
+        setPendingActions([downloadAction]);
+      }
+    }
+    else {
+      // Pour tous les autres schémas, afficher le formulaire
+      setShowForm(true);
+      
+      // Stocker les actions non-form pour exécution après soumission
+      const nonFormActions = sortedActions.filter(a => a.type !== 'form');
+      if (nonFormActions.length > 0) {
+        setPendingActions(nonFormActions);
+      }
+      
+      setExecutionStatus([{
+        action: 'form',
+        status: 'form-shown',
+        message: 'Formulaire de contact affiché'
+      }]);
     }
     
     setLoading(false);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleManualWebsiteVisit = () => {
+    const websiteAction = pendingActions.find(action => action.type === 'website');
+    if (websiteAction && websiteAction.url) {
+      window.open(websiteAction.url, '_blank');
+      
+      setExecutionStatus(prev => [...prev, {
+        action: 'website',
+        status: 'completed',
+        message: 'Site web ouvert dans un nouvel onglet'
+      }]);
+    }
+  };
+
+  const handleManualDownload = async () => {
+    const downloadAction = pendingActions.find(action => action.type === 'download');
+    if (downloadAction) {
+      await handleDownloadAction(downloadAction);
+    }
+  };
+
+  const handleDownloadAction = async (action) => {
+    try {
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'executing',
+        message: 'Génération de votre carte de visite...'
+      }]);
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const link = document.createElement('a');
+      link.download = 'carte-visite-numerique.png';
+      link.href = '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
+      link.click();
+
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'completed',
+        message: 'Carte de visite téléchargée avec succès !'
+      }]);
+
+    } catch (error) {
+      console.error('Erreur téléchargement:', error);
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'error',
+        message: 'Erreur lors du téléchargement'
+      }]);
+    }
+  };
+
+  const executeRemainingActions = async () => {
+    if (pendingActions.length === 0) return;
+
+    console.log('🔄 Exécution des actions restantes:', pendingActions);
+
+    for (const action of pendingActions) {
+      await new Promise(resolve => setTimeout(resolve, action.delay || 1000));
+
+      if (action.type === 'download') {
+        await handleDownloadAction(action);
+      } else if (action.type === 'website') {
+        window.open(action.url, '_blank');
+        setExecutionStatus(prev => [...prev, {
+          action: 'website',
+          status: 'completed',
+          message: 'Site web ouvert dans un nouvel onglet'
+        }]);
+      }
+    }
+
+    setPendingActions([]);
   };
 
   const handleSubmit = async (e) => {
@@ -173,8 +291,8 @@ const RegisterClient = () => {
         message: 'Formulaire soumis avec succès !'
       }]);
 
-      // Passer à l'étape suivante après la soumission du formulaire
-      goToNextStep();
+      // Exécuter les actions restantes après soumission
+      await executeRemainingActions();
 
     } catch (err) {
       console.error('Erreur lors de l\'inscription:', err);
@@ -184,103 +302,44 @@ const RegisterClient = () => {
     }
   };
 
-  const handleWebsiteVisit = () => {
-    if (websiteUrl) {
-      window.open(websiteUrl, '_blank');
-      setExecutionStatus(prev => [...prev, {
-        action: 'website',
-        status: 'completed',
-        message: 'Site web ouvert dans un nouvel onglet'
-      }]);
-      
-      // Passer à l'étape suivante après avoir visité le site web
-      goToNextStep();
-    } else {
-      setError('URL du site web non configurée');
-    }
-  };
-
-  const handleDownloadCard = async () => {
-    try {
-      setExecutionStatus(prev => [...prev, {
-        action: 'download',
-        status: 'executing',
-        message: 'Téléchargement de la carte de visite...'
-      }]);
-
-      // Simuler un téléchargement
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const link = document.createElement('a');
-      link.download = 'carte-visite-numerique.png';
-      link.href = businessCard.cardImage || '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
-      link.click();
-
-      setExecutionStatus(prev => [...prev, {
-        action: 'download',
-        status: 'completed',
-        message: 'Carte de visite téléchargée avec succès !'
-      }]);
-      
-      // Passer à l'étape suivante après le téléchargement
-      goToNextStep();
-
-    } catch (error) {
-      console.error('Erreur téléchargement:', error);
-      setExecutionStatus(prev => [...prev, {
-        action: 'download',
-        status: 'error',
-        message: 'Erreur lors du téléchargement'
-      }]);
-    }
-  };
-
-  // Fonction pour passer à l'étape suivante
-  const goToNextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-      
-      // Récupérer les actions actives et triées
-      const activeActions = businessCard.cardConfig.actions
-        .filter(action => action.active)
-        .sort((a, b) => (a.order || 1) - (b.order || 1));
-      
-      // Déterminer quelle action afficher ensuite
-      const nextAction = activeActions[currentStep];
-      
-      if (nextAction) {
-        if (nextAction.type === 'form') {
-          setShowForm(true);
-          setShowWebsiteButton(false);
-          setShowDownloadButton(false);
-        } else if (nextAction.type === 'website') {
-          setShowForm(false);
-          setShowWebsiteButton(true);
-          setShowDownloadButton(false);
-          setWebsiteUrl(nextAction.url || '');
-        } else if (nextAction.type === 'download') {
-          setShowForm(false);
-          setShowWebsiteButton(false);
-          setShowDownloadButton(true);
-        }
-      }
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const getSchemaName = () => {
     switch (schemaType) {
       case 'website-only': return '🌐 Site Web Direct';
       case 'form-only': return '📝 Formulaire Simple';
-      case 'download-only': return '📥 Téléchargement Direct';
-      case 'form-website': return '📝 Formulaire + Site';
-      case 'form-download': return '📝 Formulaire + Carte';
+      case 'download-only': return '📥 Carte de Visite';
+      case 'form-website': return '📝 Formulaire puis Site';
+      case 'form-download': return '📝 Contact → Carte';
       case 'complete-funnel': return '🎯 Tunnel Complet';
       case 'custom': return '🔧 Stratégie Personnalisée';
       default: return 'Configuration par défaut';
     }
   };
 
-  if (loading) {
+  const getSchemaSequence = () => {
+    if (!businessCard?.cardConfig?.actions) return [];
+    
+    return businessCard.cardConfig.actions
+      .filter(a => a.active)
+      .sort((a, b) => (a.order || 1) - (b.order || 1))
+      .map(action => {
+        switch (action.type) {
+          case 'website': return '🌐 Site web';
+          case 'form': return '📝 Formulaire contact';
+          case 'download': return '📥 Téléchargement carte';
+          default: return '❓ Action inconnue';
+        }
+      });
+  };
+
+  if (loading && !showForm) {
     return (
       <div className="professional-contact-page">
         <div className="loading-container">
@@ -294,7 +353,7 @@ const RegisterClient = () => {
     );
   }
 
-  if (error && !showForm && !showWebsiteButton && !showDownloadButton) {
+  if (error && !showForm) {
     return (
       <div className="professional-contact-page">
         <div className="contact-container">
@@ -316,17 +375,53 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
-        {/* Indicateur d'étape */}
-        {totalSteps > 1 && (
-          <div className="step-indicator">
-            <div className="step-progress">
-              <div 
-                className="step-progress-bar" 
-                style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-              ></div>
+        {/* Affichage du schéma actif */}
+        {businessCard?.cardConfig?.actions && (
+          <div className="schema-display">
+            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
+            <div className="schema-sequence">
+              {getSchemaSequence().map((step, index) => (
+                <span key={index} className="schema-step">
+                  {step}
+                  {index < getSchemaSequence().length - 1 && ' →'}
+                </span>
+              ))}
             </div>
-            <div className="step-text">
-              Étape {currentStep} sur {totalSteps}
+            
+            {/* Affichage de l'URL du site web si configurée */}
+            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
+              <div className="website-info">
+                <div className="website-label">🌐 URL du site web :</div>
+                <a 
+                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="website-link"
+                >
+                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Message de redirection depuis le site web */}
+        {hasRedirectedFromWebsite && showForm && (
+          <div className="redirection-info">
+            <div className="redirection-icon">✅</div>
+            <div className="redirection-content">
+              <h4>Vous avez été redirigé depuis notre site web</h4>
+              <p>Merci de votre intérêt ! Veuillez remplir le formulaire ci-dessous pour nous contacter.</p>
+              <div className="website-badge">
+                <span className="website-icon">🌐</span>
+                <a 
+                  href={businessCard?.cardConfig?.actions?.find(a => a.type === 'website')?.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {businessCard?.cardConfig?.actions?.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -347,48 +442,95 @@ const RegisterClient = () => {
           </div>
         )}
 
+        {/* Actions manuelles disponibles */}
+        {pendingActions.length > 0 && !showForm && !submitted && (
+          <div className="actions-manual">
+            {pendingActions
+              .filter(action => action.type === 'website')
+              .map((action, index) => (
+                <div key={action.id || index} className="action-manual-item">
+                  <button 
+                    onClick={handleManualWebsiteVisit}
+                    className="action-btn website-btn"
+                  >
+                    <span className="btn-icon">🌐</span>
+                    <span className="btn-text">Visiter notre site web</span>
+                  </button>
+                </div>
+              ))}
+            
+            {pendingActions
+              .filter(action => action.type === 'download')
+              .map((action, index) => (
+                <div key={action.id || index} className="action-manual-item">
+                  <button 
+                    onClick={handleManualDownload}
+                    className="action-btn download-btn"
+                  >
+                    <span className="btn-icon">📥</span>
+                    <span className="btn-text">Télécharger notre carte de visite</span>
+                  </button>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Actions en attente après soumission du formulaire */}
+        {pendingActions.length > 0 && showForm && !submitted && (
+          <div className="pending-actions">
+            <h4>🕒 Actions disponibles après soumission :</h4>
+            <ul>
+              {pendingActions.map((action, index) => (
+                <li key={index}>
+                  {action.type === 'download' && '📥 Téléchargement de votre carte de visite'}
+                  {action.type === 'website' && '🌐 Ouverture de notre site web'}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Message de succès */}
-        {submitted && currentStep >= totalSteps && (
+        {submitted && (
           <div className="success-message">
             <div className="success-icon">🎉</div>
             <div className="success-content">
               <h4>Merci pour votre inscription !</h4>
               <p>Nous avons bien reçu vos informations et vous recontacterons très prochainement.</p>
+              
+              {/* Boutons d'actions après soumission */}
+              {pendingActions.length > 0 && (
+                <div className="actions-manual">
+                  {pendingActions
+                    .filter(action => action.type === 'website')
+                    .map((action, index) => (
+                      <div key={action.id || index} className="action-manual-item">
+                        <button 
+                          onClick={handleManualWebsiteVisit}
+                          className="action-btn website-btn"
+                        >
+                          <span className="btn-icon">🌐</span>
+                          <span className="btn-text">Visiter notre site web</span>
+                        </button>
+                      </div>
+                    ))}
+                  
+                  {pendingActions
+                    .filter(action => action.type === 'download')
+                    .map((action, index) => (
+                      <div key={action.id || index} className="action-manual-item">
+                        <button 
+                          onClick={handleManualDownload}
+                          className="action-btn download-btn"
+                        >
+                          <span className="btn-icon">📥</span>
+                          <span className="btn-text">Télécharger notre carte de visite</span>
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
-
-        {/* Bouton Site Web */}
-        {showWebsiteButton && (
-          <div className="action-container">
-            <h3 className="action-title">🌐 Visitez notre site web</h3>
-            <p className="action-description">
-              Découvrez tous nos services et informations sur notre site web officiel
-            </p>
-            <button 
-              onClick={handleWebsiteVisit}
-              className="action-button website-button"
-            >
-              <span className="button-icon">🌐</span>
-              <span className="button-text">Visiter notre site web</span>
-            </button>
-          </div>
-        )}
-
-        {/* Bouton Téléchargement */}
-        {showDownloadButton && (
-          <div className="action-container">
-            <h3 className="action-title">📥 Téléchargez notre carte de visite</h3>
-            <p className="action-description">
-              Gardez nos coordonnées à portée de main en téléchargeant notre carte de visite numérique
-            </p>
-            <button 
-              onClick={handleDownloadCard}
-              className="action-button download-button"
-            >
-              <span className="button-icon">📥</span>
-              <span className="button-text">Télécharger la carte de visite</span>
-            </button>
           </div>
         )}
 
@@ -517,8 +659,8 @@ const RegisterClient = () => {
           </div>
         )}
 
-        {/* Message si aucune action configurée */}
-        {!showForm && !showWebsiteButton && !showDownloadButton && (
+        {/* Message général si aucune action configurée */}
+        {!businessCard?.cardConfig?.actions?.length && !showForm && (
           <div className="general-message">
             <p>Aucune action spécifique configurée. Contactez-nous directement pour plus d'informations.</p>
           </div>
