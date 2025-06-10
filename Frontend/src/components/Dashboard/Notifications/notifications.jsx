@@ -11,24 +11,37 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [error, setError] = useState(null);
   const [lastGeneratedTime, setLastGeneratedTime] = useState(null);
+  const [deletedNotificationIds, setDeletedNotificationIds] = useState([]);
 
   // Charger les notifications au démarrage
   useEffect(() => {
     loadNotifications();
+    
+    // Charger les IDs des notifications supprimées
+    const deletedIds = localStorage.getItem('deletedNotificationIds');
+    if (deletedIds) {
+      try {
+        setDeletedNotificationIds(JSON.parse(deletedIds));
+      } catch (err) {
+        console.error('Erreur lors du chargement des IDs supprimés:', err);
+        setDeletedNotificationIds([]);
+      }
+    }
   }, []);
 
-  // Persistance des notifications
+  // Persistance des notifications et des IDs supprimés
   useEffect(() => {
     if (!loading) {
       localStorage.setItem('notificationsData', JSON.stringify(notifications));
       localStorage.setItem('lastGeneratedTime', lastGeneratedTime ? lastGeneratedTime.toISOString() : null);
+      localStorage.setItem('deletedNotificationIds', JSON.stringify(deletedNotificationIds));
       
       // Mettre à jour le compteur de notifications non lues dans le parent
       if (onNotificationsUpdate) {
         onNotificationsUpdate();
       }
     }
-  }, [notifications, loading, onNotificationsUpdate, lastGeneratedTime]);
+  }, [notifications, loading, onNotificationsUpdate, lastGeneratedTime, deletedNotificationIds]);
 
   const loadNotifications = () => {
     setLoading(true);
@@ -92,7 +105,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Nouveau client inscrit
         if (daysSinceCreation <= 7) {
           const notifId = `client_new_${client._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'client',
@@ -114,7 +127,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Client inactif depuis longtemps
         if (client.status === 'inactive' && daysSinceCreation > 30) {
           const notifId = `client_inactive_${client._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'client',
@@ -136,7 +149,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Prospect en attente
         if (client.status === 'en_attente') {
           const notifId = `client_pending_${client._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'client',
@@ -164,7 +177,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Nouveau devis créé
         if (daysSinceCreation <= 3) {
           const notifId = `devis_new_${devisItem._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'devis',
@@ -187,7 +200,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Devis en attente depuis longtemps
         if (devisItem.status === 'en_attente' && daysSinceCreation > 7) {
           const notifId = `devis_waiting_${devisItem._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'devis',
@@ -210,7 +223,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         // Devis finalisé (succès)
         if (devisItem.status === 'fini' && daysSinceCreation <= 7) {
           const notifId = `devis_success_${devisItem._id}`;
-          if (!existingIds.has(notifId)) {
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
             newNotifications.push({
               id: notifId,
               type: 'devis',
@@ -235,7 +248,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
           const daysUntilExpiry = Math.floor((new Date(devisItem.dateValidite) - new Date()) / (1000 * 60 * 60 * 24));
           if (daysUntilExpiry <= 3 && daysUntilExpiry >= 0 && devisItem.status !== 'fini') {
             const notifId = `devis_expiring_${devisItem._id}`;
-            if (!existingIds.has(notifId)) {
+            if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
               newNotifications.push({
                 id: notifId,
                 type: 'devis',
@@ -267,7 +280,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       // Objectif CA atteint
       if (totalCA > 10000) {
         const notifId = 'system_ca_goal';
-        if (!existingIds.has(notifId)) {
+        if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
           newNotifications.push({
             id: notifId,
             type: 'system',
@@ -287,7 +300,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       // Pic d'inscriptions
       if (newClientsThisWeek >= 5) {
         const notifId = 'system_new_clients_peak';
-        if (!existingIds.has(notifId)) {
+        if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
           newNotifications.push({
             id: notifId,
             type: 'system',
@@ -311,7 +324,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       
       if (needsBackupReminder) {
         const notifId = 'system_backup_reminder';
-        if (!existingIds.has(notifId)) {
+        if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
           newNotifications.push({
             id: notifId,
             type: 'system',
@@ -341,10 +354,15 @@ const Notifications = ({ onNotificationsUpdate }) => {
         }
       });
 
-      // Trier par date (plus récent en premier)
-      mergedNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+      // Filtrer les notifications supprimées
+      const filteredNotifications = mergedNotifications.filter(
+        notif => !deletedNotificationIds.includes(notif.id)
+      );
 
-      setNotifications(mergedNotifications);
+      // Trier par date (plus récent en premier)
+      filteredNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setNotifications(filteredNotifications);
       setLastGeneratedTime(new Date());
       
       // Mettre à jour le compteur dans le parent
@@ -430,6 +448,9 @@ const Notifications = ({ onNotificationsUpdate }) => {
   };
 
   const deleteNotification = (id) => {
+    // Ajouter l'ID à la liste des notifications supprimées
+    setDeletedNotificationIds(prev => [...prev, id]);
+    // Supprimer la notification de la liste actuelle
     setNotifications(prev => prev.filter(notif => notif.id !== id));
   };
 
@@ -457,9 +478,14 @@ const Notifications = ({ onNotificationsUpdate }) => {
     );
     if (!confirmDelete) return;
 
+    // Ajouter tous les IDs sélectionnés à la liste des notifications supprimées
+    setDeletedNotificationIds(prev => [...prev, ...selectedNotifications]);
+    
+    // Supprimer les notifications de la liste actuelle
     setNotifications(prev => 
       prev.filter(notif => !selectedNotifications.includes(notif.id))
     );
+    
     setSelectedNotifications([]);
   };
 
@@ -533,6 +559,14 @@ const Notifications = ({ onNotificationsUpdate }) => {
 
   const handleRefresh = () => {
     generateNotifications(false);
+  };
+
+  const handleClearAllDeleted = () => {
+    if (window.confirm("Voulez-vous réinitialiser la liste des notifications supprimées ? Cela pourrait faire réapparaître d'anciennes notifications lors de la prochaine actualisation.")) {
+      setDeletedNotificationIds([]);
+      localStorage.removeItem('deletedNotificationIds');
+      alert("Liste des notifications supprimées réinitialisée");
+    }
   };
 
   if (loading) {
@@ -632,6 +666,12 @@ const Notifications = ({ onNotificationsUpdate }) => {
                 🗑️ Supprimer ({selectedNotifications.length})
               </button>
             </>
+          )}
+          
+          {deletedNotificationIds.length > 0 && (
+            <button onClick={handleClearAllDeleted} className="action-btn reset-deleted">
+              🔄 Réinitialiser suppressions ({deletedNotificationIds.length})
+            </button>
           )}
         </div>
       </div>
@@ -763,6 +803,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             Affichage de {filteredNotifications.length} notification{filteredNotifications.length > 1 ? 's' : ''} 
             sur {notifications.length} au total
             {unreadCount > 0 && ` • ${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`}
+            {deletedNotificationIds.length > 0 && ` • ${deletedNotificationIds.length} supprimée${deletedNotificationIds.length > 1 ? 's' : ''}`}
           </p>
         </div>
       )}
