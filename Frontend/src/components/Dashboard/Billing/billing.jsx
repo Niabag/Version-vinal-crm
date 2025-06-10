@@ -426,6 +426,8 @@ const Billing = ({ clients = [], onRefresh }) => {
         inv.id === invoiceId ? { ...inv, status: newStatus } : inv
       )
     );
+
+    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
   };
 
   const formatDate = (dateStr) => {
