@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import QRCode from "react-qr-code";
 import { API_ENDPOINTS, FRONTEND_ROUTES, apiRequest } from '../../../config/api';
 import './businessCard.scss';
@@ -25,9 +25,6 @@ const BusinessCard = ({ userId, user }) => {
     totalScans: 0,
     conversions: 0
   });
-
-  // Référence au conteneur de la carte pour le téléchargement
-  const cardPreviewRef = useRef(null);
 
   // SCHÉMAS: Séquences d'actions prédéfinies
   const actionSchemas = {
@@ -914,7 +911,7 @@ const BusinessCard = ({ userId, user }) => {
             <h3>👁️ Aperçu de la carte</h3>
             
             <div className="preview-container">
-              <div className="business-card-preview" ref={cardPreviewRef}>
+              <div className="business-card-preview">
                 <img 
                   src={cardConfig.cardImage} 
                   alt="Carte de visite"
