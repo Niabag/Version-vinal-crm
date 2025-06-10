@@ -26,7 +26,7 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // SCHÉMAS PRÉDÉFINIS: Séquences d'actions prédéfinies
+  // SCHÉMAS: Séquences d'actions prédéfinies
   const actionSchemas = {
     'website-form': {
       name: 'Site web → Formulaire',
@@ -35,8 +35,8 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Site web (1s) → Formulaire (2s)',
       category: 'Conversion maximale',
       actions: [
-        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' },
-        { type: 'form', order: 2, delay: 2000, active: true }
+        { id: Date.now(), type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' },
+        { id: Date.now() + 1, type: 'form', order: 2, delay: 2000, active: true }
       ]
     },
     'form-website': {
@@ -46,8 +46,8 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Formulaire (1s) → Site web (2s)',
       category: 'Engagement progressif',
       actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+        { id: Date.now(), type: 'form', order: 1, delay: 1000, active: true },
+        { id: Date.now() + 1, type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
     'website-only': {
@@ -57,7 +57,7 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Site web (1s)',
       category: 'Redirection simple',
       actions: [
-        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
+        { id: Date.now(), type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
     'contact-download': {
@@ -67,8 +67,8 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Formulaire (1s) → Téléchargement carte (2s)',
       category: 'Capture de leads',
       actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
+        { id: Date.now(), type: 'form', order: 1, delay: 1000, active: true },
+        { id: Date.now() + 1, type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
       ]
     },
     'funnel-site-last': {
@@ -78,9 +78,9 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
       category: 'Tunnel de conversion',
       actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+        { id: Date.now(), type: 'form', order: 1, delay: 1000, active: true },
+        { id: Date.now() + 1, type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { id: Date.now() + 2, type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
     'contact-only': {
@@ -90,7 +90,7 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Formulaire (1s)',
       category: 'Capture simple',
       actions: [
-        { type: 'form', order: 1, delay: 1000, active: true }
+        { id: Date.now(), type: 'form', order: 1, delay: 1000, active: true }
       ]
     },
     'card-download': {
@@ -100,7 +100,7 @@ const BusinessCard = ({ userId, user }) => {
       sequence: 'Téléchargement carte (1s)',
       category: 'Partage direct',
       actions: [
-        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
+        { id: Date.now(), type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
       ]
     }
   };
@@ -145,6 +145,7 @@ const BusinessCard = ({ userId, user }) => {
     }
     
     try {
+      // Générer l'URL de redirection pour le QR code
       const targetUrl = `${FRONTEND_ROUTES.CLIENT_REGISTER(userId)}`;
       setQrValue(targetUrl);
       console.log("✅ QR code généré:", targetUrl);
@@ -156,10 +157,13 @@ const BusinessCard = ({ userId, user }) => {
 
   const fetchStats = async () => {
     try {
-      const data = await apiRequest(
-        API_ENDPOINTS.BUSINESS_CARDS.STATS(userId)
-      );
-      setStats(data);
+      // Simulation de statistiques pour l'instant
+      setStats({
+        scansToday: Math.floor(Math.random() * 10),
+        scansThisMonth: Math.floor(Math.random() * 100),
+        totalScans: Math.floor(Math.random() * 500),
+        conversions: Math.floor(Math.random() * 50)
+      });
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
     }
@@ -189,8 +193,7 @@ const BusinessCard = ({ userId, user }) => {
     if (!schema) return;
 
     console.log('🎯 Application du schéma:', schema.name);
-    console.log('📋 Actions du schéma:', schema.actions);
-
+    
     // Créer les actions avec des IDs uniques
     const actionsWithIds = schema.actions.map((action, index) => ({
       ...action,
@@ -350,7 +353,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Téléchargement de la carte de visite
+  // Téléchargement de la vraie carte de visite
   const downloadBusinessCard = async () => {
     try {
       setLoading(true);
@@ -374,7 +377,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Génération de la carte avec les données utilisateur
+  // Génération de la vraie carte avec les données utilisateur
   const generateBusinessCardWithQR = async () => {
     return new Promise(async (resolve) => {
       try {
@@ -713,42 +716,6 @@ const BusinessCard = ({ userId, user }) => {
     return fileName || filePath;
   };
 
-  // Rafraîchir les statistiques
-  const refreshStats = async () => {
-    try {
-      setLoading(true);
-      await fetchStats();
-      showSuccessMessage('✅ Statistiques mises à jour !');
-    } catch (error) {
-      console.error('Erreur lors du rafraîchissement des statistiques:', error);
-      showErrorMessage('❌ Erreur lors de la mise à jour des statistiques');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Formater le temps écoulé
-  const formatTimeAgo = (date) => {
-    if (!date) return 'Jamais';
-    
-    const now = new Date();
-    const lastScan = new Date(date);
-    const diffMs = now - lastScan;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffDays > 0) {
-      return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-    } else if (diffHours > 0) {
-      return `il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
-    } else if (diffMins > 0) {
-      return `il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
-    } else {
-      return 'à l\'instant';
-    }
-  };
-
   return (
     <div className="business-card-container">
       {/* Statistiques en haut */}
@@ -779,61 +746,6 @@ const BusinessCard = ({ userId, user }) => {
               <p>Conversions</p>
               <span className="stat-trend">Prospects inscrits</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Dernière activité */}
-      <div className="last-activity-section">
-        <div className="last-activity-card">
-          <div className="last-activity-header">
-            <h3>📱 Dernière Activité</h3>
-          </div>
-          <div className="last-activity-content">
-            {stats.lastScan ? (
-              <>
-                <div className="last-scan-info">
-                  <span className="last-scan-icon">👁️</span>
-                  <span className="last-scan-text">
-                    Dernier scan de votre QR code: <strong>{formatTimeAgo(stats.lastScan)}</strong>
-                  </span>
-                </div>
-                
-                <div className="conversion-rate">
-                  <span className="rate-label">Taux de conversion</span>
-                  <span className="rate-value">
-                    {stats.totalScans > 0 
-                      ? `${Math.round((stats.conversions / stats.totalScans) * 100)}%` 
-                      : '0%'}
-                  </span>
-                  <div className="rate-bar">
-                    <div 
-                      className="rate-fill" 
-                      style={{ 
-                        width: `${stats.totalScans > 0 
-                          ? Math.round((stats.conversions / stats.totalScans) * 100) 
-                          : 0}%` 
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="no-activity">
-                <span className="no-activity-icon">⏳</span>
-                <span className="no-activity-text">
-                  Aucune activité enregistrée pour le moment. Partagez votre QR code pour commencer à suivre les scans.
-                </span>
-              </div>
-            )}
-            
-            <button 
-              onClick={refreshStats} 
-              className="refresh-stats-btn"
-              disabled={loading}
-            >
-              {loading ? '⏳ Actualisation...' : '🔄 Actualiser les statistiques'}
-            </button>
           </div>
         </div>
       </div>
@@ -930,7 +842,7 @@ const BusinessCard = ({ userId, user }) => {
             )}
           </div>
 
-          {/* Section des schémas prédéfinis */}
+          {/* SECTION: Schémas prédéfinis professionnels */}
           <div className="config-section">
             <h3>🚀 Schémas de Conversion</h3>
             <p className="section-description">
@@ -961,12 +873,11 @@ const BusinessCard = ({ userId, user }) => {
                 <h4>🎯 Stratégie Active :</h4>
                 <div className="schema-sequence">
                   {cardConfig.actions
-                    .filter(a => a.active)
                     .sort((a, b) => (a.order || 1) - (b.order || 1))
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.filter(a => a.active).length - 1 && ' → '}
+                        {index < cardConfig.actions.length - 1 && ' → '}
                       </span>
                     ))}
                 </div>
@@ -974,7 +885,7 @@ const BusinessCard = ({ userId, user }) => {
                 {/* Édition rapide des URLs */}
                 <div className="schema-edit-section">
                   {cardConfig.actions
-                    .filter(action => action.type === 'website' && action.active)
+                    .filter(action => action.type === 'website')
                     .map(action => (
                       <div key={action.id} className="url-edit-group">
                         <label>🌐 URL du site web :</label>
@@ -1012,9 +923,8 @@ const BusinessCard = ({ userId, user }) => {
                     <QRCode 
                       value={qrValue} 
                       size={cardConfig.qrSize * 0.6}
-                      bgColor="#FFFFFF"
+                      bgColor="white"
                       fgColor="#1f2937"
-                      level="M"
                     />
                   </div>
                 )}
@@ -1038,9 +948,8 @@ const BusinessCard = ({ userId, user }) => {
                   <QRCode 
                     value={qrValue} 
                     size={200}
-                    bgColor="#FFFFFF"
+                    bgColor="white"
                     fgColor="#1f2937"
-                    level="M"
                   />
                 ) : (
                   <div className="qr-placeholder">
@@ -1099,7 +1008,7 @@ const BusinessCard = ({ userId, user }) => {
         </div>
       </div>
 
-      {/* Modal de sélection de schémas */}
+      {/* MODAL: Sélection de schémas professionnels */}
       {showSchemasModal && (
         <div className="modal-overlay" onClick={() => setShowSchemasModal(false)}>
           <div className="modal-content schemas-modal" onClick={(e) => e.stopPropagation()}>
