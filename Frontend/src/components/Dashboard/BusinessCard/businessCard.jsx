@@ -16,7 +16,7 @@ const BusinessCard = ({ userId, user }) => {
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
   
-  // ✅ États pour les schémas prédéfinis
+  // États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
   
   const [stats, setStats] = useState({
@@ -867,11 +867,12 @@ const BusinessCard = ({ userId, user }) => {
                 <h4>🎯 Stratégie Active :</h4>
                 <div className="schema-sequence">
                   {cardConfig.actions
+                    .filter(a => a.active)
                     .sort((a, b) => (a.order || 1) - (b.order || 1))
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.length - 1 && ' → '}
+                        {index < cardConfig.actions.filter(a => a.active).length - 1 && ' →'}
                       </span>
                     ))}
                 </div>

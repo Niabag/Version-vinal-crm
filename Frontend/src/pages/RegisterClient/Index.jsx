@@ -27,6 +27,8 @@ const RegisterClient = () => {
   const [showDownloadButton, setShowDownloadButton] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [schemaType, setSchemaType] = useState('');
+  const [currentStep, setCurrentStep] = useState(1);
+  const [totalSteps, setTotalSteps] = useState(1);
 
   const trackCardView = async () => {
     try {
@@ -124,20 +126,22 @@ const RegisterClient = () => {
     setSchemaType(detectedSchema);
     console.log(`📋 Schéma détecté: ${detectedSchema}`);
 
+    // Définir le nombre total d'étapes
+    setTotalSteps(sortedActions.length);
+
     // Configuration de l'interface en fonction du schéma
-    if (hasForm) {
-      setShowForm(true);
-    }
+    // Commencer par la première étape
+    const firstAction = sortedActions[0];
     
-    if (hasWebsite) {
+    if (firstAction.type === 'form') {
+      setShowForm(true);
+    } else if (firstAction.type === 'website') {
       const websiteAction = sortedActions.find(a => a.type === 'website');
       if (websiteAction && websiteAction.url) {
         setWebsiteUrl(websiteAction.url);
         setShowWebsiteButton(true);
       }
-    }
-    
-    if (hasDownload) {
+    } else if (firstAction.type === 'download') {
       setShowDownloadButton(true);
     }
     
@@ -169,6 +173,9 @@ const RegisterClient = () => {
         message: 'Formulaire soumis avec succès !'
       }]);
 
+      // Passer à l'étape suivante après la soumission du formulaire
+      goToNextStep();
+
     } catch (err) {
       console.error('Erreur lors de l\'inscription:', err);
       setError(err.message || 'Erreur lors de l\'inscription');
@@ -185,6 +192,9 @@ const RegisterClient = () => {
         status: 'completed',
         message: 'Site web ouvert dans un nouvel onglet'
       }]);
+      
+      // Passer à l'étape suivante après avoir visité le site web
+      goToNextStep();
     } else {
       setError('URL du site web non configurée');
     }
@@ -211,6 +221,9 @@ const RegisterClient = () => {
         status: 'completed',
         message: 'Carte de visite téléchargée avec succès !'
       }]);
+      
+      // Passer à l'étape suivante après le téléchargement
+      goToNextStep();
 
     } catch (error) {
       console.error('Erreur téléchargement:', error);
@@ -219,6 +232,38 @@ const RegisterClient = () => {
         status: 'error',
         message: 'Erreur lors du téléchargement'
       }]);
+    }
+  };
+
+  // Fonction pour passer à l'étape suivante
+  const goToNextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+      
+      // Récupérer les actions actives et triées
+      const activeActions = businessCard.cardConfig.actions
+        .filter(action => action.active)
+        .sort((a, b) => (a.order || 1) - (b.order || 1));
+      
+      // Déterminer quelle action afficher ensuite
+      const nextAction = activeActions[currentStep];
+      
+      if (nextAction) {
+        if (nextAction.type === 'form') {
+          setShowForm(true);
+          setShowWebsiteButton(false);
+          setShowDownloadButton(false);
+        } else if (nextAction.type === 'website') {
+          setShowForm(false);
+          setShowWebsiteButton(true);
+          setShowDownloadButton(false);
+          setWebsiteUrl(nextAction.url || '');
+        } else if (nextAction.type === 'download') {
+          setShowForm(false);
+          setShowWebsiteButton(false);
+          setShowDownloadButton(true);
+        }
+      }
     }
   };
 
@@ -271,32 +316,20 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
-        {/* Actions disponibles */}
-        <div className="actions-manual">
-          {showWebsiteButton && (
-            <div className="action-manual-item">
-              <button 
-                onClick={handleWebsiteVisit}
-                className="action-btn website-btn"
-              >
-                <span className="btn-icon">🌐</span>
-                <span className="btn-text">Visiter notre site web</span>
-              </button>
+        {/* Indicateur d'étape */}
+        {totalSteps > 1 && (
+          <div className="step-indicator">
+            <div className="step-progress">
+              <div 
+                className="step-progress-bar" 
+                style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+              ></div>
             </div>
-          )}
-          
-          {showDownloadButton && (
-            <div className="action-manual-item">
-              <button 
-                onClick={handleDownloadCard}
-                className="action-btn download-btn"
-              >
-                <span className="btn-icon">📥</span>
-                <span className="btn-text">Télécharger notre carte de visite</span>
-              </button>
+            <div className="step-text">
+              Étape {currentStep} sur {totalSteps}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Statut d'exécution */}
         {executionStatus.length > 0 && (
@@ -315,13 +348,47 @@ const RegisterClient = () => {
         )}
 
         {/* Message de succès */}
-        {submitted && (
+        {submitted && currentStep >= totalSteps && (
           <div className="success-message">
             <div className="success-icon">🎉</div>
             <div className="success-content">
               <h4>Merci pour votre inscription !</h4>
               <p>Nous avons bien reçu vos informations et vous recontacterons très prochainement.</p>
             </div>
+          </div>
+        )}
+
+        {/* Bouton Site Web */}
+        {showWebsiteButton && (
+          <div className="action-container">
+            <h3 className="action-title">🌐 Visitez notre site web</h3>
+            <p className="action-description">
+              Découvrez tous nos services et informations sur notre site web officiel
+            </p>
+            <button 
+              onClick={handleWebsiteVisit}
+              className="action-button website-button"
+            >
+              <span className="button-icon">🌐</span>
+              <span className="button-text">Visiter notre site web</span>
+            </button>
+          </div>
+        )}
+
+        {/* Bouton Téléchargement */}
+        {showDownloadButton && (
+          <div className="action-container">
+            <h3 className="action-title">📥 Téléchargez notre carte de visite</h3>
+            <p className="action-description">
+              Gardez nos coordonnées à portée de main en téléchargeant notre carte de visite numérique
+            </p>
+            <button 
+              onClick={handleDownloadCard}
+              className="action-button download-button"
+            >
+              <span className="button-icon">📥</span>
+              <span className="button-text">Télécharger la carte de visite</span>
+            </button>
           </div>
         )}
 
