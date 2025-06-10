@@ -1,3 +1,4 @@
+/* Page de contact professionnelle */
 .professional-contact-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
@@ -18,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* ✅ EN-TÊTE PROFESSIONNEL */
+/* En-tête professionnel */
 .contact-header {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: white;
@@ -59,7 +60,7 @@
   z-index: 1;
 }
 
-/* ✅ NOUVEAU: Message de redirection */
+/* Message de redirection */
 .redirection-info {
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   border: 3px solid #3b82f6;
@@ -129,7 +130,7 @@
   text-decoration: underline;
 }
 
-/* ✅ BOUTONS D'ACTIONS MANUELLES - NOUVEAU DESIGN AMÉLIORÉ */
+/* BOUTONS D'ACTIONS MANUELLES - NOUVEAU DESIGN AMÉLIORÉ */
 .actions-manual {
   padding: 2rem;
   background: white;
@@ -205,7 +206,7 @@
   font-size: 1.1rem;
 }
 
-/* ✅ FORMULAIRE DE CONTACT PROFESSIONNEL */
+/* FORMULAIRE DE CONTACT PROFESSIONNEL */
 .contact-form-section {
   background: white;
   padding: 2rem;
@@ -239,7 +240,7 @@
   font-weight: 500;
 }
 
-/* ✅ MESSAGE DE SUCCÈS PROFESSIONNEL */
+/* MESSAGE DE SUCCÈS PROFESSIONNEL */
 .success-message {
   background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   border: 3px solid #10b981;
@@ -290,7 +291,7 @@
   border-left: 4px solid #f59e0b;
 }
 
-/* ✅ FORMULAIRE MODERNE */
+/* FORMULAIRE MODERNE */
 .contact-form {
   display: flex;
   flex-direction: column;
@@ -393,7 +394,7 @@
   font-size: 1.1rem;
 }
 
-/* ✅ STATUT D'EXÉCUTION */
+/* STATUT D'EXÉCUTION */
 .execution-status {
   background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
   border: 2px solid #14b8a6;
@@ -436,7 +437,11 @@
   color: #0f766e;
 }
 
-/* ✅ ACTIONS EN ATTENTE */
+.status-message.ready {
+  color: #1e40af;
+}
+
+/* ACTIONS EN ATTENTE */
 .pending-actions {
   background: rgba(245, 158, 11, 0.1);
   border: 2px solid rgba(245, 158, 11, 0.3);
@@ -462,7 +467,7 @@
   font-weight: 500;
 }
 
-/* ✅ MESSAGE GÉNÉRAL */
+/* MESSAGE GÉNÉRAL */
 .general-message {
   background: rgba(59, 130, 246, 0.1);
   border: 2px solid rgba(59, 130, 246, 0.3);
@@ -474,7 +479,7 @@
   text-align: center;
 }
 
-/* ✅ QR CODE DISPLAY */
+/* QR CODE DISPLAY */
 .qr-code-display {
   padding: 2rem;
   background: white;
@@ -510,7 +515,7 @@
   font-size: 0.95rem;
 }
 
-/* ✅ LOADING CONTAINER */
+/* LOADING CONTAINER */
 .loading-container {
   background: white;
   border-radius: 20px;
@@ -557,7 +562,7 @@
   line-height: 1.6;
 }
 
-/* ✅ RESPONSIVE DESIGN */
+/* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
   .professional-contact-page {
     padding: 1rem 0.5rem;
@@ -679,7 +684,7 @@
   }
 }
 
-/* ✅ ANIMATIONS AVANCÉES */
+/* ANIMATIONS AVANCÉES */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -734,7 +739,7 @@
   animation: fadeInUp 0.5s ease-out;
 }
 
-/* ✅ EFFETS VISUELS AVANCÉS */
+/* EFFETS VISUELS AVANCÉS */
 .action-btn {
   position: relative;
   overflow: hidden;
@@ -755,7 +760,7 @@
   left: 100%;
 }
 
-/* ✅ PULSATION POUR LES ÉLÉMENTS IMPORTANTS */
+/* PULSATION POUR LES ÉLÉMENTS IMPORTANTS */
 @keyframes pulse {
   0% { box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3); }
   50% { box-shadow: 0 12px 35px rgba(59, 130, 246, 0.5); }
