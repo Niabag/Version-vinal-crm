@@ -149,15 +149,22 @@ const BusinessCard = ({ userId, user }) => {
 
   const fetchStats = async () => {
     try {
-      // Simulation de statistiques pour l'instant
-      setStats({
-        scansToday: Math.floor(Math.random() * 10),
-        scansThisMonth: Math.floor(Math.random() * 100),
-        totalScans: Math.floor(Math.random() * 500),
-        conversions: Math.floor(Math.random() * 50)
-      });
+      // Récupérer les statistiques réelles depuis l'API
+      if (userId) {
+        const cardStats = await apiRequest(API_ENDPOINTS.BUSINESS_CARDS.STATS(userId));
+        if (cardStats) {
+          setStats({
+            scansToday: cardStats.scansToday || 0,
+            scansThisMonth: cardStats.scansThisMonth || 0,
+            totalScans: cardStats.totalScans || 0,
+            conversions: cardStats.conversions || 0
+          });
+          console.log("✅ Statistiques de carte chargées:", cardStats);
+        }
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
+      // En cas d'erreur, on garde les statistiques actuelles
     }
   };
 
@@ -273,6 +280,9 @@ const BusinessCard = ({ userId, user }) => {
         cardImage: response.businessCard.cardImage
       }));
       console.log('✅ Carte de visite sauvegardée en BDD');
+      
+      // Rafraîchir les statistiques après la sauvegarde
+      await fetchStats();
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);
