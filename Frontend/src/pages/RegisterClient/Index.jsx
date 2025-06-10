@@ -832,10 +832,6 @@ const RegisterClient = () => {
 
   // Affichage du QR code
   const renderQRCode = () => {
-    if (!businessCard || !businessCard.cardConfig || !businessCard.cardConfig.showQR) {
-      return null;
-    }
-
     // Construire l'URL pour le QR code
     const qrUrl = `${window.location.origin}/register-client/${userId}`;
 
@@ -946,6 +942,9 @@ const RegisterClient = () => {
           </div>
         )}
 
+        {/* Affichage du QR code - TOUJOURS AFFICHER POUR LE SCHÉMA CARD-DOWNLOAD */}
+        {(schemaType === 'card-download' || !showForm) && renderQRCode()}
+
         {/* Actions manuelles disponibles (uniquement si pas de formulaire automatique) */}
         {businessCard?.cardConfig?.actions && !showForm && !submitted && schemaType !== 'website-only' && schemaType !== 'card-download' && (
           <div className="actions-manual">
@@ -961,7 +960,7 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">🌐</span>
                       <span className="btn-text">Visiter notre site web</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
+                      <span className="btn-order">Étape {index + 1}</span>
                     </button>
                   )}
                   
@@ -972,8 +971,16 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">📥</span>
                       <span className="btn-text">Télécharger notre carte de visite</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
+                      <span className="btn-order">Étape {index + 1}</span>
                     </button>
+                  )}
+                  
+                  {action.type === 'form' && (
+                    <div className="form-action-info">
+                      <span className="form-icon">📝</span>
+                      <span className="form-text">Formulaire de contact ci-dessous</span>
+                      <span className="form-order">Étape {index + 1}</span>
+                    </div>
                   )}
                 </div>
               ))}
@@ -989,16 +996,14 @@ const RegisterClient = () => {
                   {status.status === 'completed' ? '✅' : 
                    status.status === 'executing' ? '⏳' : 
                    status.status === 'form-shown' ? '📝' : 
-                   status.status === 'ready' ? '🔄' : '❓'}
+                   status.status === 'ready' ? '🔄' : 
+                   status.status === 'error' ? '❌' : '❓'}
                 </span>
-                <span>{status.message}</span>
+                <span className="status-text">{status.message}</span>
               </div>
             ))}
           </div>
         )}
-
-        {/* Affichage du QR code */}
-        {!showForm && !submitted && schemaType === 'card-download' && renderQRCode()}
 
         {/* Actions en attente */}
         {pendingActions.length > 0 && showForm && !submitted && (
