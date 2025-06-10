@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import InvoiceTemplate from '../Billing/InvoiceTemplate';
+import InvoicePreview from './InvoicePreview';
 import './clientBilling.scss';
 
 const ClientBilling = ({ client, onBack }) => {
@@ -8,6 +9,7 @@ const ClientBilling = ({ client, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showInvoiceTemplate, setShowInvoiceTemplate] = useState(false);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [previewDevis, setPreviewDevis] = useState([]);
   const [devisForClient, setDevisForClient] = useState([]);
@@ -23,6 +25,7 @@ const ClientBilling = ({ client, onBack }) => {
   });
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
   const [selectedDevis, setSelectedDevis] = useState([]);
+  const [isCreatingNew, setIsCreatingNew] = useState(true);
 
   useEffect(() => {
     if (client) {
@@ -128,6 +131,57 @@ const ClientBilling = ({ client, onBack }) => {
       setShowInvoiceTemplate(true);
     } catch (err) {
       console.error("Erreur affichage facture:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditInvoice = async (invoice) => {
+    try {
+      setLoading(true);
+      // Récupérer les détails des devis liés à la facture
+      const devisDetails = [];
+      
+      // Si la facture a des devis liés, les récupérer
+      if (invoice.devisIds && invoice.devisIds.length > 0) {
+        for (const devisId of invoice.devisIds) {
+          try {
+            const devis = await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(devisId));
+            if (devis) devisDetails.push(devis);
+          } catch (err) {
+            console.error(`Erreur récupération devis ${devisId}:`, err);
+          }
+        }
+      } else {
+        // Si pas de devis liés, utiliser un devis fictif basé sur la facture
+        devisDetails.push({
+          title: "Prestation de services",
+          clientId: client._id,
+          dateDevis: invoice.createdAt,
+          dateValidite: invoice.dueDate,
+          entrepriseName: "Votre Entreprise",
+          entrepriseAddress: "123 Rue Exemple",
+          entrepriseCity: "75000 Paris",
+          entreprisePhone: "01 23 45 67 89",
+          entrepriseEmail: "contact@entreprise.com",
+          articles: [
+            {
+              description: "Prestation complète",
+              unitPrice: invoice.amount * 0.8,
+              quantity: 1,
+              unit: "forfait",
+              tvaRate: "20"
+            }
+          ]
+        });
+      }
+
+      setSelectedInvoice(invoice);
+      setPreviewDevis(devisDetails);
+      setIsCreatingNew(false);
+      setShowInvoicePreview(true);
+    } catch (err) {
+      console.error("Erreur édition facture:", err);
     } finally {
       setLoading(false);
     }
@@ -287,18 +341,53 @@ const ClientBilling = ({ client, onBack }) => {
     return subtotal - discountAmount;
   };
 
-  const saveInvoice = async () => {
+  const handleCreateInvoice = async () => {
     try {
       setLoading(true);
       
-      const total = calculateInvoiceTotal();
+      // Récupérer les détails des devis sélectionnés
+      const selectedDevisData = [];
+      
+      if (selectedDevis.length > 0) {
+        for (const devisId of selectedDevis) {
+          try {
+            const devis = await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(devisId));
+            if (devis) selectedDevisData.push(devis);
+          } catch (err) {
+            console.error(`Erreur récupération devis ${devisId}:`, err);
+          }
+        }
+      } else {
+        // Si aucun devis sélectionné, créer un devis fictif
+        selectedDevisData.push({
+          title: "Prestation de services",
+          clientId: client._id,
+          dateDevis: new Date().toISOString(),
+          dateValidite: newInvoice.dueDate,
+          entrepriseName: "Votre Entreprise",
+          entrepriseAddress: "123 Rue Exemple",
+          entrepriseCity: "75000 Paris",
+          entreprisePhone: "01 23 45 67 89",
+          entrepriseEmail: "contact@entreprise.com",
+          articles: [
+            {
+              description: "Prestation complète",
+              unitPrice: 500,
+              quantity: 1,
+              unit: "forfait",
+              tvaRate: "20"
+            }
+          ]
+        });
+      }
 
-      const invoice = {
+      // Créer une nouvelle facture pour l'aperçu
+      const newInvoiceData = {
         id: `INV-${Date.now()}`,
         clientId: client._id,
         clientName: client.name,
-        amount: total,
-        status: 'pending',
+        amount: calculateInvoiceTotal(),
+        status: 'draft',
         dueDate: newInvoice.dueDate,
         createdAt: new Date().toISOString(),
         invoiceNumber: newInvoice.invoiceNumber,
@@ -309,11 +398,36 @@ const ClientBilling = ({ client, onBack }) => {
         taxRate: newInvoice.taxRate
       };
 
-      // Ajouter à la liste locale (en attendant l'API)
-      setInvoices(prev => [invoice, ...prev]);
+      setSelectedInvoice(newInvoiceData);
+      setPreviewDevis(selectedDevisData);
+      setIsCreatingNew(true);
+      setShowInvoicePreview(true);
+      
+    } catch (error) {
+      console.error('Erreur lors de la création de la facture:', error);
+      alert('❌ Erreur lors de la création de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveInvoice = (updatedInvoice) => {
+    try {
+      if (isCreatingNew) {
+        // Ajouter la nouvelle facture
+        setInvoices(prev => [updatedInvoice, ...prev]);
+        alert('✅ Facture créée avec succès !');
+      } else {
+        // Mettre à jour une facture existante
+        setInvoices(prev => 
+          prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv)
+        );
+        alert('✅ Facture mise à jour avec succès !');
+      }
       
       // Réinitialiser
       setSelectedDevis([]);
+      setShowInvoicePreview(false);
       setShowCreateInvoice(false);
       setNewInvoice({
         clientId: client._id,
@@ -325,13 +439,9 @@ const ClientBilling = ({ client, onBack }) => {
         discount: 0,
         taxRate: 20
       });
-
-      alert('✅ Facture créée avec succès !');
     } catch (error) {
-      console.error('Erreur lors de la création de la facture:', error);
-      alert('❌ Erreur lors de la création de la facture');
-    } finally {
-      setLoading(false);
+      console.error('Erreur lors de l\'enregistrement de la facture:', error);
+      alert('❌ Erreur lors de l\'enregistrement de la facture');
     }
   };
 
@@ -533,6 +643,13 @@ const ClientBilling = ({ client, onBack }) => {
                     👁️
                   </button>
                   <button
+                    onClick={() => handleEditInvoice(invoice)}
+                    className="action-btn edit-btn"
+                    title="Modifier la facture"
+                  >
+                    ✏️
+                  </button>
+                  <button
                     onClick={() => handleDownloadInvoicePDF(invoice)}
                     className="action-btn download-btn"
                     title="Télécharger PDF"
@@ -697,13 +814,28 @@ const ClientBilling = ({ client, onBack }) => {
                 Annuler
               </button>
               <button 
-                onClick={saveInvoice}
+                onClick={handleCreateInvoice}
                 className="btn-save"
                 disabled={loading}
               >
-                {loading ? 'Création...' : '💰 Créer la facture'}
+                {loading ? 'Création...' : '👁️ Prévisualiser la facture'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de prévisualisation de facture */}
+      {showInvoicePreview && selectedInvoice && (
+        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
+          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <InvoicePreview
+              invoice={selectedInvoice}
+              client={client}
+              devisDetails={previewDevis}
+              onSave={handleSaveInvoice}
+              onCancel={() => setShowInvoicePreview(false)}
+            />
           </div>
         </div>
       )}

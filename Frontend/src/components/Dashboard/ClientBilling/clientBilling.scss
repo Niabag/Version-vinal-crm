@@ -291,6 +291,11 @@
   color: white;
 }
 
+.edit-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
 .download-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
@@ -400,6 +405,14 @@
 }
 
 .invoice-template-modal {
+  max-width: 1000px;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+.invoice-preview-modal {
   max-width: 1000px;
   background: transparent;
   box-shadow: none;
