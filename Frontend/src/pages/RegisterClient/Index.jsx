@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
-import QRCode from 'react-qr-code';
+import QRCodeDisplay from '../../components/QRCodeDisplay/QRCodeDisplay';
+import ActionButtons from '../../components/ActionButtons/ActionButtons';
+import StatusMessages from '../../components/StatusMessages/StatusMessages';
 import './registerClient.scss';
 
 const RegisterClient = () => {
   const { userId } = useParams();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
@@ -483,37 +484,6 @@ const RegisterClient = () => {
     }));
   };
 
-  const getSchemaName = () => {
-    switch (schemaType) {
-      case 'website-only': return '🌐 Site Web Direct';
-      case 'website-form': return 'Site web → Formulaire';
-      case 'form-website': return '📝→🌐 Formulaire puis Site';
-      case 'contact-download': return '📝 Contact → Carte';
-      case 'funnel-site-last': return '🎯 Site en Dernier';
-      case 'complete-funnel': return '🎯 Tunnel Complet';
-      case 'contact-only': return '📝 Contact Uniquement';
-      case 'card-download': return '📥 Carte de Visite';
-      case 'custom': return '🔧 Stratégie Personnalisée';
-      default: return 'Configuration par défaut';
-    }
-  };
-
-  const getSchemaSequence = () => {
-    if (!businessCard?.cardConfig?.actions) return [];
-    
-    return businessCard.cardConfig.actions
-      .filter(a => a.active)
-      .sort((a, b) => (a.order || 1) - (b.order || 1))
-      .map(action => {
-        switch (action.type) {
-          case 'website': return '🌐 Site web';
-          case 'form': return '📝 Formulaire contact';
-          case 'download': return '📥 Téléchargement carte';
-          default: return '❓ Action inconnue';
-        }
-      });
-  };
-
   if (loading && !showForm) {
     return (
       <div className="professional-contact-page">
@@ -571,53 +541,18 @@ const RegisterClient = () => {
           </div>
         )}
 
-        {/* Actions manuelles disponibles (uniquement si pas de formulaire automatique) */}
+        {/* Actions manuelles disponibles */}
         {businessCard?.cardConfig?.actions && !showForm && !submitted && (
-          <div className="actions-manual">
-            {businessCard.cardConfig.actions
-              .filter(action => action.active)
-              .sort((a, b) => (a.order || 1) - (b.order || 1))
-              .map((action, index) => (
-                <div key={action.id || index} className="action-manual-item">
-                  {action.type === 'website' && (
-                    <button 
-                      onClick={handleManualWebsiteVisit}
-                      className="action-btn website-btn"
-                    >
-                      <span className="btn-icon">🌐</span>
-                      <span className="btn-text">Visiter notre site web</span>
-                    </button>
-                  )}
-                  
-                  {action.type === 'download' && (
-                    <button 
-                      onClick={handleManualDownload}
-                      className="action-btn download-btn"
-                    >
-                      <span className="btn-icon">📥</span>
-                      <span className="btn-text">Télécharger notre carte de visite</span>
-                    </button>
-                  )}
-                </div>
-              ))}
-          </div>
+          <ActionButtons 
+            actions={businessCard.cardConfig.actions}
+            onWebsiteVisit={handleManualWebsiteVisit}
+            onDownload={handleManualDownload}
+          />
         )}
 
         {/* Statut d'exécution */}
         {executionStatus.length > 0 && (
-          <div className="execution-status">
-            {executionStatus.map((status, index) => (
-              <div key={index} className={`status-message ${status.status}`}>
-                <span className="status-icon">
-                  {status.status === 'completed' ? '✅' : 
-                   status.status === 'executing' ? '⏳' : 
-                   status.status === 'form-shown' ? '📝' : 
-                   status.status === 'ready' ? '🔄' : '❓'}
-                </span>
-                <span>{status.message}</span>
-              </div>
-            ))}
-          </div>
+          <StatusMessages messages={executionStatus} />
         )}
 
         {/* Actions en attente */}
@@ -778,25 +713,11 @@ const RegisterClient = () => {
 
         {/* Affichage du QR code */}
         {!showForm && !submitted && schemaType === 'card-download' && (
-          <div className="qr-code-display">
-            <div className="qr-code-container">
-              <div className="qr-code-wrapper">
-                {qrValue && (
-                  <QRCode 
-                    value={qrValue}
-                    size={200}
-                    bgColor="#FFFFFF"
-                    fgColor="#1f2937"
-                    level="M"
-                  />
-                )}
-              </div>
-              <div className="qr-code-info">
-                <h3>Scannez ce QR code pour me contacter</h3>
-                <p>Ou téléchargez ma carte de visite numérique</p>
-              </div>
-            </div>
-          </div>
+          <QRCodeDisplay 
+            value={qrValue}
+            title="Scannez ce QR code pour me contacter"
+            description="Ou téléchargez ma carte de visite numérique"
+          />
         )}
 
         {/* Message général si aucune action configurée */}
