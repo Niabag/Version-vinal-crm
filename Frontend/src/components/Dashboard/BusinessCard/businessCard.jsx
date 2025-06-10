@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import QRCode from "react-qr-code";
 import { API_ENDPOINTS, FRONTEND_ROUTES, apiRequest } from '../../../config/api';
 import './businessCard.scss';
@@ -25,115 +25,9 @@ const BusinessCard = ({ userId, user }) => {
     totalScans: 0,
     conversions: 0
   });
-
-  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
-  const actionSchemas = {
-
-    'website-form': {
-      name: 'Site web → Formulaire',
-      description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
-      icon: '🚀📝',
-      sequence: 'Site web (1s) → Formulaire (2s)',
-      category: 'Conversion maximale',
-
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
-
-
-      ]
-    },
-    'form-website': {
-      name: '📝 Formulaire puis Site',
-      description: 'Collecte des informations avant de rediriger vers votre site web',
-      icon: '📝🌐',
-      sequence: 'Formulaire (1s) → Site web (2s)',
-      category: 'Engagement progressif',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'website-only': {
-      name: '🌐 Site Web Direct',
-      description: 'Redirection immédiate vers votre site web principal',
-      icon: '🌐',
-      sequence: 'Site web (1s)',
-      category: 'Redirection simple',
-      actions: [
-        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'contact-download': {
-      name: '📝 Contact → Carte',
-      description: 'Formulaire de contact puis téléchargement de votre carte de visite',
-      icon: '📝📥',
-      sequence: 'Formulaire (1s) → Téléchargement carte (2s)',
-      category: 'Capture de leads',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
-      ]
-    },
-
-    'site-last-funnel': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-
-    'funnel-site-last': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'funnel-site-last': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'contact-only': {
-      name: '📝 Contact Uniquement',
-      description: 'Formulaire de contact professionnel pour capturer les prospects',
-      icon: '📝',
-      sequence: 'Formulaire (1s)',
-      category: 'Capture simple',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true }
-      ]
-    },
-    'card-download': {
-      name: '📥 Carte de Visite',
-      description: 'Téléchargement direct de votre carte de visite personnalisée',
-      icon: '📥',
-      sequence: 'Téléchargement carte (1s)',
-      category: 'Partage direct',
-      actions: [
-        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
-      ]
-    }
-  };
+  
+  // Référence au conteneur QR code pour le téléchargement
+  const qrCodeRef = useRef(null);
 
   useEffect(() => {
     if (userId) {
@@ -394,13 +288,13 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Téléchargement de la vraie carte de visite avec QR code
+  // ✅ FONCTION CORRIGÉE: Téléchargement de la carte de visite avec QR code
   const downloadBusinessCard = async () => {
     try {
       setLoading(true);
       console.log('📥 Génération de la carte de visite personnalisée avec QR code...');
       
-      // Créer un élément canvas pour dessiner la carte avec le QR code
+      // Créer un canvas pour dessiner la carte
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
@@ -453,15 +347,9 @@ const BusinessCard = ({ userId, user }) => {
       
       // Ajouter le QR code si configuré
       if (cardConfig.showQR && qrValue) {
-        // Créer un élément temporaire pour le QR code
-        const qrContainer = document.createElement('div');
-        document.body.appendChild(qrContainer);
-        
-        // Rendre le QR code dans le conteneur
-        const qrSize = cardConfig.qrSize || 120;
-        
         // Déterminer la position du QR code
         let qrX, qrY;
+        const qrSize = cardConfig.qrSize || 120;
         const margin = 30;
         
         switch (cardConfig.qrPosition) {
@@ -493,43 +381,26 @@ const BusinessCard = ({ userId, user }) => {
         ctx.lineWidth = 2;
         ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
         
-        // Rendre le QR code dans le DOM temporairement
-        qrContainer.innerHTML = '';
-        qrContainer.style.position = 'absolute';
-        qrContainer.style.left = '-9999px';
-        qrContainer.style.top = '-9999px';
-        
-        // Créer le QR code avec react-qr-code
-        const ReactDOM = await import('react-dom/client');
-        const root = ReactDOM.createRoot(qrContainer);
-        root.render(
-          <QRCode 
-            value={qrValue} 
-            size={qrSize}
-            bgColor="white"
-            fgColor="#1f2937"
-          />
-        );
-        
-        // Attendre que le QR code soit rendu
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Convertir le QR code en image
-        const qrSvg = qrContainer.querySelector('svg');
-        const svgData = new XMLSerializer().serializeToString(qrSvg);
-        const qrImage = new Image();
-        
-        await new Promise((resolve, reject) => {
-          qrImage.onload = resolve;
-          qrImage.onerror = reject;
-          qrImage.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+        // Générer le QR code
+        const QRCode = await import('qrcode');
+        const qrDataUrl = await QRCode.default.toDataURL(qrValue, {
+          width: qrSize,
+          margin: 0,
+          color: {
+            dark: '#1f2937',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
         });
         
-        // Dessiner le QR code sur le canvas
-        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        // Charger et dessiner le QR code
+        const qrImage = new Image();
+        await new Promise((resolve) => {
+          qrImage.onload = resolve;
+          qrImage.src = qrDataUrl;
+        });
         
-        // Nettoyer
-        document.body.removeChild(qrContainer);
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
       }
       
       // Convertir le canvas en image et télécharger
@@ -615,6 +486,97 @@ const BusinessCard = ({ userId, user }) => {
     
     const fileName = filePath.split('/').pop();
     return fileName || filePath;
+  };
+
+  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
+  const actionSchemas = {
+    'website-form': {
+      name: 'Site web → Formulaire',
+      description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
+      icon: '🚀📝',
+      sequence: 'Site web (1s) → Formulaire (2s)',
+      category: 'Conversion maximale',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'form-website': {
+      name: '📝 Formulaire puis Site',
+      description: 'Collecte des informations avant de rediriger vers votre site web',
+      icon: '📝🌐',
+      sequence: 'Formulaire (1s) → Site web (2s)',
+      category: 'Engagement progressif',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'website-only': {
+      name: '🌐 Site Web Direct',
+      description: 'Redirection immédiate vers votre site web principal',
+      icon: '🌐',
+      sequence: 'Site web (1s)',
+      category: 'Redirection simple',
+      actions: [
+        { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'contact-download': {
+      name: '📝 Contact → Carte',
+      description: 'Formulaire de contact puis téléchargement de votre carte de visite',
+      icon: '📝📥',
+      sequence: 'Formulaire (1s) → Téléchargement carte (2s)',
+      category: 'Capture de leads',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
+      ]
+    },
+    'site-last-funnel': {
+      name: '🎯 Site en Dernier',
+      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
+      icon: '📝📥🌐',
+      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
+      category: 'Tunnel de conversion',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'funnel-site-last': {
+      name: '🎯 Site en Dernier',
+      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
+      icon: '📝📥🌐',
+      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
+      category: 'Tunnel de conversion',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'contact-only': {
+      name: '📝 Contact Uniquement',
+      description: 'Formulaire de contact professionnel pour capturer les prospects',
+      icon: '📝',
+      sequence: 'Formulaire (1s)',
+      category: 'Capture simple',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true }
+      ]
+    },
+    'card-download': {
+      name: '📥 Carte de Visite',
+      description: 'Téléchargement direct de votre carte de visite personnalisée',
+      icon: '📥',
+      sequence: 'Téléchargement carte (1s)',
+      category: 'Partage direct',
+      actions: [
+        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
+      ]
+    }
   };
 
   return (
@@ -820,7 +782,7 @@ const BusinessCard = ({ userId, user }) => {
                 />
                 
                 {cardConfig.showQR && qrValue && (
-                  <div className={`qr-overlay ${cardConfig.qrPosition}`}>
+                  <div className={`qr-overlay ${cardConfig.qrPosition}`} ref={qrCodeRef}>
                     <QRCode 
                       value={qrValue} 
                       size={cardConfig.qrSize * 0.6}

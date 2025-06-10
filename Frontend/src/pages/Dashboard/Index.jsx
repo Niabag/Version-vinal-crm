@@ -133,6 +133,25 @@ const Dashboard = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
+  // Mettre à jour le compteur de notifications non lues
+  const updateUnreadNotifications = () => {
+    const storedNotifications = localStorage.getItem('notificationsData');
+    if (storedNotifications) {
+      try {
+        const notifications = JSON.parse(storedNotifications);
+        const unreadCount = notifications.filter(n => !n.read).length;
+        setUnreadNotifications(unreadCount);
+      } catch (err) {
+        console.error('Erreur lors du calcul des notifications non lues:', err);
+      }
+    }
+  };
+
+  // Mettre à jour le compteur au chargement
+  useEffect(() => {
+    updateUnreadNotifications();
+  }, []);
+
   // Définition des sections de navigation
   const navSections = [
     {
@@ -375,8 +394,14 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "notifications" && <Notifications />}
+            {activeTab === "notifications" && (
+              <Notifications 
+                onNotificationsUpdate={updateUnreadNotifications}
+              />
+            )}
+            
             {activeTab === "settings" && <Settings />}
+            
             {activeTab === "carte" && (
               <BusinessCard 
                 userId={userId} 
