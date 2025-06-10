@@ -56,7 +56,8 @@ const Notifications = ({ onNotificationsUpdate }) => {
     }, 1000);
 
     // ✅ NOUVEAU: Initialiser la connexion WebSocket
-    initializeSocket();
+    // Nous utilisons une approche différente pour éviter les problèmes d'importation
+    initializeSocketConnection();
 
     // Nettoyage
     return () => {
@@ -69,86 +70,94 @@ const Notifications = ({ onNotificationsUpdate }) => {
   }, [autoRefreshEnabled]);
 
   // ✅ NOUVELLE FONCTION: Initialiser la connexion WebSocket
-  const initializeSocket = () => {
+  const initializeSocketConnection = async () => {
     try {
-      // Importer dynamiquement socket.io-client
-      import('socket.io-client').then(({ io }) => {
-        const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window !== 'undefined') {
+        // Récupérer l'ID utilisateur du token
+        const token = localStorage.getItem('token');
+        if (!token) return;
         
-        // Créer la connexion
-        const socket = io(SOCKET_URL, {
-          withCredentials: true,
-          transports: ['websocket']
-        });
+        const userId = getUserIdFromToken(token);
+        if (!userId) return;
         
-        // Stocker la référence du socket
-        socketRef.current = socket;
+        console.log('🔌 Tentative de connexion au serveur de notifications...');
         
-        // Événements de connexion
-        socket.on('connect', () => {
-          console.log('✅ Connecté au serveur de notifications en temps réel');
+        // Utiliser un import dynamique pour éviter les problèmes de build
+        try {
+          const io = (await import('socket.io-client')).io;
+          const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           
-          // Authentifier l'utilisateur
-          const token = localStorage.getItem('token');
-          if (token) {
-            const userId = getUserIdFromToken(token);
-            if (userId) {
-              socket.emit('authenticate', userId);
-              console.log('🔐 Authentification socket envoyée pour userId:', userId);
-            }
-          }
-        });
-        
-        // Écouter les nouvelles notifications
-        socket.on('notification', (notification) => {
-          console.log('🔔 Nouvelle notification reçue:', notification);
-          
-          // Ajouter la notification à la liste
-          setNotifications(prev => {
-            // Vérifier si la notification existe déjà
-            const exists = prev.some(n => 
-              n.id === notification.id || 
-              (n.type === notification.type && 
-               n.category === notification.category && 
-               n.title === notification.title &&
-               n.date === notification.date)
-            );
-            
-            if (exists) return prev;
-            
-            // Ajouter l'ID unique si manquant
-            const notifWithId = {
-              ...notification,
-              id: notification.id || `${notification.type}_${notification.category}_${Date.now()}`
-            };
-            
-            // Jouer le son de notification
-            try {
-              notificationSound.play();
-            } catch (error) {
-              console.error("Erreur lors de la lecture du son:", error);
-            }
-            
-            // Mettre à jour le compteur
-            if (onNotificationsUpdate) {
-              onNotificationsUpdate();
-            }
-            
-            return [notifWithId, ...prev];
+          // Créer la connexion
+          const socket = io(SOCKET_URL, {
+            withCredentials: true,
+            transports: ['websocket']
           });
-        });
-        
-        // Erreurs de connexion
-        socket.on('connect_error', (error) => {
-          console.error('❌ Erreur de connexion au serveur de notifications:', error);
-        });
-        
-        socket.on('disconnect', () => {
-          console.log('❌ Déconnecté du serveur de notifications');
-        });
-      }).catch(err => {
-        console.error('❌ Erreur lors du chargement de socket.io-client:', err);
-      });
+          
+          // Stocker la référence du socket
+          socketRef.current = socket;
+          
+          // Événements de connexion
+          socket.on('connect', () => {
+            console.log('✅ Connecté au serveur de notifications en temps réel');
+            
+            // Authentifier l'utilisateur
+            socket.emit('authenticate', userId);
+            console.log('🔐 Authentification socket envoyée pour userId:', userId);
+          });
+          
+          // Écouter les nouvelles notifications
+          socket.on('notification', (notification) => {
+            console.log('🔔 Nouvelle notification reçue:', notification);
+            
+            // Ajouter la notification à la liste
+            setNotifications(prev => {
+              // Vérifier si la notification existe déjà
+              const exists = prev.some(n => 
+                n.id === notification.id || 
+                (n.type === notification.type && 
+                 n.category === notification.category && 
+                 n.title === notification.title &&
+                 n.date === notification.date)
+              );
+              
+              if (exists) return prev;
+              
+              // Ajouter l'ID unique si manquant
+              const notifWithId = {
+                ...notification,
+                id: notification.id || `${notification.type}_${notification.category}_${Date.now()}`
+              };
+              
+              // Jouer le son de notification
+              try {
+                notificationSound.play();
+              } catch (error) {
+                console.error("Erreur lors de la lecture du son:", error);
+              }
+              
+              // Mettre à jour le compteur
+              if (onNotificationsUpdate) {
+                onNotificationsUpdate();
+              }
+              
+              return [notifWithId, ...prev];
+            });
+          });
+          
+          // Erreurs de connexion
+          socket.on('connect_error', (error) => {
+            console.error('❌ Erreur de connexion au serveur de notifications:', error);
+          });
+          
+          socket.on('disconnect', () => {
+            console.log('❌ Déconnecté du serveur de notifications');
+          });
+        } catch (err) {
+          console.error('❌ Erreur lors du chargement de socket.io-client:', err);
+          console.log('Continuons sans notifications en temps réel');
+        }
+      }
     } catch (error) {
       console.error('❌ Erreur lors de l\'initialisation du socket:', error);
     }
