@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getSubscriptionStatus, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS } from '../../services/subscription';
+import { useNavigate, Link } from 'react-router-dom';
+import { getSubscriptionStatus, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS, DEFAULT_TRIAL_DAYS } from '../../services/subscription';
+import Navbar from '../../components/Navbar';
 import './SubscriptionRequired.scss';
 
 const SubscriptionRequired = () => {
@@ -32,7 +33,7 @@ const SubscriptionRequired = () => {
     setError('');
     
     try {
-      await startFreeTrial();
+      await startFreeTrial(DEFAULT_TRIAL_DAYS);
       // Refresh status after starting trial
       const status = await getSubscriptionStatus();
       setSubscriptionStatus(status);
@@ -53,8 +54,8 @@ const SubscriptionRequired = () => {
     setError('');
     
     try {
-      // Utiliser l'ID de prix Stripe fourni
-      const priceId = 'price_1RYJam2XreZivhXJaKYutjo3';
+      // Price ID for the monthly subscription plan
+      const priceId = 'price_1OqXYZHGJMCmVBnT8YgYbL3M';
       
       const { url } = await createCheckoutSession(priceId);
       
@@ -92,97 +93,103 @@ const SubscriptionRequired = () => {
 
   if (loading) {
     return (
-      <div className="subscription-required-page">
-        <div className="subscription-container">
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
-            <p>Chargement des informations d'abonnement...</p>
+      <>
+        <Navbar />
+        <div className="subscription-required-page">
+          <div className="subscription-container">
+            <div className="loading-state">
+              <div className="loading-spinner"></div>
+              <p>Chargement des informations d'abonnement...</p>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="subscription-required-page">
-      <div className="subscription-container">
-        <div className="subscription-header">
-          <h1>Abonnement requis</h1>
-          <p>Pour accéder à toutes les fonctionnalités de CRM Pro</p>
-        </div>
-
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
-
-        <div className="status-message">
-          {getStatusMessage()}
-        </div>
-
-        <div className="subscription-options">
-          <div className="subscription-card">
-            <div className="subscription-badge">Offre Unique</div>
-            <h2 className="subscription-title">Abonnement Pro</h2>
-            <div className="subscription-price">
-              <span className="price-amount">13€</span>
-              <span className="price-period">/mois</span>
-            </div>
-            <p className="subscription-description">
-              Accès complet à toutes les fonctionnalités pour développer votre activité
-            </p>
-            <ul className="subscription-features">
-              <li>✅ Nombre illimité de prospects</li>
-              <li>✅ Création illimitée de devis professionnels</li>
-              <li>✅ Génération de factures</li>
-              <li>✅ Carte de visite numérique avec QR code</li>
-              <li>✅ Tableaux de bord et analytics</li>
-              <li>✅ Notifications intelligentes</li>
-              <li>✅ Export PDF et partage</li>
-              <li>✅ Support prioritaire</li>
-              <li>✅ Mises à jour régulières</li>
-            </ul>
-            <button 
-              className="subscription-cta"
-              onClick={handleSubscribe}
-              disabled={processingCheckout}
-            >
-              {processingCheckout ? 'Redirection...' : 'S\'abonner maintenant'}
-            </button>
-            <p className="subscription-guarantee">Satisfait ou remboursé pendant 30 jours</p>
+    <>
+      <Navbar />
+      <div className="subscription-required-page">
+        <div className="subscription-container">
+          <div className="subscription-header">
+            <h1>Abonnement requis</h1>
+            <p>Pour accéder à toutes les fonctionnalités de CRM Pro</p>
           </div>
 
-          {canStartTrial && (
-            <div className="trial-card">
-              <div className="trial-icon">🎁</div>
-              <h2>Essai gratuit de 14 jours</h2>
-              <p>Essayez toutes les fonctionnalités sans engagement</p>
-              <button 
-                className="trial-button"
-                onClick={handleStartTrial}
-                disabled={processingTrial}
-              >
-                {processingTrial ? 'Activation...' : 'Commencer l\'essai gratuit'}
-              </button>
-              <p className="trial-note">Aucune carte bancaire requise</p>
+          {error && (
+            <div className="error-message">
+              {error}
             </div>
           )}
-        </div>
 
-        <div className="subscription-footer">
-          <p>
-            Vous avez des questions ? <a href="/contact">Contactez notre équipe</a>
-          </p>
-          <button 
-            className="back-button"
-            onClick={() => navigate('/')}
-          >
-            Retour à l'accueil
-          </button>
+          <div className="status-message">
+            {getStatusMessage()}
+          </div>
+
+          <div className="subscription-options">
+            <div className="subscription-card">
+              <div className="subscription-badge">Offre Unique</div>
+              <h2 className="subscription-title">Abonnement Pro</h2>
+              <div className="subscription-price">
+                <span className="price-amount">13€</span>
+                <span className="price-period">/mois</span>
+              </div>
+              <p className="subscription-description">
+                Accès complet à toutes les fonctionnalités pour développer votre activité
+              </p>
+              <ul className="subscription-features">
+                <li>✅ Nombre illimité de prospects</li>
+                <li>✅ Création illimitée de devis professionnels</li>
+                <li>✅ Génération de factures</li>
+                <li>✅ Carte de visite numérique avec QR code</li>
+                <li>✅ Tableaux de bord et analytics</li>
+                <li>✅ Notifications intelligentes</li>
+                <li>✅ Export PDF et partage</li>
+                <li>✅ Support prioritaire</li>
+                <li>✅ Mises à jour régulières</li>
+              </ul>
+              <button 
+                className="subscription-cta"
+                onClick={handleSubscribe}
+                disabled={processingCheckout}
+              >
+                {processingCheckout ? 'Redirection...' : 'S\'abonner maintenant'}
+              </button>
+              <p className="subscription-guarantee">Satisfait ou remboursé pendant 30 jours</p>
+            </div>
+
+            {canStartTrial && (
+              <div className="trial-card">
+                <div className="trial-icon">🎁</div>
+                <h2>Essai gratuit de {DEFAULT_TRIAL_DAYS} jours</h2>
+                <p>Essayez toutes les fonctionnalités sans engagement</p>
+                <button 
+                  className="trial-button"
+                  onClick={handleStartTrial}
+                  disabled={processingTrial}
+                >
+                  {processingTrial ? 'Activation...' : 'Commencer l\'essai gratuit'}
+                </button>
+                <p className="trial-note">Aucune carte bancaire requise</p>
+              </div>
+            )}
+          </div>
+
+          <div className="subscription-footer">
+            <p>
+              Vous avez des questions ? <Link to="/contact">Contactez notre équipe</Link>
+            </p>
+            <button 
+              className="back-button"
+              onClick={() => navigate('/')}
+            >
+              Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
