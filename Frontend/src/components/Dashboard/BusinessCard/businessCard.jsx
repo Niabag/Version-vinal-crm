@@ -26,8 +26,34 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies avec noms améliorés
+  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
   const actionSchemas = {
+
+    'website-form': {
+      name: 'Site web → Formulaire',
+      description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
+      icon: '🚀📝',
+      sequence: 'Site web (1s) → Formulaire (2s)',
+      category: 'Conversion maximale',
+
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+
+
+      ]
+    },
+    'form-website': {
+      name: '📝 Formulaire puis Site',
+      description: 'Collecte des informations avant de rediriger vers votre site web',
+      icon: '📝🌐',
+      sequence: 'Formulaire (1s) → Site web (2s)',
+      category: 'Engagement progressif',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
     'website-only': {
       name: '🌐 Site Web Direct',
       description: 'Redirection immédiate vers votre site web principal',
@@ -38,38 +64,7 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    'form-only': {
-      name: '📝 Formulaire Simple',
-      description: 'Formulaire de contact professionnel pour capturer les prospects',
-      icon: '📝',
-      sequence: 'Formulaire (1s)',
-      category: 'Capture de leads',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true }
-      ]
-    },
-    'download-only': {
-      name: '📥 Carte de Visite',
-      description: 'Téléchargement direct de votre carte de visite personnalisée',
-      icon: '📥',
-      sequence: 'Téléchargement carte (1s)',
-      category: 'Partage direct',
-      actions: [
-        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
-      ]
-    },
-    'form-website': {
-      name: '📝 Formulaire puis Site',
-      description: 'Collecte des informations avant de proposer votre site web',
-      icon: '📝🌐',
-      sequence: 'Formulaire (1s) → Site web (2s)',
-      category: 'Engagement progressif',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'website', order: 2, delay: 2000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
-    'form-download': {
+    'contact-download': {
       name: '📝 Contact → Carte',
       description: 'Formulaire de contact puis téléchargement de votre carte de visite',
       icon: '📝📥',
@@ -80,9 +75,10 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' }
       ]
     },
-    'complete-funnel': {
-      name: '🎯 Tunnel Complet',
-      description: 'Formulaire, téléchargement puis site web pour une conversion maximale',
+
+    'site-last-funnel': {
+      name: '🎯 Site en Dernier',
+      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
       icon: '📝📥🌐',
       sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
       category: 'Tunnel de conversion',
@@ -90,6 +86,51 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'form', order: 1, delay: 1000, active: true },
         { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
         { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+
+    'funnel-site-last': {
+      name: '🎯 Site en Dernier',
+      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
+      icon: '📝📥🌐',
+      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
+      category: 'Tunnel de conversion',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'funnel-site-last': {
+      name: '🎯 Site en Dernier',
+      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
+      icon: '📝📥🌐',
+      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
+      category: 'Tunnel de conversion',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true },
+        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
+        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    'contact-only': {
+      name: '📝 Contact Uniquement',
+      description: 'Formulaire de contact professionnel pour capturer les prospects',
+      icon: '📝',
+      sequence: 'Formulaire (1s)',
+      category: 'Capture simple',
+      actions: [
+        { type: 'form', order: 1, delay: 1000, active: true }
+      ]
+    },
+    'card-download': {
+      name: '📥 Carte de Visite',
+      description: 'Téléchargement direct de votre carte de visite personnalisée',
+      icon: '📥',
+      sequence: 'Téléchargement carte (1s)',
+      category: 'Partage direct',
+      actions: [
+        { type: 'download', order: 1, delay: 1000, active: true, file: 'carte-visite' }
       ]
     }
   };
@@ -159,23 +200,12 @@ const BusinessCard = ({ userId, user }) => {
 
   const fetchStats = async () => {
     try {
-      if (!userId) return;
-      
       const data = await apiRequest(
         API_ENDPOINTS.BUSINESS_CARDS.STATS(userId)
       );
-      
-      console.log("📊 Statistiques récupérées:", data);
       setStats(data);
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
-      // Initialiser avec des valeurs par défaut en cas d'erreur
-      setStats({
-        scansToday: 0,
-        scansThisMonth: 0,
-        totalScans: 0,
-        conversions: 0
-      });
     }
   };
 
@@ -293,9 +323,6 @@ const BusinessCard = ({ userId, user }) => {
       }));
       console.log('✅ Carte de visite sauvegardée en BDD');
       
-      // Rafraîchir les statistiques après sauvegarde
-      fetchStats();
-      
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);
       showErrorMessage('❌ Erreur lors de la sauvegarde');
@@ -391,7 +418,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Génération de la vraie carte avec les données utilisateur
+  // ✅ FONCTION CORRIGÉE: Génération de la vraie carte avec les données utilisateur et QR code
   const generateBusinessCardWithQR = async () => {
     return new Promise(async (resolve) => {
       try {
@@ -528,7 +555,7 @@ const BusinessCard = ({ userId, user }) => {
       console.log(`📍 Position QR: ${position} (${qrX}, ${qrY}) taille: ${qrSize}px`);
       
       // Générer le QR code avec la vraie URL
-      const qrUrl = window.location.href;
+      const qrUrl = qrValue; // Utiliser l'URL réelle du QR code
       
       // Utiliser la bibliothèque QRCode
       try {
@@ -858,7 +885,7 @@ const BusinessCard = ({ userId, user }) => {
 
           {/* ✅ SECTION CORRIGÉE: Schémas prédéfinis professionnels */}
           <div className="config-section">
-            <h3>🚀 Stratégies de Conversion</h3>
+            <h3>🚀 Schémas de Conversion</h3>
             <p className="section-description">
               Choisissez une stratégie optimisée pour maximiser vos conversions
             </p>
@@ -891,7 +918,7 @@ const BusinessCard = ({ userId, user }) => {
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.length - 1 && ' →'}
+                        {index < cardConfig.actions.length - 1 && ' → '}
                       </span>
                     ))}
                 </div>

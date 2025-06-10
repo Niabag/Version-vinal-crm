@@ -66,25 +66,20 @@ const RegisterClient = () => {
   const fetchBusinessCard = async () => {
     try {
       setLoading(true);
-      // Utiliser l'API publique pour récupérer la carte
+      // ✅ CORRECTION: Utiliser l'userId directement dans l'URL
       const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
+      setBusinessCard(response.businessCard);
       
-      if (response && response.businessCard) {
-        setBusinessCard(response.businessCard);
-        
-        if (response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
-          await executeActions(response.businessCard.cardConfig.actions);
-        } else {
-          console.log('Aucune action configurée - Affichage du formulaire par défaut');
-          setShowForm(true);
-          setLoading(false);
-        }
+      if (response.businessCard && response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
+        await executeActions(response.businessCard.cardConfig.actions);
       } else {
-        throw new Error('Carte de visite non trouvée');
+        console.log('Aucune action configurée - Affichage du formulaire par défaut');
+        setShowForm(true);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la carte:', error);
-      // En cas d'erreur, afficher le formulaire par défaut
+      // ✅ En cas d'erreur, afficher le formulaire par défaut
       console.log('Erreur chargement carte - Affichage du formulaire par défaut');
       setShowForm(true);
       setLoading(false);
@@ -115,109 +110,303 @@ const RegisterClient = () => {
     const hasWebsite = sortedActions.some(a => a.type === 'website');
     const hasForm = sortedActions.some(a => a.type === 'form');
     const hasDownload = sortedActions.some(a => a.type === 'download');
-    
-    // Identifier le schéma en fonction des actions présentes
+    const websiteIndex = sortedActions.findIndex(a => a.type === 'website');
+    const formIndex = sortedActions.findIndex(a => a.type === 'form');
+    const downloadIndex = sortedActions.findIndex(a => a.type === 'download');
+
     let detectedSchema = '';
-    
-    if (sortedActions.length === 1) {
-      // Schémas à action unique
-      if (hasWebsite && !hasForm && !hasDownload) {
-        detectedSchema = 'website-only';
-      } else if (!hasWebsite && hasForm && !hasDownload) {
-        detectedSchema = 'form-only';
-      } else if (!hasWebsite && !hasForm && hasDownload) {
-        detectedSchema = 'download-only';
-      }
-    } else if (sortedActions.length === 2) {
-      // Schémas à deux actions
-      if (hasForm && hasWebsite) {
-        detectedSchema = 'form-website';
-      } else if (hasForm && hasDownload) {
-        detectedSchema = 'form-download';
-      }
-    } else if (sortedActions.length >= 3) {
-      // Schéma complet
-      if (hasForm && hasDownload && hasWebsite) {
-        detectedSchema = 'complete-funnel';
-      }
-    }
-    
-    // Si aucun schéma n'a été identifié, utiliser un schéma personnalisé
-    if (!detectedSchema) {
+    if (hasWebsite && !hasForm && !hasDownload) {
+      detectedSchema = 'website-only';
+    } else if (hasWebsite && hasForm && !hasDownload) {
+      detectedSchema = websiteIndex > formIndex ? 'form-website' : 'website-form';
+    } else if (!hasWebsite && hasForm && hasDownload) {
+      detectedSchema = 'contact-download';
+    } else if (hasWebsite && hasForm && hasDownload) {
+      detectedSchema = (websiteIndex > formIndex && websiteIndex > downloadIndex) ? 'funnel-site-last' : 'complete-funnel';
+    } else if (!hasWebsite && hasForm && !hasDownload) {
+      detectedSchema = 'contact-only';
+    } else if (!hasWebsite && !hasForm && hasDownload) {
+      detectedSchema = 'card-download';
+    } else {
       detectedSchema = 'custom';
     }
 
     setSchemaType(detectedSchema);
     console.log(`📋 Schéma détecté: ${detectedSchema}`);
 
-    // ✅ AFFICHER LE FORMULAIRE PAR DÉFAUT POUR TOUS LES SCHÉMAS
-    // Sauf pour les schémas website-only et download-only
-    if (detectedSchema === 'website-only') {
-      // Pour website-only, afficher un bouton pour visiter le site
+    // ✅ EXÉCUTION SELON LE SCHÉMA
+    switch (detectedSchema) {
+      case 'website-only':
+        await executeWebsiteOnlySchema(sortedActions);
+        break;
+      
+      case 'website-form':
+        await executeWebsiteFormSchema(sortedActions);
+        break;
+
+      case 'form-website':
+        await executeFormWebsiteSchema(sortedActions);
+        break;
+      
+
+      case 'contact-download':
+        await executeContactDownloadSchema(sortedActions);
+        break;
+
+      case 'site-last-funnel':
+        await executeSiteLastFunnelSchema(sortedActions);
+        break;
+
+      case 'complete-funnel':
+        await executeCompleteFunnelSchema(sortedActions);
+        break;
+
+      case 'funnel-site-last':
+        await executeFunnelSiteLastSchema(sortedActions);
+        break;
+      
+      case 'contact-only':
+        await executeContactOnlySchema(sortedActions);
+        break;
+      
+      case 'card-download':
+        await executeCardDownloadSchema(sortedActions);
+        break;
+      
+      default:
+        await executeCustomSchema(sortedActions);
+        break;
+    }
+
+    setLoading(false);
+  };
+
+  // ✅ SCHÉMA 1: Site Web Direct (website uniquement)
+  const executeWebsiteOnlySchema = async (actions) => {
+    console.log('🌐 Exécution: Site Web Direct');
+    const websiteAction = actions.find(a => a.type === 'website');
+    
+    if (websiteAction && websiteAction.url) {
       setExecutionStatus([{
         action: 'website',
-        status: 'form-shown',
-        message: 'Cliquez sur le bouton pour visiter notre site web'
+        status: 'executing',
+        message: 'Redirection vers le site web en cours...'
       }]);
       
-      // Trouver l'action website
-      const websiteAction = sortedActions.find(a => a.type === 'website');
-      if (websiteAction) {
-        setPendingActions([websiteAction]);
-      }
-    } 
-    else if (detectedSchema === 'download-only') {
-      // Pour download-only, afficher un bouton pour télécharger la carte
-      setExecutionStatus([{
-        action: 'download',
-        status: 'form-shown',
-        message: 'Cliquez sur le bouton pour télécharger notre carte de visite'
-      }]);
-      
-      // Trouver l'action download
-      const downloadAction = sortedActions.find(a => a.type === 'download');
-      if (downloadAction) {
-        setPendingActions([downloadAction]);
-      }
-    }
-    else {
-      // Pour tous les autres schémas, afficher le formulaire
+      setTimeout(() => {
+        console.log('🌐 Redirection vers:', websiteAction.url);
+        window.location.href = websiteAction.url;
+      }, 1500);
+    } else {
+      setError('URL du site web non configurée');
       setShowForm(true);
-      
-      // Stocker les actions non-form pour exécution après soumission
-      const nonFormActions = sortedActions.filter(a => a.type !== 'form');
-      if (nonFormActions.length > 0) {
-        setPendingActions(nonFormActions);
+    }
+  };
+
+  // ✅ SCHÉMA 2: Site web puis Formulaire (website → form)
+  const executeWebsiteFormSchema = async (actions) => {
+    console.log('🚀 Exécution: Site web puis Formulaire');
+    
+    if (!hasRedirectedFromWebsite) {
+      // Première visite: redirection vers le site web
+      const websiteAction = actions.find(a => a.type === 'website');
+      if (websiteAction && websiteAction.url) {
+        setExecutionStatus([{
+          action: 'website',
+          status: 'executing',
+          message: 'Redirection vers le site web...'
+        }]);
+        
+        setTimeout(() => {
+          const redirectUrl = new URL(websiteAction.url);
+          redirectUrl.searchParams.set('from', 'qr');
+          redirectUrl.searchParams.set('return', window.location.href);
+          console.log('🌐 Redirection Lead Gen vers:', redirectUrl.toString());
+          window.location.href = redirectUrl.toString();
+        }, 1500);
+        return;
       }
-      
+    } else {
+      // Retour du site web: afficher le formulaire
+      console.log('📝 Retour du site web - Affichage du formulaire');
+      setShowForm(true);
       setExecutionStatus([{
         action: 'form',
         status: 'form-shown',
         message: 'Formulaire de contact affiché'
       }]);
     }
-    
-    setLoading(false);
   };
 
-  const handleManualWebsiteVisit = () => {
-    const websiteAction = pendingActions.find(action => action.type === 'website');
-    if (websiteAction && websiteAction.url) {
-      window.open(websiteAction.url, '_blank');
+
+  // ✅ SCHÉMA 3: Formulaire puis Site Web (form → website)
+  const executeFormWebsiteSchema = async (actions) => {
+    console.log('📝🌐 Exécution: Formulaire puis Site Web');
+    setShowForm(true);
+
+    const websiteAction = actions.find(a => a.type === 'website');
+    if (websiteAction) {
+      setPendingActions([websiteAction]);
+    }
+
+    setExecutionStatus([{ 
+      action: 'form',
+      status: 'form-shown',
+      message: 'Formulaire affiché - Site web après soumission'
+    }]);
+  };
+
+  // ✅ SCHÉMA 4: Contact → Carte (form → download)
+  const executeContactDownloadSchema = async (actions) => {
+
+    console.log('📝 Exécution: Contact → Carte');
+    setShowForm(true);
+    
+    const downloadAction = actions.find(a => a.type === 'download');
+    if (downloadAction) {
+      setPendingActions([downloadAction]);
+    }
+    
+    setExecutionStatus([{
+      action: 'form',
+      status: 'form-shown',
+      message: 'Formulaire affiché - Téléchargement après soumission'
+    }]);
+  };
+
+
+  // ✅ SCHÉMA 5: Tunnel Complet (website → form → download)
+  const executeCompleteFunnelSchema = async (actions) => {
+    console.log('🎯 Exécution: Tunnel Complet');
+    
+    if (!hasRedirectedFromWebsite) {
+      // Première visite: redirection vers le site web
+      const websiteAction = actions.find(a => a.type === 'website');
+      if (websiteAction && websiteAction.url) {
+        setExecutionStatus([{
+          action: 'website',
+          status: 'executing',
+          message: 'Redirection vers le site web...'
+        }]);
+        
+        setTimeout(() => {
+          const redirectUrl = new URL(websiteAction.url);
+          redirectUrl.searchParams.set('from', 'qr');
+          redirectUrl.searchParams.set('return', window.location.href);
+          console.log('🌐 Redirection Tunnel Complet vers:', redirectUrl.toString());
+          window.location.href = redirectUrl.toString();
+        }, 1500);
+        return;
+      }
+    } else {
+      // Retour du site web: formulaire + téléchargement en attente
+      console.log('📝 Retour du site web - Formulaire + téléchargement en attente');
+      setShowForm(true);
       
-      setExecutionStatus(prev => [...prev, {
-        action: 'website',
-        status: 'completed',
-        message: 'Site web ouvert dans un nouvel onglet'
+      const downloadAction = actions.find(a => a.type === 'download');
+      if (downloadAction) {
+        setPendingActions([downloadAction]);
+      }
+      
+      setExecutionStatus([{
+        action: 'form',
+        status: 'form-shown',
+        message: 'Formulaire affiché - Téléchargement après soumission'
       }]);
     }
   };
 
-  const handleManualDownload = async () => {
-    const downloadAction = pendingActions.find(action => action.type === 'download');
-    if (downloadAction) {
-      await handleDownloadAction(downloadAction);
+  // ✅ SCHÉMA 5bis: Tunnel Complet, site en dernier (form → download → website)
+  const executeFunnelSiteLastSchema = async (actions) => {
+    console.log('🎯🌐 Exécution: Tunnel Complet - Site en dernier');
+    setShowForm(true);
+
+    const downloadAction = actions.find(a => a.type === 'download');
+    const websiteAction = actions.find(a => a.type === 'website');
+    const pending = [];
+    if (downloadAction) pending.push(downloadAction);
+    if (websiteAction) pending.push(websiteAction);
+
+    if (pending.length > 0) {
+      setPendingActions(pending);
     }
+
+    setExecutionStatus([{
+      action: 'form',
+      status: 'form-shown',
+      message: 'Formulaire affiché - Actions après soumission'
+    }]);
+  };
+
+  // ✅ SCHÉMA 6: Contact Uniquement (form seulement)
+  const executeContactOnlySchema = async (actions) => {
+    console.log('📝 Exécution: Contact Uniquement');
+    setShowForm(true);
+    setExecutionStatus([{
+      action: 'form',
+      status: 'form-shown',
+      message: 'Formulaire de contact affiché'
+    }]);
+  };
+
+  // ✅ SCHÉMA 7: Carte de Visite (download seulement)
+  const executeCardDownloadSchema = async (actions) => {
+    console.log('📥 Exécution: Carte de Visite');
+    const downloadAction = actions.find(a => a.type === 'download');
+    
+    if (downloadAction) {
+      setExecutionStatus([{
+        action: 'download',
+        status: 'executing',
+        message: 'Téléchargement de votre carte de visite...'
+      }]);
+      
+      setTimeout(async () => {
+        await handleDownloadAction(downloadAction);
+      }, 1000);
+    }
+  };
+
+  // ✅ SCHÉMA PERSONNALISÉ
+  const executeCustomSchema = async (actions) => {
+    console.log('🔧 Exécution: Schéma Personnalisé');
+    // Pour les schémas personnalisés, on affiche le formulaire par défaut
+    setShowForm(true);
+    
+    // Préparer toutes les actions non-form en attente
+    const nonFormActions = actions.filter(a => a.type !== 'form');
+    if (nonFormActions.length > 0) {
+      setPendingActions(nonFormActions);
+    }
+    
+    setExecutionStatus([{
+      action: 'custom',
+      status: 'form-shown',
+      message: 'Schéma personnalisé - Formulaire affiché'
+    }]);
+  };
+
+  const executeRemainingActions = async () => {
+    if (pendingActions.length === 0) return;
+
+    console.log('🔄 Exécution des actions restantes:', pendingActions);
+
+    for (const action of pendingActions) {
+      await new Promise(resolve => setTimeout(resolve, action.delay || 1000));
+
+      if (action.type === 'download') {
+        await handleDownloadAction(action);
+      } else if (action.type === 'website') {
+        window.open(action.url, '_blank');
+        setExecutionStatus(prev => [...prev, {
+          action: 'website',
+          status: 'completed',
+          message: 'Site web ouvert dans un nouvel onglet'
+        }]);
+      }
+    }
+
+    setPendingActions([]);
   };
 
   const handleDownloadAction = async (action) => {
@@ -251,27 +440,18 @@ const RegisterClient = () => {
     }
   };
 
-  const executeRemainingActions = async () => {
-    if (pendingActions.length === 0) return;
-
-    console.log('🔄 Exécution des actions restantes:', pendingActions);
-
-    for (const action of pendingActions) {
-      await new Promise(resolve => setTimeout(resolve, action.delay || 1000));
-
-      if (action.type === 'download') {
-        await handleDownloadAction(action);
-      } else if (action.type === 'website') {
-        window.open(action.url, '_blank');
-        setExecutionStatus(prev => [...prev, {
-          action: 'website',
-          status: 'completed',
-          message: 'Site web ouvert dans un nouvel onglet'
-        }]);
-      }
+  const handleManualWebsiteVisit = () => {
+    const websiteAction = businessCard?.cardConfig?.actions?.find(action => action.type === 'website');
+    if (websiteAction && websiteAction.url) {
+      window.open(websiteAction.url, '_blank');
     }
+  };
 
-    setPendingActions([]);
+  const handleManualDownload = async () => {
+    const downloadAction = businessCard?.cardConfig?.actions?.find(action => action.type === 'download');
+    if (downloadAction) {
+      await handleDownloadAction(downloadAction);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -367,6 +547,40 @@ const RegisterClient = () => {
           </div>
         )}
 
+        {/* Actions manuelles disponibles (uniquement si pas de formulaire automatique) */}
+        {businessCard?.cardConfig?.actions && !showForm && !submitted && schemaType !== 'website-only' && schemaType !== 'card-download' && (
+          <div className="actions-manual">
+            {businessCard.cardConfig.actions
+              .filter(action => action.active)
+              .sort((a, b) => (a.order || 1) - (b.order || 1))
+              .map((action, index) => (
+                <div key={action.id || index} className="action-manual-item">
+                  {action.type === 'website' && (
+                    <button 
+                      onClick={handleManualWebsiteVisit}
+                      className="action-btn website-btn"
+                    >
+                      <span className="btn-icon">🌐</span>
+                      <span className="btn-text">Visiter notre site web</span>
+                      <span className="btn-order">Action {action.order || index + 1}</span>
+                    </button>
+                  )}
+                  
+                  {action.type === 'download' && (
+                    <button 
+                      onClick={handleManualDownload}
+                      className="action-btn download-btn"
+                    >
+                      <span className="btn-icon">📥</span>
+                      <span className="btn-text">Télécharger notre carte de visite</span>
+                      <span className="btn-order">Action {action.order || index + 1}</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+
         {/* Statut d'exécution */}
         {executionStatus.length > 0 && (
           <div className="execution-status">
@@ -383,43 +597,10 @@ const RegisterClient = () => {
           </div>
         )}
 
-        {/* Actions manuelles disponibles */}
-        {pendingActions.length > 0 && !showForm && !submitted && (
-          <div className="actions-manual">
-            {pendingActions
-              .filter(action => action.type === 'website')
-              .map((action, index) => (
-                <div key={action.id || index} className="action-manual-item">
-                  <button 
-                    onClick={handleManualWebsiteVisit}
-                    className="action-btn website-btn"
-                  >
-                    <span className="btn-icon">🌐</span>
-                    <span className="btn-text">Visiter notre site web</span>
-                  </button>
-                </div>
-              ))}
-            
-            {pendingActions
-              .filter(action => action.type === 'download')
-              .map((action, index) => (
-                <div key={action.id || index} className="action-manual-item">
-                  <button 
-                    onClick={handleManualDownload}
-                    className="action-btn download-btn"
-                  >
-                    <span className="btn-icon">📥</span>
-                    <span className="btn-text">Télécharger notre carte de visite</span>
-                  </button>
-                </div>
-              ))}
-          </div>
-        )}
-
-        {/* Actions en attente après soumission du formulaire */}
+        {/* Actions en attente */}
         {pendingActions.length > 0 && showForm && !submitted && (
           <div className="pending-actions">
-            <h4>🕒 Actions disponibles après soumission :</h4>
+            <h4>🕒 Actions en attente après soumission :</h4>
             <ul>
               {pendingActions.map((action, index) => (
                 <li key={index}>
@@ -438,37 +619,9 @@ const RegisterClient = () => {
             <div className="success-content">
               <h4>Merci pour votre inscription !</h4>
               <p>Nous avons bien reçu vos informations et vous recontacterons très prochainement.</p>
-              
-              {/* Boutons d'actions après soumission */}
               {pendingActions.length > 0 && (
-                <div className="actions-manual">
-                  {pendingActions
-                    .filter(action => action.type === 'website')
-                    .map((action, index) => (
-                      <div key={action.id || index} className="action-manual-item">
-                        <button 
-                          onClick={handleManualWebsiteVisit}
-                          className="action-btn website-btn"
-                        >
-                          <span className="btn-icon">🌐</span>
-                          <span className="btn-text">Visiter notre site web</span>
-                        </button>
-                      </div>
-                    ))}
-                  
-                  {pendingActions
-                    .filter(action => action.type === 'download')
-                    .map((action, index) => (
-                      <div key={action.id || index} className="action-manual-item">
-                        <button 
-                          onClick={handleManualDownload}
-                          className="action-btn download-btn"
-                        >
-                          <span className="btn-icon">📥</span>
-                          <span className="btn-text">Télécharger notre carte de visite</span>
-                        </button>
-                      </div>
-                    ))}
+                <div className="pending-actions-info">
+                  Les actions configurées ont été exécutées automatiquement.
                 </div>
               )}
             </div>
