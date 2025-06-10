@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const userMenuRef = useRef(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
@@ -100,7 +100,29 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchClients();
+    updateUnreadNotificationsCount();
   }, []);
+
+  const updateUnreadNotificationsCount = () => {
+    // Récupérer les notifications du localStorage
+    const stored = localStorage.getItem('notificationsData');
+    if (stored) {
+      try {
+        const notifications = JSON.parse(stored);
+        const unreadCount = notifications.filter(n => !n.read).length;
+        setUnreadNotifications(unreadCount);
+      } catch (err) {
+        console.error('Erreur lors du comptage des notifications non lues:', err);
+        setUnreadNotifications(0);
+      }
+    } else {
+      setUnreadNotifications(0);
+    }
+  };
+
+  const handleNotificationsUpdate = () => {
+    updateUnreadNotificationsCount();
+  };
 
   const handleViewClientDevis = (client) => {
     setSelectedClientForDevis(client);
@@ -226,7 +248,7 @@ const Dashboard = () => {
                 >
                   <span className="nav-icon">
                     {item.icon}
-                    {item.badge && (
+                    {item.badge && item.badge > 0 && (
                       <span className="notifications-badge">{item.badge}</span>
                     )}
                   </span>
@@ -375,8 +397,14 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "notifications" && <Notifications />}
+            {activeTab === "notifications" && (
+              <Notifications 
+                onNotificationsUpdate={handleNotificationsUpdate}
+              />
+            )}
+            
             {activeTab === "settings" && <Settings />}
+            
             {activeTab === "carte" && (
               <BusinessCard 
                 userId={userId} 
@@ -391,5 +419,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-export default Dashboard

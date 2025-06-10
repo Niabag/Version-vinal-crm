@@ -26,7 +26,14 @@ const Analytics = () => {
     // Moyennes
     panierMoyen: 0,
     tauxConversion: 0,
-    tauxReussite: 0
+    tauxReussite: 0,
+    
+    // Carte de visite
+    cardScansTotal: 0,
+    cardScansToday: 0,
+    cardScansThisMonth: 0,
+    cardConversions: 0,
+    cardConversionRate: 0
   });
   
   const [loading, setLoading] = useState(true);
@@ -36,6 +43,7 @@ const Analytics = () => {
   const [refreshInterval, setRefreshInterval] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [error, setError] = useState(null);
+  const [cardStats, setCardStats] = useState(null);
 
   useEffect(() => {
     fetchAnalytics();
@@ -75,9 +83,10 @@ const Analytics = () => {
       setError(null);
       
       // Récupérer les clients et devis
-      const [clients, devis] = await Promise.all([
+      const [clients, devis, cardStatsData] = await Promise.all([
         apiRequest(API_ENDPOINTS.CLIENTS.BASE),
-        apiRequest(API_ENDPOINTS.DEVIS.BASE)
+        apiRequest(API_ENDPOINTS.DEVIS.BASE),
+        fetchCardStats()
       ]);
 
       // ✅ STATISTIQUES PROSPECTS
@@ -110,6 +119,24 @@ const Analytics = () => {
       const tauxConversion = totalClients > 0 ? (totalDevis / totalClients) * 100 : 0;
       const tauxReussite = totalDevis > 0 ? (finiDevis / totalDevis) * 100 : 0;
 
+      // ✅ STATISTIQUES CARTE DE VISITE
+      let cardScansTotal = 0;
+      let cardScansToday = 0;
+      let cardScansThisMonth = 0;
+      let cardConversions = 0;
+      let cardConversionRate = 0;
+      
+      if (cardStatsData) {
+        cardScansTotal = cardStatsData.totalScans || 0;
+        cardScansToday = cardStatsData.scansToday || 0;
+        cardScansThisMonth = cardStatsData.scansThisMonth || 0;
+        cardConversions = cardStatsData.conversions || 0;
+        cardConversionRate = cardScansTotal > 0 ? (cardConversions / cardScansTotal) * 100 : 0;
+        
+        // Stocker les statistiques de carte pour utilisation ultérieure
+        setCardStats(cardStatsData);
+      }
+
       setStats({
         totalClients,
         nouveauClients,
@@ -126,7 +153,12 @@ const Analytics = () => {
         caTotal,
         panierMoyen,
         tauxConversion,
-        tauxReussite
+        tauxReussite,
+        cardScansTotal,
+        cardScansToday,
+        cardScansThisMonth,
+        cardConversions,
+        cardConversionRate
       });
 
       // ✅ ACTIVITÉ RÉCENTE (derniers devis et clients)
@@ -153,7 +185,19 @@ const Analytics = () => {
           company: c.company
         }));
 
-      setRecentActivity([...recentDevis, ...recentClients].sort((a, b) => new Date(b.date) - new Date(a.date)));
+      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE
+      let cardActivity = [];
+      if (cardStatsData && cardStatsData.lastScan) {
+        cardActivity = [{
+          type: 'card',
+          title: 'Scan de QR code',
+          date: cardStatsData.lastScan,
+          status: 'active',
+          details: `Votre carte de visite a été scannée`
+        }];
+      }
+
+      setRecentActivity([...recentDevis, ...recentClients, ...cardActivity].sort((a, b) => new Date(b.date) - new Date(a.date)));
 
       // ✅ TOP CLIENTS (par CA généré)
       const clientsCA = clients.map(client => {
@@ -218,6 +262,39 @@ const Analytics = () => {
     }
   };
 
+  // Récupérer les statistiques de la carte de visite
+  const fetchCardStats = async () => {
+    try {
+      // Récupérer l'ID utilisateur du token
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+      
+      const decodedToken = decodeToken(token);
+      if (!decodedToken || !decodedToken.userId) return null;
+      
+      const userId = decodedToken.userId;
+      
+      // Récupérer les statistiques
+      const stats = await apiRequest(API_ENDPOINTS.BUSINESS_CARDS.STATS(userId));
+      return stats;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques de carte:', error);
+      return null;
+    }
+  };
+
+  // Décoder le token JWT
+  const decodeToken = (token) => {
+    try {
+      const payloadBase64 = token.split(".")[1];
+      const payload = atob(payloadBase64);
+      return JSON.parse(payload);
+    } catch (error) {
+      console.error("Erreur lors du décodage du token:", error);
+      return null;
+    }
+  };
+
   const getStatusIcon = (status, type = 'client') => {
     if (type === 'devis') {
       switch (status) {
@@ -227,6 +304,8 @@ const Analytics = () => {
         case 'inactif': return '🔴';
         default: return '📄';
       }
+    } else if (type === 'card') {
+      return '📱';
     } else {
       switch (status) {
         case 'nouveau': return '🔵';
@@ -247,6 +326,8 @@ const Analytics = () => {
         case 'inactif': return 'Inactif';
         default: return 'Inconnu';
       }
+    } else if (type === 'card') {
+      return 'Scan QR';
     } else {
       switch (status) {
         case 'nouveau': return 'Nouveau';
@@ -345,6 +426,50 @@ const Analytics = () => {
               <h3>{stats.panierMoyen.toLocaleString('fr-FR')} €</h3>
               <p>Panier Moyen</p>
               <span className="kpi-trend">{stats.tauxConversion.toFixed(1)}% conversion</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ✅ NOUVELLE SECTION: STATISTIQUES CARTE DE VISITE */}
+      <div className="kpi-section">
+        <h2>💼 Carte de Visite Numérique</h2>
+        <div className="kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-icon">📱</div>
+            <div className="kpi-content">
+              <h3>{stats.cardScansTotal}</h3>
+              <p>Scans Totaux</p>
+              <span className="kpi-trend positive">+{stats.cardScansToday} aujourd'hui</span>
+            </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">📅</div>
+            <div className="kpi-content">
+              <h3>{stats.cardScansThisMonth}</h3>
+              <p>Scans ce mois</p>
+              <span className="kpi-trend">{(stats.cardScansThisMonth / 30).toFixed(1)} par jour</span>
+            </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">🔄</div>
+            <div className="kpi-content">
+              <h3>{stats.cardConversions}</h3>
+              <p>Conversions</p>
+              <span className="kpi-trend">{stats.cardConversionRate.toFixed(1)}% de taux</span>
+            </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">🔗</div>
+            <div className="kpi-content">
+              <h3>{cardStats?.lastScan ? formatTimeAgo(cardStats.lastScan) : 'Aucun'}</h3>
+              <p>Dernier Scan</p>
+              <span className="kpi-trend">
+                <a href="#carte" style={{color: 'inherit', textDecoration: 'none'}}>Voir les détails →</a>
+              </span>
             </div>
           </div>
         </div>
@@ -509,7 +634,7 @@ const Analytics = () => {
                 {recentActivity.map((activity, index) => (
                   <div key={index} className="activity-item">
                     <div className="activity-icon">
-                      {activity.type === 'devis' ? '📄' : '👤'}
+                      {activity.type === 'devis' ? '📄' : activity.type === 'card' ? '📱' : '👤'}
                     </div>
                     <div className="activity-content">
                       <h4>{activity.title}</h4>
@@ -520,6 +645,13 @@ const Analytics = () => {
                           <span className={`activity-status ${activity.status}`}>
                             {getStatusIcon(activity.status, 'devis')} {getStatusLabel(activity.status, 'devis')}
                           </span>
+                        </p>
+                      ) : activity.type === 'card' ? (
+                        <p>
+                          <span className={`activity-status active`}>
+                            {getStatusIcon(activity.status, 'card')} {getStatusLabel(activity.status, 'card')}
+                          </span>
+                          <span className="activity-details">{activity.details}</span>
                         </p>
                       ) : (
                         <p>

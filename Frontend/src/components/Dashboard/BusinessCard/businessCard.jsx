@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import QRCode from "react-qr-code";
 import { API_ENDPOINTS, FRONTEND_ROUTES, apiRequest } from '../../../config/api';
 import './businessCard.scss';
@@ -23,7 +23,8 @@ const BusinessCard = ({ userId, user }) => {
     scansToday: 0,
     scansThisMonth: 0,
     totalScans: 0,
-    conversions: 0
+    conversions: 0,
+    lastScan: null
   });
 
   // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
@@ -89,18 +90,6 @@ const BusinessCard = ({ userId, user }) => {
       ]
     },
 
-    'funnel-site-last': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
     'funnel-site-last': {
       name: '🎯 Site en Dernier',
       description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
@@ -200,12 +189,16 @@ const BusinessCard = ({ userId, user }) => {
 
   const fetchStats = async () => {
     try {
+      setLoading(true);
       const data = await apiRequest(
         API_ENDPOINTS.BUSINESS_CARDS.STATS(userId)
       );
       setStats(data);
+      setLoading(false);
+      console.log("📊 Statistiques de carte de visite chargées:", data);
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
+      setLoading(false);
     }
   };
 
@@ -322,6 +315,9 @@ const BusinessCard = ({ userId, user }) => {
         cardImage: response.businessCard.cardImage
       }));
       console.log('✅ Carte de visite sauvegardée en BDD');
+      
+      // Rafraîchir les statistiques après la sauvegarde
+      fetchStats();
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);
@@ -554,8 +550,8 @@ const BusinessCard = ({ userId, user }) => {
       
       console.log(`📍 Position QR: ${position} (${qrX}, ${qrY}) taille: ${qrSize}px`);
       
-      // Générer le QR code avec la vraie URL
-      const qrUrl = qrValue; // Utiliser l'URL réelle du QR code
+      // Utiliser la valeur qrValue qui contient l'URL réelle du QR code
+      const qrUrl = qrValue;
       
       // Utiliser la bibliothèque QRCode
       try {
@@ -757,6 +753,26 @@ const BusinessCard = ({ userId, user }) => {
     return fileName || filePath;
   };
 
+  // Formater la date pour l'affichage
+  const formatDate = (dateString) => {
+    if (!dateString) return "Jamais";
+    
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Calculer le taux de conversion
+  const calculateConversionRate = () => {
+    if (!stats.totalScans || stats.totalScans === 0) return 0;
+    return ((stats.conversions / stats.totalScans) * 100).toFixed(1);
+  };
+
   return (
     <div className="business-card-container">
       {/* Statistiques en haut */}
@@ -785,8 +801,45 @@ const BusinessCard = ({ userId, user }) => {
             <div className="stat-content">
               <h3>{stats.conversions}</h3>
               <p>Conversions</p>
-              <span className="stat-trend">Prospects inscrits</span>
+              <span className="stat-trend">{calculateConversionRate()}% de taux</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dernière activité */}
+      <div className="last-activity-section">
+        <div className="last-activity-card">
+          <div className="last-activity-header">
+            <h3>🕒 Dernière activité</h3>
+          </div>
+          <div className="last-activity-content">
+            {stats.lastScan ? (
+              <>
+                <div className="last-scan-info">
+                  <span className="last-scan-icon">👁️</span>
+                  <span className="last-scan-text">Dernière consultation: {formatDate(stats.lastScan)}</span>
+                </div>
+                <div className="conversion-rate">
+                  <span className="rate-label">Taux de conversion:</span>
+                  <span className="rate-value">{calculateConversionRate()}%</span>
+                  <div className="rate-bar">
+                    <div 
+                      className="rate-fill" 
+                      style={{width: `${Math.min(calculateConversionRate(), 100)}%`}}
+                    ></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="no-activity">
+                <span className="no-activity-icon">🔍</span>
+                <span className="no-activity-text">Aucune consultation enregistrée</span>
+              </div>
+            )}
+            <button onClick={fetchStats} className="refresh-stats-btn">
+              {loading ? '⏳ Actualisation...' : '🔄 Actualiser les statistiques'}
+            </button>
           </div>
         </div>
       </div>

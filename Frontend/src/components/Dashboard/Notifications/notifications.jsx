@@ -91,9 +91,10 @@ const Notifications = ({ onNotificationsUpdate }) => {
       setLoading(true);
       
       // Récupérer les données réelles
-      const [clients, devis] = await Promise.all([
+      const [clients, devis, cardStats] = await Promise.all([
         apiRequest(API_ENDPOINTS.CLIENTS.BASE),
-        apiRequest(API_ENDPOINTS.DEVIS.BASE)
+        apiRequest(API_ENDPOINTS.DEVIS.BASE),
+        fetchCardStats()
       ]);
 
       // Si ce n'est pas le premier chargement, conserver les notifications existantes
@@ -103,6 +104,78 @@ const Notifications = ({ onNotificationsUpdate }) => {
       
       const newNotifications = [];
       let notificationId = Date.now();
+
+      // ✅ NOTIFICATIONS BASÉES SUR LES STATISTIQUES DE CARTE DE VISITE
+      if (cardStats) {
+        // Notification pour les scans récents
+        if (cardStats.scansToday > 0) {
+          const notifId = `card_scans_today_${Date.now()}`;
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'system',
+              category: 'card_stats',
+              priority: 'medium',
+              title: 'Activité sur votre carte de visite',
+              message: `${cardStats.scansToday} scan${cardStats.scansToday > 1 ? 's' : ''} de votre QR code aujourd'hui`,
+              details: `Total: ${cardStats.totalScans} scans • ${cardStats.conversions} conversion${cardStats.conversions > 1 ? 's' : ''}`,
+              date: new Date(),
+              read: false,
+              actionUrl: '#carte',
+              actionLabel: 'Voir les statistiques'
+            });
+          }
+        }
+
+        // Notification pour les conversions
+        if (cardStats.conversions > 0) {
+          const notifId = `card_conversions_${Date.now()}`;
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'system',
+              category: 'card_conversions',
+              priority: 'high',
+              title: 'Conversions via votre carte de visite',
+              message: `${cardStats.conversions} prospect${cardStats.conversions > 1 ? 's' : ''} inscrit${cardStats.conversions > 1 ? 's' : ''} via votre QR code`,
+              details: `Taux de conversion: ${((cardStats.conversions / Math.max(cardStats.totalScans, 1)) * 100).toFixed(1)}%`,
+              date: new Date(),
+              read: false,
+              actionUrl: '#clients',
+              actionLabel: 'Voir les prospects'
+            });
+          }
+        }
+
+        // Notification pour le dernier scan
+        if (cardStats.lastScan) {
+          const lastScanDate = new Date(cardStats.lastScan);
+          const now = new Date();
+          const diffHours = Math.floor((now - lastScanDate) / (1000 * 60 * 60));
+          
+          if (diffHours < 24) {
+            const notifId = `card_last_scan_${Date.now()}`;
+            if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
+              newNotifications.push({
+                id: notifId,
+                type: 'system',
+                category: 'card_last_scan',
+                priority: 'low',
+                title: 'Scan récent de votre carte',
+                message: `Quelqu'un a scanné votre QR code il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`,
+                details: `Date: ${lastScanDate.toLocaleDateString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}`,
+                date: new Date(),
+                read: false,
+                actionUrl: '#carte',
+                actionLabel: 'Voir les détails'
+              });
+            }
+          }
+        }
+      }
 
       // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS CLIENTS
       clients.forEach(client => {
@@ -383,6 +456,39 @@ const Notifications = ({ onNotificationsUpdate }) => {
     }
   };
 
+  // Récupérer les statistiques de la carte de visite
+  const fetchCardStats = async () => {
+    try {
+      // Récupérer l'ID utilisateur du token
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+      
+      const decodedToken = decodeToken(token);
+      if (!decodedToken || !decodedToken.userId) return null;
+      
+      const userId = decodedToken.userId;
+      
+      // Récupérer les statistiques
+      const stats = await apiRequest(API_ENDPOINTS.BUSINESS_CARDS.STATS(userId));
+      return stats;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques de carte:', error);
+      return null;
+    }
+  };
+
+  // Décoder le token JWT
+  const decodeToken = (token) => {
+    try {
+      const payloadBase64 = token.split(".")[1];
+      const payload = atob(payloadBase64);
+      return JSON.parse(payload);
+    } catch (error) {
+      console.error("Erreur lors du décodage du token:", error);
+      return null;
+    }
+  };
+
   // Fonction pour calculer le TTC d'un devis
   const calculateTTC = (devis) => {
     if (!devis || !Array.isArray(devis.articles)) return 0;
@@ -529,6 +635,9 @@ const Notifications = ({ onNotificationsUpdate }) => {
         case 'objectif_ca': return '🎯';
         case 'pic_inscriptions': return '📈';
         case 'sauvegarde': return '💾';
+        case 'card_stats': return '📊';
+        case 'card_conversions': return '🔄';
+        case 'card_last_scan': return '👁️';
         default: return 'ℹ️';
       }
     }
