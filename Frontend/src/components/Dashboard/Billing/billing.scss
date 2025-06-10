@@ -374,7 +374,6 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 }
 
 .devis-card-title {
@@ -617,14 +616,6 @@
   overflow-y: auto;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.invoice-template-modal {
-  max-width: 1000px;
-  background: transparent;
-  box-shadow: none;
-  border: none;
-  border-radius: 0;
 }
 
 .invoice-preview-modal {
@@ -1000,6 +991,23 @@
   .modal-body,
   .modal-footer {
     padding: 1.5rem;
+  }
+  
+  .devis-card-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .card-btn {
+    max-width: none;
+    width: 100%;
+  }
+  
+  .devis-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
   
   .modal-footer {

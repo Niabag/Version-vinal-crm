@@ -29,8 +29,6 @@ const Billing = ({ clients = [], onRefresh }) => {
     discount: 0,
     taxRate: 20
   });
-  // État pour activer/désactiver la prévisualisation automatique
-  const [autoPreview, setAutoPreview] = useState(true);
   // Référence pour le conteneur de prévisualisation
   const previewContainerRef = useRef(null);
   // État pour la prévisualisation dynamique
@@ -46,10 +44,15 @@ const Billing = ({ clients = [], onRefresh }) => {
 
   // Effet pour prévisualiser automatiquement quand des devis sont sélectionnés
   useEffect(() => {
-    if (selectedDevis.length > 0 && autoPreview) {
-      handlePreviewInvoice();
+    if (selectedDevis.length > 0 && dynamicPreview) {
+      // Faire défiler jusqu'à la prévisualisation si elle est visible
+      if (previewContainerRef.current) {
+        setTimeout(() => {
+          previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
     }
-  }, [selectedDevis, autoPreview]);
+  }, [selectedDevis, dynamicPreview]);
 
   const fetchDevis = async () => {
     try {
@@ -171,65 +174,6 @@ const Billing = ({ clients = [], onRefresh }) => {
       setSelectedDevis([]);
     } else {
       setSelectedDevis(filteredDevis.map(d => d._id));
-    }
-  };
-
-  const handlePreviewInvoice = async () => {
-    if (selectedDevis.length === 0) {
-      alert('Veuillez sélectionner au moins un devis');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // Déterminer le client principal
-      const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
-      const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
-      const client = clients.find(c => c._id === clientId);
-      
-      // Générer un numéro de facture
-      const invoiceNumber = `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
-      
-      // Date d'échéance par défaut (30 jours)
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
-
-      // Récupérer les détails des devis sélectionnés
-      const selectedDevisDetails = await Promise.all(
-        selectedDevis.map(async (id) => {
-          try {
-            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
-          } catch (err) {
-            console.error('Erreur récupération devis:', err);
-            return null;
-          }
-        })
-      );
-      const validDevis = selectedDevisDetails.filter(Boolean);
-
-      // Créer l'objet facture pour la prévisualisation
-      const invoice = {
-        clientId,
-        devisIds: selectedDevis,
-        invoiceNumber,
-        dueDate: dueDate.toISOString().split('T')[0],
-        notes: 'Merci pour votre confiance.',
-        paymentTerms: '30',
-        discount: 0,
-        taxRate: 20,
-        status: 'draft'
-      };
-
-      setPreviewInvoice(invoice);
-      setPreviewDevis(validDevis);
-      setPreviewClient(client || {});
-      setShowInvoicePreview(true);
-    } catch (error) {
-      console.error('Erreur lors de la prévisualisation:', error);
-      alert('❌ Erreur lors de la prévisualisation de la facture');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -435,7 +379,7 @@ const Billing = ({ clients = [], onRefresh }) => {
   };
 
   const handleDeleteInvoice = (invoiceId) => {
-    if (window.confirm('Supprimer cette facture ?')) {
+    if (window.confirm("Supprimer cette facture ?")) {
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
     }
   };
@@ -522,12 +466,6 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
-  // Calculs pour les statistiques
-  const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0);
-  const pendingRevenue = invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0);
-  const overdueRevenue = invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0);
-  const totalInvoices = invoices.length;
-
   return (
     <div className="billing-container">
       {/* En-tête avec statistiques */}
@@ -538,7 +476,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card revenue">
               <div className="stat-icon">💰</div>
               <div className="stat-content">
-                <h3>{totalRevenue.toLocaleString('fr-FR')} €</h3>
+                <h3>{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
                 <p>Chiffre d'affaires</p>
                 <span className="stat-trend">Factures payées</span>
               </div>
@@ -547,7 +485,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card pending">
               <div className="stat-icon">⏳</div>
               <div className="stat-content">
-                <h3>{pendingRevenue.toLocaleString('fr-FR')} €</h3>
+                <h3>{invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
                 <p>En attente</p>
                 <span className="stat-trend">À encaisser</span>
               </div>
@@ -556,7 +494,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card overdue">
               <div className="stat-icon">⚠️</div>
               <div className="stat-content">
-                <h3>{overdueRevenue.toLocaleString('fr-FR')} €</h3>
+                <h3>{invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} €</h3>
                 <p>En retard</p>
                 <span className="stat-trend">Relances nécessaires</span>
               </div>
@@ -565,7 +503,7 @@ const Billing = ({ clients = [], onRefresh }) => {
             <div className="stat-card total">
               <div className="stat-icon">📊</div>
               <div className="stat-content">
-                <h3>{totalInvoices}</h3>
+                <h3>{invoices.length}</h3>
                 <p>Factures totales</p>
                 <span className="stat-trend">Toutes périodes</span>
               </div>
@@ -610,17 +548,6 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <option value="amount">Montant décroissant</option>
               </select>
             </div>
-
-            <div className="filter-group">
-              <label className="auto-preview-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={autoPreview} 
-                  onChange={() => setAutoPreview(!autoPreview)}
-                />
-                <span className="toggle-label">Prévisualisation automatique</span>
-              </label>
-            </div>
             
             <div className="filter-group">
               <label className="auto-preview-toggle">
@@ -635,13 +562,6 @@ const Billing = ({ clients = [], onRefresh }) => {
 
             {selectedDevis.length > 0 && (
               <div className="bulk-actions">
-                <button 
-                  onClick={handlePreviewInvoice}
-                  className="preview-invoice-btn"
-                  disabled={loading}
-                >
-                  👁️ Prévisualiser ({selectedDevis.length})
-                </button>
                 <button 
                   onClick={handleCreateInvoice}
                   className="create-invoice-btn"
