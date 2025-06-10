@@ -13,8 +13,18 @@ const Notifications = () => {
   useEffect(() => {
     const stored = localStorage.getItem('notificationsData');
     if (stored) {
-      setNotifications(JSON.parse(stored));
-      setLoading(false);
+      try {
+        const parsed = JSON.parse(stored);
+        const withDates = parsed.map((n) => ({
+          ...n,
+          date: n.date ? new Date(n.date) : new Date(),
+        }));
+        setNotifications(withDates);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to parse notifications from localStorage', err);
+        generateNotifications();
+      }
     } else {
       generateNotifications();
     }
