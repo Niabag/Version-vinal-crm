@@ -33,9 +33,24 @@ const Analytics = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [topClients, setTopClients] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
+  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
 
   useEffect(() => {
     fetchAnalytics();
+    
+    // Mettre en place un rafraîchissement automatique toutes les 5 minutes
+    const interval = setInterval(() => {
+      fetchAnalytics();
+    }, 5 * 60 * 1000);
+    
+    setRefreshInterval(interval);
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, []);
 
   const calculateTTC = (devis) => {
@@ -191,6 +206,7 @@ const Analytics = () => {
       }
       
       setMonthlyData(monthlyStats);
+      setLastRefresh(new Date());
 
     } catch (error) {
       console.error('Erreur lors du chargement des analytics:', error);
@@ -239,7 +255,25 @@ const Analytics = () => {
     }
   };
 
-  if (loading) {
+  const formatTimeAgo = (date) => {
+    const now = new Date();
+    const diff = now - new Date(date);
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) {
+      return `il y a ${days} jour${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      return `il y a ${hours} heure${hours > 1 ? 's' : ''}`;
+    } else if (minutes > 0) {
+      return `il y a ${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+      return 'à l\'instant';
+    }
+  };
+
+  if (loading && !stats.totalClients) {
     return (
       <div className="analytics-loading">
         <div className="loading-spinner">⏳</div>
@@ -251,7 +285,15 @@ const Analytics = () => {
   return (
     <div className="analytics-container">
       <div className="dashboard-header">
-        <h1>📊 Tableau de Bord</h1>
+        <div className="header-top">
+          <h1>📊 Tableau de Bord</h1>
+          <div className="refresh-info">
+            <span>Dernière mise à jour: {formatTimeAgo(lastRefresh)}</span>
+            <button onClick={fetchAnalytics} className="refresh-button" disabled={loading}>
+              {loading ? '⏳' : '🔄'} {loading ? 'Actualisation...' : 'Actualiser'}
+            </button>
+          </div>
+        </div>
         <p className="dashboard-subtitle">Vue d'ensemble de votre activité commerciale</p>
       </div>
       
@@ -388,12 +430,12 @@ const Analytics = () => {
                 <div className="bar-container">
                   <div 
                     className="bar clients-bar" 
-                    style={{ height: `${Math.max(5, (month.clients / Math.max(...monthlyData.map(m => m.clients))) * 100)}%` }}
+                    style={{ height: `${Math.max(5, (month.clients / Math.max(...monthlyData.map(m => m.clients || 1))) * 100)}%` }}
                     title={`${month.clients} prospects`}
                   ></div>
                   <div 
                     className="bar devis-bar" 
-                    style={{ height: `${Math.max(5, (month.devis / Math.max(...monthlyData.map(m => m.devis))) * 100)}%` }}
+                    style={{ height: `${Math.max(5, (month.devis / Math.max(...monthlyData.map(m => m.devis || 1))) * 100)}%` }}
                     title={`${month.devis} devis`}
                   ></div>
                 </div>
@@ -477,12 +519,7 @@ const Analytics = () => {
                         </p>
                       )}
                       <span className="activity-date">
-                        {new Date(activity.date).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatTimeAgo(activity.date)}
                       </span>
                     </div>
                   </div>
