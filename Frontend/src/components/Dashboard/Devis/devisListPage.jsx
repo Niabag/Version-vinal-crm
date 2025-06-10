@@ -721,7 +721,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
           <div className="devis-grid">
             {currentDevis.map((devisItem) => {
               const client = clients.find(c => c._id === (typeof devisItem.clientId === "object" ? devisItem.clientId?._id : devisItem.clientId));
-              const ttc = calculateTTC(devisItem).toFixed(2);
+              const ttc = calculateTTC(devisItem);
               
               return (
                 <div 
@@ -730,7 +730,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                   onClick={() => handleCreateInvoice(devisItem)}
                 >
                   {/* Section supérieure */}
-                  <div className="devis-card-top">
+                  <div className="card-top-section">
                     {/* Avatar pour le devis */}
                     <div className="devis-avatar">
                       {devisItem.title ? devisItem.title.charAt(0).toUpperCase() : "D"}
@@ -756,19 +756,17 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                   </div>
 
                   {/* Section contenu principal */}
-                  <div className="devis-card-content">
-                    <div className="devis-card-header">
-                      <h3 className="devis-card-title">{devisItem.title || "Devis sans titre"}</h3>
-                      
-                      <div className="devis-card-meta">
-                        <div className="devis-card-date">
-                          <span>📅</span>
-                          <span>{formatDate(devisItem.dateDevis)}</span>
-                        </div>
-                        <div className="devis-card-amount">
-                          <span>💰</span>
-                          <span>{ttc} € TTC</span>
-                        </div>
+                  <div className="card-content">
+                    <h3 className="devis-card-title">{devisItem.title || "Devis sans titre"}</h3>
+                    
+                    <div className="devis-card-meta">
+                      <div className="devis-card-date">
+                        <span>📅</span>
+                        <span>{formatDate(devisItem.dateDevis)}</span>
+                      </div>
+                      <div className="devis-card-amount">
+                        <span>💰</span>
+                        <span>{ttc.toFixed(2)} € TTC</span>
                       </div>
                     </div>
 

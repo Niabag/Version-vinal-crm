@@ -451,7 +451,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
           </div>
           <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; font-weight: 700; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);">
             <span>Total TTC :</span>
-            <span>600.00 €</span>
+            <span>${totalTTC.toFixed(2)} €</span>
           </div>
         </div>
       </div>
@@ -516,7 +516,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
     setCurrentDevis(updated);
   };
 
-  const totalTTC = 600.00; // Montant fixe à 600.00 €
+  const totalTTC = calculateTTC(currentDevis);
 
   const filteredDevisList = filterClientId 
     ? devisList.filter(devis => {
@@ -583,7 +583,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
                     <div className="devis-card-meta">
                       <span>📅 {formatDate(devis.dateDevis)}</span>
                       <span className="devis-card-amount">
-                        💰 600.00 € TTC
+                        💰 {calculateTTC(devis).toFixed(2)} € TTC
                       </span>
                     </div>
                   </div>
@@ -625,7 +625,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
             }
           </h2>
           <div className="preview-subtitle">
-            Total TTC : <span className="total-amount">600.00 €</span>
+            Total TTC : <span className="total-amount">{totalTTC.toFixed(2)} €</span>
           </div>
         </div>
 
