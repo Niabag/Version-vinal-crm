@@ -26,7 +26,6 @@ const RegisterClient = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [hasRedirectedFromWebsite, setHasRedirectedFromWebsite] = useState(false);
   const [schemaType, setSchemaType] = useState('');
-  const [cardImageWithQR, setCardImageWithQR] = useState(null);
 
   const trackCardView = async () => {
     try {
@@ -69,24 +68,14 @@ const RegisterClient = () => {
       setLoading(true);
       // ✅ CORRECTION: Utiliser l'userId directement dans l'URL
       const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
+      setBusinessCard(response.businessCard);
       
-      if (response && response.businessCard) {
-        setBusinessCard(response.businessCard);
-        
-        // Générer l'image avec QR code immédiatement
-        if (response.businessCard.cardImage) {
-          await generateCardImageWithQR(response.businessCard);
-        }
-        
-        if (response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
-          await executeActions(response.businessCard.cardConfig.actions);
-        } else {
-          console.log('Aucune action configurée - Affichage du formulaire par défaut');
-          setShowForm(true);
-          setLoading(false);
-        }
+      if (response.businessCard && response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
+        await executeActions(response.businessCard.cardConfig.actions);
       } else {
-        throw new Error('Carte de visite non trouvée');
+        console.log('Aucune action configurée - Affichage du formulaire par défaut');
+        setShowForm(true);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la carte:', error);
@@ -94,97 +83,6 @@ const RegisterClient = () => {
       console.log('Erreur chargement carte - Affichage du formulaire par défaut');
       setShowForm(true);
       setLoading(false);
-    }
-  };
-
-  // ✅ NOUVELLE FONCTION: Génération de l'image avec QR code
-  const generateCardImageWithQR = async (card) => {
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Dimensions de carte de visite standard
-      canvas.width = 1012;
-      canvas.height = 638;
-      
-      // Charger l'image de base
-      const cardImage = new Image();
-      cardImage.crossOrigin = "Anonymous";
-      
-      await new Promise((resolve, reject) => {
-        cardImage.onload = resolve;
-        cardImage.onerror = reject;
-        cardImage.src = card.cardImage;
-      });
-      
-      // Dessiner l'image de base
-      ctx.drawImage(cardImage, 0, 0, canvas.width, canvas.height);
-      
-      // Ajouter le QR code si configuré
-      if (card.cardConfig && card.cardConfig.showQR) {
-        const qrSize = card.cardConfig.qrSize || 150;
-        const position = card.cardConfig.qrPosition || 'bottom-right';
-        
-        let qrX, qrY;
-        const margin = 30;
-        
-        switch (position) {
-          case 'bottom-right':
-            qrX = canvas.width - qrSize - margin;
-            qrY = canvas.height - qrSize - margin;
-            break;
-          case 'bottom-left':
-            qrX = margin;
-            qrY = canvas.height - qrSize - margin;
-            break;
-          case 'top-right':
-            qrX = canvas.width - qrSize - margin;
-            qrY = margin;
-            break;
-          case 'top-left':
-            qrX = margin;
-            qrY = margin;
-            break;
-          default:
-            qrX = canvas.width - qrSize - margin;
-            qrY = canvas.height - qrSize - margin;
-        }
-        
-        // Créer un QR code
-        try {
-          const QRCode = await import('qrcode');
-          const qrDataUrl = await QRCode.default.toDataURL(window.location.href, {
-            width: qrSize,
-            margin: 1,
-            color: {
-              dark: '#000000',
-              light: '#ffffff'
-            }
-          });
-          
-          const qrImage = new Image();
-          await new Promise((resolve) => {
-            qrImage.onload = resolve;
-            qrImage.src = qrDataUrl;
-          });
-          
-          // Ajouter un fond blanc pour le QR code
-          ctx.fillStyle = 'white';
-          ctx.fillRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10);
-          
-          // Dessiner le QR code
-          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-        } catch (qrError) {
-          console.error('Erreur génération QR code:', qrError);
-        }
-      }
-      
-      // Convertir le canvas en image
-      const dataUrl = canvas.toDataURL('image/png');
-      setCardImageWithQR(dataUrl);
-      
-    } catch (error) {
-      console.error('Erreur génération image avec QR:', error);
     }
   };
 
@@ -220,7 +118,7 @@ const RegisterClient = () => {
     if (hasWebsite && !hasForm && !hasDownload) {
       detectedSchema = 'website-only';
     } else if (hasWebsite && hasForm && !hasDownload) {
-      detectedSchema = websiteIndex < formIndex ? 'website-form' : 'form-website';
+      detectedSchema = websiteIndex > formIndex ? 'form-website' : 'website-form';
     } else if (!hasWebsite && hasForm && hasDownload) {
       detectedSchema = 'contact-download';
     } else if (hasWebsite && hasForm && hasDownload) {
@@ -250,8 +148,13 @@ const RegisterClient = () => {
         await executeFormWebsiteSchema(sortedActions);
         break;
       
+
       case 'contact-download':
         await executeContactDownloadSchema(sortedActions);
+        break;
+
+      case 'site-last-funnel':
+        await executeSiteLastFunnelSchema(sortedActions);
         break;
 
       case 'complete-funnel':
@@ -278,26 +181,24 @@ const RegisterClient = () => {
     setLoading(false);
   };
 
-  // ✅ SCHÉMA 1: Site Web Direct (website uniquement) - CORRIGÉ: Afficher un bouton au lieu de rediriger
+  // ✅ SCHÉMA 1: Site Web Direct (website uniquement)
   const executeWebsiteOnlySchema = async (actions) => {
     console.log('🌐 Exécution: Site Web Direct');
     const websiteAction = actions.find(a => a.type === 'website');
     
-    if (websiteAction) {
+    if (websiteAction && websiteAction.url) {
       setExecutionStatus([{
         action: 'website',
-        status: 'form-shown',
-        message: 'Bouton de redirection vers le site web affiché'
+        status: 'executing',
+        message: 'Redirection vers le site web en cours...'
       }]);
       
       // Afficher le bouton de redirection au lieu de rediriger automatiquement
+      setShowForm(true);
       setPendingActions([websiteAction]);
-      setShowForm(false);
-      setLoading(false);
     } else {
       setError('URL du site web non configurée');
       setShowForm(true);
-      setLoading(false);
     }
   };
 
@@ -315,13 +216,9 @@ const RegisterClient = () => {
           message: 'Redirection vers le site web...'
         }]);
         
-        setTimeout(() => {
-          const redirectUrl = new URL(websiteAction.url);
-          redirectUrl.searchParams.set('from', 'qr');
-          redirectUrl.searchParams.set('return', window.location.href);
-          console.log('🌐 Redirection Lead Gen vers:', redirectUrl.toString());
-          window.location.href = redirectUrl.toString();
-        }, 1500);
+        // Afficher le bouton de redirection au lieu de rediriger automatiquement
+        setShowForm(true);
+        setPendingActions([websiteAction]);
         return;
       }
     } else {
@@ -335,6 +232,7 @@ const RegisterClient = () => {
       }]);
     }
   };
+
 
   // ✅ SCHÉMA 3: Formulaire puis Site Web (form → website)
   const executeFormWebsiteSchema = async (actions) => {
@@ -355,6 +253,7 @@ const RegisterClient = () => {
 
   // ✅ SCHÉMA 4: Contact → Carte (form → download)
   const executeContactDownloadSchema = async (actions) => {
+
     console.log('📝 Exécution: Contact → Carte');
     setShowForm(true);
     
@@ -370,6 +269,7 @@ const RegisterClient = () => {
     }]);
   };
 
+
   // ✅ SCHÉMA 5: Tunnel Complet (website → form → download)
   const executeCompleteFunnelSchema = async (actions) => {
     console.log('🎯 Exécution: Tunnel Complet');
@@ -384,13 +284,9 @@ const RegisterClient = () => {
           message: 'Redirection vers le site web...'
         }]);
         
-        setTimeout(() => {
-          const redirectUrl = new URL(websiteAction.url);
-          redirectUrl.searchParams.set('from', 'qr');
-          redirectUrl.searchParams.set('return', window.location.href);
-          console.log('🌐 Redirection Tunnel Complet vers:', redirectUrl.toString());
-          window.location.href = redirectUrl.toString();
-        }, 1500);
+        // Afficher le bouton de redirection au lieu de rediriger automatiquement
+        setShowForm(true);
+        setPendingActions([websiteAction]);
         return;
       }
     } else {
@@ -449,17 +345,15 @@ const RegisterClient = () => {
     console.log('📥 Exécution: Carte de Visite');
     const downloadAction = actions.find(a => a.type === 'download');
     
-    if (downloadAction) {
-      setExecutionStatus([{
-        action: 'download',
-        status: 'executing',
-        message: 'Téléchargement de votre carte de visite...'
-      }]);
-      
-      setTimeout(async () => {
-        await handleDownloadAction(downloadAction);
-      }, 1000);
-    }
+    // Afficher le bouton de téléchargement au lieu de télécharger automatiquement
+    setShowForm(true);
+    setPendingActions([downloadAction]);
+    
+    setExecutionStatus([{
+      action: 'download',
+      status: 'ready',
+      message: 'Téléchargement de la carte de visite disponible'
+    }]);
   };
 
   // ✅ SCHÉMA PERSONNALISÉ
@@ -504,7 +398,6 @@ const RegisterClient = () => {
     setPendingActions([]);
   };
 
-  // ✅ FONCTION CORRIGÉE: Téléchargement de la carte avec QR code
   const handleDownloadAction = async (action) => {
     try {
       setExecutionStatus(prev => [...prev, {
@@ -513,31 +406,104 @@ const RegisterClient = () => {
         message: 'Génération de votre carte de visite...'
       }]);
 
-      // Utiliser l'image avec QR code générée précédemment
-      if (cardImageWithQR) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Créer un élément canvas pour générer l'image avec QR code
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Dimensions de carte de visite standard
+      canvas.width = 1012;
+      canvas.height = 638;
+      
+      // Charger l'image de la carte
+      const cardImage = new Image();
+      cardImage.crossOrigin = "Anonymous";
+      
+      cardImage.onload = () => {
+        // Dessiner l'image de fond
+        ctx.drawImage(cardImage, 0, 0, canvas.width, canvas.height);
+        
+        // Si la carte a un QR code configuré, l'ajouter
+        if (businessCard && businessCard.cardConfig && businessCard.cardConfig.showQR) {
+          // Position du QR code selon la configuration
+          const qrSize = businessCard.cardConfig.qrSize || 150;
+          const qrPosition = businessCard.cardConfig.qrPosition || 'bottom-right';
+          
+          let qrX, qrY;
+          const margin = 30;
+          
+          switch (qrPosition) {
+            case 'bottom-right':
+              qrX = canvas.width - qrSize - margin;
+              qrY = canvas.height - qrSize - margin;
+              break;
+            case 'bottom-left':
+              qrX = margin;
+              qrY = canvas.height - qrSize - margin;
+              break;
+            case 'top-right':
+              qrX = canvas.width - qrSize - margin;
+              qrY = margin;
+              break;
+            case 'top-left':
+              qrX = margin;
+              qrY = margin;
+              break;
+            default:
+              qrX = canvas.width - qrSize - margin;
+              qrY = margin;
+          }
+          
+          // Dessiner un fond blanc pour le QR code
+          ctx.fillStyle = 'white';
+          ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+          
+          // Dessiner le QR code (simulé ici avec un carré noir)
+          ctx.fillStyle = 'black';
+          ctx.fillRect(qrX, qrY, qrSize, qrSize);
+          
+          // Ajouter du texte "Scannez-moi"
+          ctx.fillStyle = 'black';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Scannez-moi', qrX + qrSize/2, qrY + qrSize + 25);
+        }
+        
+        // Convertir le canvas en URL de données
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Créer un lien de téléchargement
         const link = document.createElement('a');
         link.download = 'carte-visite-numerique.png';
-        link.href = cardImageWithQR;
+        link.href = dataUrl;
         link.click();
-
+        
         setExecutionStatus(prev => [...prev, {
           action: 'download',
           status: 'completed',
           message: 'Carte de visite téléchargée avec succès !'
         }]);
-      } else {
-        // Fallback si l'image avec QR n'est pas disponible
+      };
+      
+      cardImage.onerror = () => {
+        console.error('Erreur lors du chargement de l\'image de la carte');
+        // Fallback: télécharger l'image brute
         const link = document.createElement('a');
         link.download = 'carte-visite-numerique.png';
-        link.href = businessCard.cardImage;
+        link.href = businessCard?.cardImage || '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
         link.click();
-
+        
         setExecutionStatus(prev => [...prev, {
           action: 'download',
           status: 'completed',
           message: 'Carte de visite téléchargée avec succès !'
         }]);
-      }
+      };
+      
+      // Définir la source de l'image
+      cardImage.src = businessCard?.cardImage || '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
+
     } catch (error) {
       console.error('Erreur téléchargement:', error);
       setExecutionStatus(prev => [...prev, {
@@ -555,7 +521,6 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Téléchargement manuel de la carte avec QR code
   const handleManualDownload = async () => {
     const downloadAction = businessCard?.cardConfig?.actions?.find(action => action.type === 'download');
     if (downloadAction) {
@@ -602,16 +567,36 @@ const RegisterClient = () => {
   const getSchemaName = () => {
     switch (schemaType) {
       case 'website-only': return '🌐 Site Web Direct';
-      case 'website-form': return '🌐→📝 Site web → Formulaire';
+
+      case 'website-form': return 'Site web → Formulaire';
       case 'form-website': return '📝→🌐 Formulaire puis Site';
-      case 'contact-download': return '📝→📥 Contact → Carte';
-      case 'complete-funnel': return '🌐→📝→📥 Tunnel Complet';
-      case 'funnel-site-last': return '📝→📥→🌐 Site en Dernier';
+
+      case 'contact-download': return '📝 Contact → Carte';
+      case 'site-last-funnel': return '🎯 Site en Dernier';
+
+      case 'complete-funnel': return '🎯 Tunnel Complet';
+      case 'funnel-site-last': return '🎯 Site en Dernier';
       case 'contact-only': return '📝 Contact Uniquement';
       case 'card-download': return '📥 Carte de Visite';
       case 'custom': return '🔧 Stratégie Personnalisée';
       default: return 'Configuration par défaut';
     }
+  };
+
+  const getSchemaSequence = () => {
+    if (!businessCard?.cardConfig?.actions) return [];
+    
+    return businessCard.cardConfig.actions
+      .filter(a => a.active)
+      .sort((a, b) => (a.order || 1) - (b.order || 1))
+      .map(action => {
+        switch (action.type) {
+          case 'website': return '🌐 Site web';
+          case 'form': return '📝 Formulaire contact';
+          case 'download': return '📥 Téléchargement carte';
+          default: return '❓ Action inconnue';
+        }
+      });
   };
 
   if (loading && !showForm) {
@@ -650,6 +635,36 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
+        {/* Affichage du schéma actif */}
+        {businessCard?.cardConfig?.actions && (
+          <div className="schema-display">
+            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
+            <div className="schema-sequence">
+              {getSchemaSequence().map((step, index) => (
+                <span key={index} className="schema-step">
+                  {step}
+                  {index < getSchemaSequence().length - 1 && ' →'}
+                </span>
+              ))}
+            </div>
+            
+            {/* Affichage de l'URL du site web si configurée */}
+            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
+              <div className="website-info">
+                <div className="website-label">🌐 URL du site web :</div>
+                <a 
+                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="website-link"
+                >
+                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Message de redirection depuis le site web */}
         {hasRedirectedFromWebsite && showForm && (
           <div className="redirection-info">
@@ -671,8 +686,8 @@ const RegisterClient = () => {
           </div>
         )}
 
-        {/* Actions manuelles disponibles (uniquement si pas de formulaire automatique) */}
-        {businessCard?.cardConfig?.actions && !showForm && !submitted && (
+        {/* Actions manuelles disponibles */}
+        {businessCard?.cardConfig?.actions && showForm && !submitted && (
           <div className="actions-manual">
             {businessCard.cardConfig.actions
               .filter(action => action.active)
@@ -686,6 +701,7 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">🌐</span>
                       <span className="btn-text">Visiter notre site web</span>
+                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                   
@@ -696,6 +712,7 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">📥</span>
                       <span className="btn-text">Télécharger notre carte de visite</span>
+                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                 </div>
@@ -711,7 +728,8 @@ const RegisterClient = () => {
                 <span className="status-icon">
                   {status.status === 'completed' ? '✅' : 
                    status.status === 'executing' ? '⏳' : 
-                   status.status === 'form-shown' ? '📝' : '❓'}
+                   status.status === 'form-shown' ? '📝' : 
+                   status.status === 'ready' ? '🔄' : '❓'}
                 </span>
                 <span>{status.message}</span>
               </div>
