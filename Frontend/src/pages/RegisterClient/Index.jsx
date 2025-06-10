@@ -220,7 +220,7 @@ const RegisterClient = () => {
     if (hasWebsite && !hasForm && !hasDownload) {
       detectedSchema = 'website-only';
     } else if (hasWebsite && hasForm && !hasDownload) {
-      detectedSchema = websiteIndex > formIndex ? 'form-website' : 'website-form';
+      detectedSchema = websiteIndex < formIndex ? 'website-form' : 'form-website';
     } else if (!hasWebsite && hasForm && hasDownload) {
       detectedSchema = 'contact-download';
     } else if (hasWebsite && hasForm && hasDownload) {
@@ -250,13 +250,8 @@ const RegisterClient = () => {
         await executeFormWebsiteSchema(sortedActions);
         break;
       
-
       case 'contact-download':
         await executeContactDownloadSchema(sortedActions);
-        break;
-
-      case 'site-last-funnel':
-        await executeSiteLastFunnelSchema(sortedActions);
         break;
 
       case 'complete-funnel':
@@ -283,25 +278,26 @@ const RegisterClient = () => {
     setLoading(false);
   };
 
-  // ✅ SCHÉMA 1: Site Web Direct (website uniquement)
+  // ✅ SCHÉMA 1: Site Web Direct (website uniquement) - CORRIGÉ: Afficher un bouton au lieu de rediriger
   const executeWebsiteOnlySchema = async (actions) => {
     console.log('🌐 Exécution: Site Web Direct');
     const websiteAction = actions.find(a => a.type === 'website');
     
-    if (websiteAction && websiteAction.url) {
+    if (websiteAction) {
       setExecutionStatus([{
         action: 'website',
-        status: 'executing',
-        message: 'Redirection vers le site web en cours...'
+        status: 'form-shown',
+        message: 'Bouton de redirection vers le site web affiché'
       }]);
       
-      setTimeout(() => {
-        console.log('🌐 Redirection vers:', websiteAction.url);
-        window.location.href = websiteAction.url;
-      }, 1500);
+      // Afficher le bouton de redirection au lieu de rediriger automatiquement
+      setPendingActions([websiteAction]);
+      setShowForm(false);
+      setLoading(false);
     } else {
       setError('URL du site web non configurée');
       setShowForm(true);
+      setLoading(false);
     }
   };
 
@@ -340,7 +336,6 @@ const RegisterClient = () => {
     }
   };
 
-
   // ✅ SCHÉMA 3: Formulaire puis Site Web (form → website)
   const executeFormWebsiteSchema = async (actions) => {
     console.log('📝🌐 Exécution: Formulaire puis Site Web');
@@ -360,7 +355,6 @@ const RegisterClient = () => {
 
   // ✅ SCHÉMA 4: Contact → Carte (form → download)
   const executeContactDownloadSchema = async (actions) => {
-
     console.log('📝 Exécution: Contact → Carte');
     setShowForm(true);
     
@@ -375,7 +369,6 @@ const RegisterClient = () => {
       message: 'Formulaire affiché - Téléchargement après soumission'
     }]);
   };
-
 
   // ✅ SCHÉMA 5: Tunnel Complet (website → form → download)
   const executeCompleteFunnelSchema = async (actions) => {
@@ -609,36 +602,16 @@ const RegisterClient = () => {
   const getSchemaName = () => {
     switch (schemaType) {
       case 'website-only': return '🌐 Site Web Direct';
-
-      case 'website-form': return 'Site web → Formulaire';
+      case 'website-form': return '🌐→📝 Site web → Formulaire';
       case 'form-website': return '📝→🌐 Formulaire puis Site';
-
-      case 'contact-download': return '📝 Contact → Carte';
-      case 'site-last-funnel': return '🎯 Site en Dernier';
-
-      case 'complete-funnel': return '🎯 Tunnel Complet';
-      case 'funnel-site-last': return '🎯 Site en Dernier';
+      case 'contact-download': return '📝→📥 Contact → Carte';
+      case 'complete-funnel': return '🌐→📝→📥 Tunnel Complet';
+      case 'funnel-site-last': return '📝→📥→🌐 Site en Dernier';
       case 'contact-only': return '📝 Contact Uniquement';
       case 'card-download': return '📥 Carte de Visite';
       case 'custom': return '🔧 Stratégie Personnalisée';
       default: return 'Configuration par défaut';
     }
-  };
-
-  const getSchemaSequence = () => {
-    if (!businessCard?.cardConfig?.actions) return [];
-    
-    return businessCard.cardConfig.actions
-      .filter(a => a.active)
-      .sort((a, b) => (a.order || 1) - (b.order || 1))
-      .map(action => {
-        switch (action.type) {
-          case 'website': return '🌐 Site web';
-          case 'form': return '📝 Formulaire contact';
-          case 'download': return '📥 Téléchargement carte';
-          default: return '❓ Action inconnue';
-        }
-      });
   };
 
   if (loading && !showForm) {
@@ -677,36 +650,6 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
-        {/* Affichage du schéma actif */}
-        {businessCard?.cardConfig?.actions && (
-          <div className="schema-display">
-            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
-            <div className="schema-sequence">
-              {getSchemaSequence().map((step, index) => (
-                <span key={index} className="schema-step">
-                  {step}
-                  {index < getSchemaSequence().length - 1 && ' →'}
-                </span>
-              ))}
-            </div>
-            
-            {/* Affichage de l'URL du site web si configurée */}
-            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
-              <div className="website-info">
-                <div className="website-label">🌐 URL du site web :</div>
-                <a 
-                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="website-link"
-                >
-                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Message de redirection depuis le site web */}
         {hasRedirectedFromWebsite && showForm && (
           <div className="redirection-info">
@@ -729,7 +672,7 @@ const RegisterClient = () => {
         )}
 
         {/* Actions manuelles disponibles (uniquement si pas de formulaire automatique) */}
-        {businessCard?.cardConfig?.actions && !showForm && !submitted && schemaType !== 'website-only' && schemaType !== 'card-download' && (
+        {businessCard?.cardConfig?.actions && !showForm && !submitted && (
           <div className="actions-manual">
             {businessCard.cardConfig.actions
               .filter(action => action.active)
@@ -743,7 +686,6 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">🌐</span>
                       <span className="btn-text">Visiter notre site web</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                   
@@ -754,7 +696,6 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">📥</span>
                       <span className="btn-text">Télécharger notre carte de visite</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                 </div>
