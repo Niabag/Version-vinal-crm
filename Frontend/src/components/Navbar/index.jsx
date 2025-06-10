@@ -41,7 +41,8 @@ const Navbar = () => {
     setIsMenuOpen(false);
   };
 
-  // Masquer la navbar sur la page dashboard (elle a sa propre navigation)
+  // Masquer la navbar uniquement sur la page dashboard (elle a sa propre navigation)
+  // Ne plus masquer sur la page SubscriptionRequired
   if (location.pathname === "/dashboard") {
     return null;
   }
