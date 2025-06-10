@@ -8,6 +8,15 @@
   border: 1px solid #f1f5f9;
 }
 
+.invoice-preview.pdf-mode .preview-toolbar {
+  display: none;
+}
+
+.preview-content.pdf-mode {
+  margin: 0;
+  border: none;
+}
+
 .preview-toolbar {
   display: flex;
   justify-content: center;
