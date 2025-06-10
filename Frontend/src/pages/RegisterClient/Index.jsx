@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
+import QRCode from 'react-qr-code';
 import './registerClient.scss';
 
 const RegisterClient = () => {
@@ -26,6 +27,7 @@ const RegisterClient = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [hasRedirectedFromWebsite, setHasRedirectedFromWebsite] = useState(false);
   const [schemaType, setSchemaType] = useState('');
+  const [qrValue, setQrValue] = useState('');
 
   const trackCardView = async () => {
     try {
@@ -43,6 +45,8 @@ const RegisterClient = () => {
       trackCardView();
       fetchBusinessCard();
       checkRedirectionSource();
+      // Générer le QR code basé sur l'URL actuelle
+      setQrValue(`${window.location.origin}/register-client/${userId}`);
     } else {
       setError('ID utilisateur manquant');
       setLoading(false);
@@ -548,36 +552,6 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
-        {/* Affichage du schéma actif */}
-        {businessCard?.cardConfig?.actions && (
-          <div className="schema-display">
-            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
-            <div className="schema-sequence">
-              {getSchemaSequence().map((step, index) => (
-                <span key={index} className="schema-step">
-                  {step}
-                  {index < getSchemaSequence().length - 1 && ' →'}
-                </span>
-              ))}
-            </div>
-            
-            {/* Affichage de l'URL du site web si configurée */}
-            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
-              <div className="website-info">
-                <div className="website-label">🌐 URL du site web :</div>
-                <a 
-                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="website-link"
-                >
-                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Message de redirection depuis le site web */}
         {hasRedirectedFromWebsite && showForm && (
           <div className="redirection-info">
@@ -614,7 +588,6 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">🌐</span>
                       <span className="btn-text">Visiter notre site web</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                   
@@ -625,7 +598,6 @@ const RegisterClient = () => {
                     >
                       <span className="btn-icon">📥</span>
                       <span className="btn-text">Télécharger notre carte de visite</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
                     </button>
                   )}
                 </div>
@@ -803,6 +775,29 @@ const RegisterClient = () => {
                 </span>
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Affichage du QR code */}
+        {!showForm && !submitted && schemaType === 'card-download' && (
+          <div className="qr-code-display">
+            <div className="qr-code-container">
+              <div className="qr-code-wrapper">
+                {qrValue && (
+                  <QRCode 
+                    value={qrValue}
+                    size={200}
+                    bgColor="#FFFFFF"
+                    fgColor="#1f2937"
+                    level="M"
+                  />
+                )}
+              </div>
+              <div className="qr-code-info">
+                <h3>Scannez ce QR code pour me contacter</h3>
+                <p>Ou téléchargez ma carte de visite numérique</p>
+              </div>
+            </div>
           </div>
         )}
 
