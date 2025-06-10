@@ -16,8 +16,7 @@ const RegisterClient = () => {
     address: '',
     postalCode: '',
     city: '',
-    subject: 'Demande de contact',
-    message: ''
+    notes: ''
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -804,7 +803,7 @@ const RegisterClient = () => {
       case 'website-only': return '🌐 Site Web Direct';
       case 'website-form': return 'Site web → Formulaire';
       case 'form-website': return '📝→🌐 Formulaire puis Site';
-      case 'contact-download': return '📝 Contact → Carte';
+      case 'contact-download': return '📝→📥 Contact puis Carte';
       case 'complete-funnel': return '🎯 Tunnel Complet';
       case 'funnel-site-last': return '🎯 Site en Dernier';
       case 'contact-only': return '📝 Contact Uniquement';
@@ -1045,106 +1044,145 @@ const RegisterClient = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="contact-form">
-              <div className="form-row">
+              {/* Informations de base */}
+              <div className="form-section">
+                <h3>👤 Informations Personnelles</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">👤</span>
+                      Nom complet *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="Votre nom et prénom"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">📧</span>
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="votre@email.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">📞</span>
+                      Téléphone *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="06 12 34 56 78"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">🏢</span>
+                      Entreprise
+                    </label>
+                    <input
+                      type="text"
+                      name="company"
+                      value={formData.company}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="Nom de votre entreprise (optionnel)"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Adresse */}
+              <div className="form-section">
+                <h3>📍 Adresse</h3>
                 <div className="form-group">
                   <label className="form-label">
-                    <span className="label-icon">👤</span>
-                    Nom complet *
+                    <span className="label-icon">🏠</span>
+                    Adresse
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="address"
+                    value={formData.address}
                     onChange={handleInputChange}
                     className="form-input"
-                    placeholder="Votre nom et prénom"
-                    required
+                    placeholder="Rue, numéro, bâtiment..."
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">
-                    <span className="label-icon">📧</span>
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    placeholder="votre@email.com"
-                    required
-                  />
-                </div>
-              </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">📮</span>
+                      Code postal
+                    </label>
+                    <input
+                      type="text"
+                      name="postalCode"
+                      value={formData.postalCode}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="75000"
+                    />
+                  </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">
-                    <span className="label-icon">📞</span>
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    placeholder="06 12 34 56 78"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <span className="label-icon">🏢</span>
-                    Entreprise
-                  </label>
-                  <input
-                    type="text"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    placeholder="Nom de votre entreprise"
-                  />
+                  <div className="form-group">
+                    <label className="form-label">
+                      <span className="label-icon">🏙️</span>
+                      Ville
+                    </label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      placeholder="Paris"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  <span className="label-icon">📋</span>
-                  Sujet
-                </label>
-                <select
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  className="form-select"
-                >
-                  <option value="Demande de contact">Demande de contact</option>
-                  <option value="Demande de devis">Demande de devis</option>
-                  <option value="Information produit">Information produit</option>
-                  <option value="Support technique">Support technique</option>
-                  <option value="Partenariat">Partenariat</option>
-                  <option value="Autre">Autre</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <span className="label-icon">💬</span>
-                  Message *
-                </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleInputChange}
-                  className="form-textarea"
-                  placeholder="Décrivez votre demande ou votre projet..."
-                  required
-                  rows={4}
-                />
+              {/* Notes */}
+              <div className="form-section">
+                <h3>📝 Notes</h3>
+                <div className="form-group">
+                  <label className="form-label">
+                    <span className="label-icon">💬</span>
+                    Message ou commentaires
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    className="form-textarea"
+                    placeholder="Décrivez votre demande ou votre projet..."
+                    rows={4}
+                  />
+                </div>
               </div>
 
               <button 
@@ -1154,7 +1192,7 @@ const RegisterClient = () => {
               >
                 <span className="btn-icon">📤</span>
                 <span className="btn-text">
-                  {loading ? 'Envoi en cours...' : 'Envoyer le message'}
+                  {loading ? 'Envoi en cours...' : 'Envoyer ma demande'}
                 </span>
               </button>
             </form>
