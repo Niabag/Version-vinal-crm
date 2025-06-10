@@ -351,6 +351,12 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const handleDeleteInvoice = (invoiceId) => {
+    if (window.confirm('Supprimer cette facture ?')) {
+      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid': return '#10b981';
@@ -682,6 +688,13 @@ const Billing = ({ clients = [], onRefresh }) => {
                   </button>
                   <button className="action-btn send-btn" title="Envoyer par email">
                     📧
+                  </button>
+                  <button
+                    onClick={() => handleDeleteInvoice(invoice.id)}
+                    className="action-btn delete-btn"
+                    title="Supprimer la facture"
+                  >
+                    🗑️
                   </button>
                 </div>
               </div>
