@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './prospectEdit.scss';
 
-const ProspectEditPage = () => {
-  const { id } = useParams();
+const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
   const navigate = useNavigate();
   const [prospect, setProspect] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -123,7 +122,18 @@ const ProspectEditPage = () => {
       });
 
       alert("✅ Prospect modifié avec succès");
-      navigate(-1); // Retour à la page précédente
+      
+      // Rafraîchir la liste des clients si nécessaire
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Retour à la page précédente
+      if (inDashboard && onBack) {
+        onBack();
+      } else {
+        navigate(-1); // Retour à la page précédente
+      }
     } catch (err) {
       console.error("Erreur modification prospect:", err);
       alert(`❌ Erreur lors de la modification: ${err.message}`);
@@ -147,7 +157,18 @@ const ProspectEditPage = () => {
       });
 
       alert("✅ Prospect supprimé avec succès");
-      navigate(-1); // Retour à la page précédente
+      
+      // Rafraîchir la liste des clients si nécessaire
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Retour à la page précédente
+      if (inDashboard && onBack) {
+        onBack();
+      } else {
+        navigate(-1); // Retour à la page précédente
+      }
     } catch (err) {
       console.error("Erreur suppression prospect:", err);
       alert(`❌ Échec suppression: ${err.message}`);
@@ -207,11 +228,11 @@ const ProspectEditPage = () => {
 
   if (error) {
     return (
-      <div className="prospect-edit-page">
+      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
         <div className="error-container">
           <h2>❌ Erreur</h2>
           <p>{error}</p>
-          <button onClick={() => navigate(-1)} className="btn-back">
+          <button onClick={onBack || (() => navigate(-1))} className="btn-back">
             ← Retour
           </button>
         </div>
@@ -221,7 +242,7 @@ const ProspectEditPage = () => {
 
   if (loading && !prospect) {
     return (
-      <div className="prospect-edit-page">
+      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
         <div className="loading-container">
           <div className="loading-spinner">⏳</div>
           <p>Chargement du prospect...</p>
@@ -232,11 +253,11 @@ const ProspectEditPage = () => {
 
   if (!prospect) {
     return (
-      <div className="prospect-edit-page">
+      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
         <div className="error-container">
           <h2>❌ Prospect introuvable</h2>
           <p>Le prospect demandé n'existe pas ou a été supprimé.</p>
-          <button onClick={() => navigate(-1)} className="btn-back">
+          <button onClick={onBack || (() => navigate(-1))} className="btn-back">
             ← Retour
           </button>
         </div>
@@ -245,11 +266,11 @@ const ProspectEditPage = () => {
   }
 
   return (
-    <div className="prospect-edit-page">
+    <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
       <div className="edit-container">
         {/* En-tête avec avatar et statut */}
         <div className="edit-header">
-          <button onClick={() => navigate(-1)} className="btn-back">
+          <button onClick={onBack || (() => navigate(-1))} className="btn-back">
             ← Retour
           </button>
           
@@ -445,7 +466,7 @@ const ProspectEditPage = () => {
           <div className="form-actions">
             <button 
               type="button" 
-              onClick={() => navigate(-1)}
+              onClick={onBack || (() => navigate(-1))}
               className="btn-cancel"
             >
               Annuler

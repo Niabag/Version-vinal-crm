@@ -7,7 +7,6 @@ import Login from "./pages/Login/Index";
 import RegisterUser from "./pages/RegisterUser/Index";
 import RegisterClient from "./pages/RegisterClient/Index";
 import Dashboard from "./pages/Dashboard/Index";
-import ProspectEditPage from "./components/Dashboard/Prospects/prospectEditPage";
 import Terms from "./pages/Terms/Terms";
 import Privacy from "./pages/Privacy/Privacy";
 import Error from "./pages/Error/Index";
@@ -51,16 +50,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               element={
                 <ProtectedRoute>
                   <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Route de modification des prospects */}
-            <Route
-              path="/prospect/edit/:id"
-              element={
-                <ProtectedRoute>
-                  <ProspectEditPage />
                 </ProtectedRoute>
               }
             />

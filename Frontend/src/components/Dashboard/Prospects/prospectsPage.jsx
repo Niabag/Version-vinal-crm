@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './prospects.scss';
 
-const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis }) => {
-  const navigate = useNavigate();
+const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProspect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -137,7 +135,9 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis }) => {
   };
 
   const handleEditProspect = (prospect) => {
-    navigate(`/prospect/edit/${prospect._id}`);
+    if (onEditProspect) {
+      onEditProspect(prospect._id);
+    }
   };
 
   const handleSelectProspect = (clientId) => {

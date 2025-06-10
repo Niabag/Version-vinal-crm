@@ -8,6 +8,15 @@
   min-height: 100vh;
 }
 
+/* Version intégrée dans le dashboard */
+.prospect-edit-page.in-dashboard {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  min-height: auto;
+}
+
 .edit-container {
   background: white;
   border-radius: 20px;

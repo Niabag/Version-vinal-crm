@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Devis from "../../components/Dashboard/Devis/devisPage";
 import DevisListPage from "../../components/Dashboard/Devis/devisListPage";
 import ProspectsPage from "../../components/Dashboard/Prospects/prospectsPage";
+import ProspectEditPage from "../../components/Dashboard/Prospects/prospectEditPage";
 import Analytics from "../../components/Dashboard/Analytics/analytics";
 import Settings from "../../components/Dashboard/Settings/settings";
 import Notifications from "../../components/Dashboard/Notifications/notifications";
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(3);
   const userMenuRef = useRef(null);
+  const [selectedProspectId, setSelectedProspectId] = useState(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -72,6 +74,14 @@ const Dashboard = () => {
     const hash = location.hash.replace('#', '');
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
+    }
+
+    // Vérifier si l'URL contient un paramètre prospect-id
+    const urlParams = new URLSearchParams(location.search);
+    const prospectId = urlParams.get('prospect-id');
+    if (prospectId) {
+      setSelectedProspectId(prospectId);
+      setActiveTab("prospect-edit");
     }
   }, [location]);
 
@@ -152,6 +162,22 @@ const Dashboard = () => {
     updateUnreadNotifications();
   }, []);
 
+  // Fonction pour éditer un prospect
+  const handleEditProspect = (prospectId) => {
+    setSelectedProspectId(prospectId);
+    setActiveTab("prospect-edit");
+    // Mettre à jour l'URL pour refléter l'état
+    navigate(`/dashboard?prospect-id=${prospectId}`);
+  };
+
+  // Fonction pour revenir à la liste des prospects
+  const handleBackToProspects = () => {
+    setSelectedProspectId(null);
+    setActiveTab("clients");
+    // Nettoyer l'URL
+    navigate("/dashboard#clients");
+  };
+
   // Définition des sections de navigation
   const navSections = [
     {
@@ -184,6 +210,7 @@ const Dashboard = () => {
       case "clients": return "Mes Prospects";
       case "devis": return "Mes Devis";
       case "devis-creation": return "Création de Devis";
+      case "prospect-edit": return "Modification du Prospect";
       case "billing": return "Facturation";
       case "notifications": return "Notifications";
       case "carte": return "Carte de Visite";
@@ -198,6 +225,7 @@ const Dashboard = () => {
       case "clients": return "👥";
       case "devis": return "📄";
       case "devis-creation": return "📝";
+      case "prospect-edit": return "✏️";
       case "billing": return "💰";
       case "notifications": return "🔔";
       case "carte": return "💼";
@@ -228,7 +256,8 @@ const Dashboard = () => {
                   key={item.id}
                   className={`nav-item ${
                     activeTab === item.id || 
-                    (activeTab === "devis-creation" && item.id === "devis") 
+                    (activeTab === "devis-creation" && item.id === "devis") ||
+                    (activeTab === "prospect-edit" && item.id === "clients")
                       ? "active" 
                       : ""
                   }`}
@@ -239,6 +268,9 @@ const Dashboard = () => {
                     if (item.id !== "devis" && item.id !== "devis-creation") {
                       setSelectedClientForDevis(null);
                       setEditingDevis(null);
+                    }
+                    if (item.id !== "clients" && item.id !== "prospect-edit") {
+                      setSelectedProspectId(null);
                     }
                   }}
                   title={item.label}
@@ -360,6 +392,16 @@ const Dashboard = () => {
                 clients={clients}
                 onRefresh={fetchClients}
                 onViewClientDevis={handleViewClientDevis}
+                onEditProspect={handleEditProspect}
+              />
+            )}
+
+            {activeTab === "prospect-edit" && selectedProspectId && (
+              <ProspectEditPage 
+                id={selectedProspectId}
+                onBack={handleBackToProspects}
+                onRefresh={fetchClients}
+                inDashboard={true}
               />
             )}
 
