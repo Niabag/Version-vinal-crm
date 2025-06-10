@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './prospects.scss';
 
 const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProspect }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -131,12 +133,6 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProsp
       alert(`❌ Erreur lors du changement de statut: ${err.message}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleEditProspect = (prospect) => {
-    if (onEditProspect) {
-      onEditProspect(prospect._id);
     }
   };
 
@@ -382,8 +378,8 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProsp
             </select>
           </div>
 
-          {selectedProspects.length > 0 && (
-            <div className="bulk-actions">
+          <div className="filter-actions">
+            {selectedProspects.length > 0 && (
               <button 
                 onClick={handleBulkDelete}
                 className="bulk-delete-btn"
@@ -391,8 +387,15 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProsp
               >
                 🗑️ Supprimer ({selectedProspects.length})
               </button>
-            </div>
-          )}
+            )}
+            
+            <button 
+              onClick={() => navigate("/register-client/" + userId)}
+              className="cta-button"
+            >
+              ✨ Créer un prospect
+            </button>
+          </div>
         </div>
 
         {/* ✅ NOUVEAU: Informations de pagination */}
@@ -546,7 +549,7 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProsp
                     </button>
                     
                     <button 
-                      onClick={() => handleEditProspect(prospect)}
+                      onClick={() => onEditProspect && onEditProspect(prospect)}
                       className="action-btn edit-action"
                       title="Modifier le prospect"
                     >

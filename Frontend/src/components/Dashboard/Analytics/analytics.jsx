@@ -119,7 +119,7 @@ const Analytics = () => {
       const tauxConversion = totalClients > 0 ? (totalDevis / totalClients) * 100 : 0;
       const tauxReussite = totalDevis > 0 ? (finiDevis / totalDevis) * 100 : 0;
 
-      // ✅ STATISTIQUES CARTE DE VISITE - UTILISER LES VRAIES DONNÉES
+      // ✅ STATISTIQUES CARTE DE VISITE - Utiliser uniquement les données réelles de l'API
       let cardScansTotal = 0;
       let cardScansToday = 0;
       let cardScansThisMonth = 0;
@@ -127,21 +127,10 @@ const Analytics = () => {
       let cardConversionRate = 0;
       
       if (cardStatsData) {
-        // Utiliser les vraies données du backend
         cardScansTotal = cardStatsData.totalScans || 0;
         cardScansToday = cardStatsData.scansToday || 0;
         cardScansThisMonth = cardStatsData.scansThisMonth || 0;
-        
-        // Pour les conversions, utiliser le nombre de clients créés récemment (7 derniers jours)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        cardConversions = clients.filter(client => {
-          const createdAt = new Date(client.createdAt);
-          return createdAt >= sevenDaysAgo;
-        }).length;
-        
-        // Calculer le taux de conversion (éviter division par zéro)
+        cardConversions = cardStatsData.conversions || 0;
         cardConversionRate = cardScansTotal > 0 ? (cardConversions / cardScansTotal) * 100 : 0;
         
         // Stocker les statistiques de carte pour utilisation ultérieure
@@ -196,9 +185,9 @@ const Analytics = () => {
           company: c.company
         }));
 
-      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE (seulement s'il y a des données réelles)
+      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE - Uniquement si des données réelles existent
       let cardActivity = [];
-      if (cardStatsData && cardStatsData.lastScan && cardScansTotal > 0) {
+      if (cardStatsData && cardStatsData.lastScan) {
         cardActivity = [{
           type: 'card',
           title: 'Scan de QR code',
@@ -442,49 +431,51 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* ✅ NOUVELLE SECTION: STATISTIQUES CARTE DE VISITE */}
-      <div className="kpi-section">
-        <h2>💼 Carte de Visite Numérique</h2>
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-icon">📱</div>
-            <div className="kpi-content">
-              <h3>{stats.cardScansTotal}</h3>
-              <p>Scans Totaux</p>
-              <span className="kpi-trend positive">+{stats.cardScansToday} aujourd'hui</span>
+      {/* ✅ SECTION: STATISTIQUES CARTE DE VISITE - Uniquement si des données réelles existent */}
+      {cardStats && (
+        <div className="kpi-section">
+          <h2>💼 Carte de Visite Numérique</h2>
+          <div className="kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-icon">📱</div>
+              <div className="kpi-content">
+                <h3>{stats.cardScansTotal}</h3>
+                <p>Scans Totaux</p>
+                <span className="kpi-trend positive">+{stats.cardScansToday} aujourd'hui</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="kpi-card">
-            <div className="kpi-icon">📅</div>
-            <div className="kpi-content">
-              <h3>{stats.cardScansThisMonth}</h3>
-              <p>Scans ce mois</p>
-              <span className="kpi-trend">{(stats.cardScansThisMonth / 30).toFixed(1)} par jour</span>
+            
+            <div className="kpi-card">
+              <div className="kpi-icon">📅</div>
+              <div className="kpi-content">
+                <h3>{stats.cardScansThisMonth}</h3>
+                <p>Scans ce mois</p>
+                <span className="kpi-trend">{(stats.cardScansThisMonth / 30).toFixed(1)} par jour</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="kpi-card">
-            <div className="kpi-icon">🔄</div>
-            <div className="kpi-content">
-              <h3>{stats.cardConversions}</h3>
-              <p>Conversions</p>
-              <span className="kpi-trend">{stats.cardConversionRate.toFixed(1)}% de taux</span>
+            
+            <div className="kpi-card">
+              <div className="kpi-icon">🔄</div>
+              <div className="kpi-content">
+                <h3>{stats.cardConversions}</h3>
+                <p>Conversions</p>
+                <span className="kpi-trend">{stats.cardConversionRate.toFixed(1)}% de taux</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="kpi-card">
-            <div className="kpi-icon">🔗</div>
-            <div className="kpi-content">
-              <h3>{cardStats?.lastScan ? formatTimeAgo(cardStats.lastScan) : 'Aucun'}</h3>
-              <p>Dernier Scan</p>
-              <span className="kpi-trend">
-                <a href="#carte" style={{color: 'inherit', textDecoration: 'none'}}>Voir les détails →</a>
-              </span>
+            
+            <div className="kpi-card">
+              <div className="kpi-icon">🔗</div>
+              <div className="kpi-content">
+                <h3>{cardStats?.lastScan ? formatTimeAgo(cardStats.lastScan) : 'Aucun'}</h3>
+                <p>Dernier Scan</p>
+                <span className="kpi-trend">
+                  <a href="#carte" style={{color: 'inherit', textDecoration: 'none'}}>Voir les détails →</a>
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ✅ SECTION 2: PROSPECTS ET DEVIS */}
       <div className="stats-section">

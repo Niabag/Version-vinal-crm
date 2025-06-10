@@ -3,49 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './prospectEdit.scss';
 
-const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
+const ProspectEditPage = ({ prospect, onBack, onSave }) => {
   const navigate = useNavigate();
-  const [prospect, setProspect] = useState(null);
+  const [prospectData, setProspectData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ CHARGER LE PROSPECT DEPUIS L'API
+  // Initialiser les données du prospect
   useEffect(() => {
-    const fetchProspect = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      try {
-        // Récupérer tous les clients et trouver celui qui correspond
-        const clients = await apiRequest(API_ENDPOINTS.CLIENTS.BASE);
-        const foundProspect = clients.find(c => c._id === id);
-        
-        if (foundProspect) {
-          setProspect({
-            ...foundProspect,
-            company: foundProspect.company || '',
-            notes: foundProspect.notes || '',
-            address: foundProspect.address || '', // ✅ NOUVEAU
-            postalCode: foundProspect.postalCode || '', // ✅ NOUVEAU
-            city: foundProspect.city || '' // ✅ NOUVEAU
-          });
-        } else {
-          setError("Prospect introuvable");
-        }
-      } catch (err) {
-        console.error("Erreur chargement prospect:", err);
-        setError("Erreur lors du chargement du prospect");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProspect();
-  }, [id]);
+    if (prospect) {
+      setProspectData({
+        ...prospect,
+        company: prospect.company || '',
+        notes: prospect.notes || '',
+        address: prospect.address || '',
+        postalCode: prospect.postalCode || '',
+        city: prospect.city || ''
+      });
+    }
+  }, [prospect]);
 
   const handleInputChange = (field, value) => {
-    setProspect(prev => ({
+    setProspectData(prev => ({
       ...prev,
       [field]: value
     }));
@@ -53,12 +33,12 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
 
   // ✅ FONCTION CORRIGÉE: Changement de statut avec cycle harmonisé
   const handleStatusClick = async () => {
-    if (!prospect) return;
+    if (!prospectData) return;
     
     let newStatus;
     
     // ✅ CYCLE FINAL SIMPLIFIÉ: nouveau -> en_attente -> active -> inactive -> nouveau
-    switch (prospect.status) {
+    switch (prospectData.status) {
       case 'nouveau':
         newStatus = 'en_attente';
         break;
@@ -79,19 +59,19 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
         newStatus = 'en_attente';
     }
     
-    console.log(`🔄 Changement de statut: ${prospect.status} → ${newStatus}`); // ✅ DEBUG
+    console.log(`🔄 Changement de statut: ${prospectData.status} → ${newStatus}`); // ✅ DEBUG
     
     setLoading(true);
     try {
-      await apiRequest(API_ENDPOINTS.CLIENTS.UPDATE_STATUS(prospect._id), {
+      await apiRequest(API_ENDPOINTS.CLIENTS.UPDATE_STATUS(prospectData._id), {
         method: "PATCH",
         body: JSON.stringify({ status: newStatus }),
       });
 
       // Mettre à jour l'état local
-      setProspect(prev => ({ ...prev, status: newStatus }));
+      setProspectData(prev => ({ ...prev, status: newStatus }));
       
-      console.log(`✅ Statut changé: ${prospect.status} → ${newStatus}`);
+      console.log(`✅ Statut changé: ${prospectData.status} → ${newStatus}`);
     } catch (err) {
       console.error("Erreur changement statut:", err);
       alert(`❌ Erreur lors du changement de statut: ${err.message}`);
@@ -102,37 +82,30 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!prospect) return;
+    if (!prospectData) return;
 
     setSaving(true);
     try {
-      await apiRequest(API_ENDPOINTS.CLIENTS.UPDATE(prospect._id), {
+      await apiRequest(API_ENDPOINTS.CLIENTS.UPDATE(prospectData._id), {
         method: "PUT",
         body: JSON.stringify({
-          name: prospect.name,
-          email: prospect.email,
-          phone: prospect.phone,
-          company: prospect.company,
-          notes: prospect.notes,
-          address: prospect.address, // ✅ NOUVEAU
-          postalCode: prospect.postalCode, // ✅ NOUVEAU
-          city: prospect.city, // ✅ NOUVEAU
-          status: prospect.status
+          name: prospectData.name,
+          email: prospectData.email,
+          phone: prospectData.phone,
+          company: prospectData.company,
+          notes: prospectData.notes,
+          address: prospectData.address,
+          postalCode: prospectData.postalCode,
+          city: prospectData.city,
+          status: prospectData.status
         }),
       });
 
       alert("✅ Prospect modifié avec succès");
-      
-      // Rafraîchir la liste des clients si nécessaire
-      if (onRefresh) {
-        onRefresh();
-      }
-      
-      // Retour à la page précédente
-      if (inDashboard && onBack) {
-        onBack();
+      if (onSave) {
+        onSave();
       } else {
-        navigate(-1); // Retour à la page précédente
+        onBack ? onBack() : navigate(-1);
       }
     } catch (err) {
       console.error("Erreur modification prospect:", err);
@@ -143,31 +116,24 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
   };
 
   const handleDelete = async () => {
-    if (!prospect) return;
+    if (!prospectData) return;
     
     const confirmDelete = window.confirm(
-      `❗ Supprimer définitivement le prospect "${prospect.name}" et tous ses devis ?`
+      `❗ Supprimer définitivement le prospect "${prospectData.name}" et tous ses devis ?`
     );
     if (!confirmDelete) return;
 
     setLoading(true);
     try {
-      await apiRequest(API_ENDPOINTS.CLIENTS.DELETE(prospect._id), {
+      await apiRequest(API_ENDPOINTS.CLIENTS.DELETE(prospectData._id), {
         method: "DELETE",
       });
 
       alert("✅ Prospect supprimé avec succès");
-      
-      // Rafraîchir la liste des clients si nécessaire
-      if (onRefresh) {
-        onRefresh();
-      }
-      
-      // Retour à la page précédente
-      if (inDashboard && onBack) {
+      if (onBack) {
         onBack();
       } else {
-        navigate(-1); // Retour à la page précédente
+        navigate(-1);
       }
     } catch (err) {
       console.error("Erreur suppression prospect:", err);
@@ -228,7 +194,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
 
   if (error) {
     return (
-      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
+      <div className="prospect-edit-page">
         <div className="error-container">
           <h2>❌ Erreur</h2>
           <p>{error}</p>
@@ -240,9 +206,9 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
     );
   }
 
-  if (loading && !prospect) {
+  if (loading && !prospectData) {
     return (
-      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
+      <div className="prospect-edit-page">
         <div className="loading-container">
           <div className="loading-spinner">⏳</div>
           <p>Chargement du prospect...</p>
@@ -251,9 +217,9 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
     );
   }
 
-  if (!prospect) {
+  if (!prospectData) {
     return (
-      <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
+      <div className="prospect-edit-page">
         <div className="error-container">
           <h2>❌ Prospect introuvable</h2>
           <p>Le prospect demandé n'existe pas ou a été supprimé.</p>
@@ -266,7 +232,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
   }
 
   return (
-    <div className={`prospect-edit-page ${inDashboard ? 'in-dashboard' : ''}`}>
+    <div className="prospect-edit-page">
       <div className="edit-container">
         {/* En-tête avec avatar et statut */}
         <div className="edit-header">
@@ -276,23 +242,23 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
           
           <div className="prospect-header-info">
             <div className="prospect-avatar-large">
-              {prospect.name ? prospect.name.charAt(0).toUpperCase() : "?"}
+              {prospectData.name ? prospectData.name.charAt(0).toUpperCase() : "?"}
             </div>
             
             <div className="prospect-title">
-              <h1>{prospect.name}</h1>
+              <h1>{prospectData.name}</h1>
               <p className="prospect-subtitle">Modification du prospect</p>
             </div>
 
             {/* ✅ INDICATEUR DE STATUT CLIQUABLE (SANS POPUP) */}
             <div 
               className="status-indicator-large clickable"
-              style={{ backgroundColor: getStatusColor(prospect.status) }}
+              style={{ backgroundColor: getStatusColor(prospectData.status) }}
               onClick={handleStatusClick}
-              title={getNextStatusLabel(prospect.status)}
+              title={getNextStatusLabel(prospectData.status)}
             >
-              <div className="status-icon">{getStatusIcon(prospect.status)}</div>
-              <div className="status-text">{getStatusLabel(prospect.status)}</div>
+              <div className="status-icon">{getStatusIcon(prospectData.status)}</div>
+              <div className="status-text">{getStatusLabel(prospectData.status)}</div>
               <div className="status-hint">Cliquer pour changer</div>
             </div>
           </div>
@@ -309,7 +275,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="text"
                   id="name"
-                  value={prospect.name}
+                  value={prospectData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
                   placeholder="Nom et prénom"
@@ -321,7 +287,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="email"
                   id="email"
-                  value={prospect.email}
+                  value={prospectData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   required
                   placeholder="email@exemple.com"
@@ -335,7 +301,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="tel"
                   id="phone"
-                  value={prospect.phone}
+                  value={prospectData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   required
                   placeholder="06 12 34 56 78"
@@ -347,7 +313,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="text"
                   id="company"
-                  value={prospect.company}
+                  value={prospectData.company}
                   onChange={(e) => handleInputChange('company', e.target.value)}
                   placeholder="Nom de l'entreprise"
                 />
@@ -364,7 +330,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               <input
                 type="text"
                 id="address"
-                value={prospect.address}
+                value={prospectData.address}
                 onChange={(e) => handleInputChange('address', e.target.value)}
                 placeholder="Rue, numéro, bâtiment..."
               />
@@ -376,7 +342,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="text"
                   id="postalCode"
-                  value={prospect.postalCode}
+                  value={prospectData.postalCode}
                   onChange={(e) => handleInputChange('postalCode', e.target.value)}
                   placeholder="75000"
                   maxLength={5}
@@ -388,7 +354,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
                 <input
                   type="text"
                   id="city"
-                  value={prospect.city}
+                  value={prospectData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   placeholder="Paris"
                 />
@@ -403,7 +369,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               <label htmlFor="notes">Notes internes</label>
               <textarea
                 id="notes"
-                value={prospect.notes}
+                value={prospectData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 placeholder="Notes sur le prospect, besoins, historique des échanges..."
                 rows={4}
@@ -418,7 +384,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               <label htmlFor="status">Statut du prospect</label>
               <select
                 id="status"
-                value={prospect.status}
+                value={prospectData.status}
                 onChange={(e) => handleInputChange('status', e.target.value)}
               >
                 <option value="nouveau">🔵 Nouveau</option>
@@ -432,7 +398,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               <div className="info-item">
                 <span className="info-label">Date d'inscription :</span>
                 <span className="info-value">
-                  {new Date(prospect.createdAt || Date.now()).toLocaleDateString('fr-FR', {
+                  {new Date(prospectData.createdAt || Date.now()).toLocaleDateString('fr-FR', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
@@ -445,7 +411,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               <div className="info-item">
                 <span className="info-label">Dernière modification :</span>
                 <span className="info-value">
-                  {new Date(prospect.updatedAt || prospect.createdAt || Date.now()).toLocaleDateString('fr-FR', {
+                  {new Date(prospectData.updatedAt || prospectData.createdAt || Date.now()).toLocaleDateString('fr-FR', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
@@ -457,7 +423,7 @@ const ProspectEditPage = ({ id, onBack, onRefresh, inDashboard = false }) => {
               
               <div className="info-item">
                 <span className="info-label">ID Prospect :</span>
-                <span className="info-value">{prospect._id}</span>
+                <span className="info-value">{prospectData._id}</span>
               </div>
             </div>
           </div>

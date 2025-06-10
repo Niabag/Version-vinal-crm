@@ -136,9 +136,9 @@ const Notifications = ({ onNotificationsUpdate }) => {
       const newNotifications = [];
       let notificationId = Date.now();
 
-      // ✅ NOTIFICATIONS BASÉES SUR LES STATISTIQUES DE CARTE DE VISITE
-      if (cardStats && cardStats.totalScans > 0) {
-        // Notification pour les scans récents - UNIQUEMENT SI RÉELS
+      // ✅ NOTIFICATIONS BASÉES SUR LES STATISTIQUES DE CARTE DE VISITE - Uniquement si des données réelles existent
+      if (cardStats) {
+        // Notification pour les scans récents
         if (cardStats.scansToday > 0) {
           const notifId = `card_scans_today_${Date.now()}`;
           if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
@@ -149,7 +149,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               priority: 'medium',
               title: 'Activité sur votre carte de visite',
               message: `${cardStats.scansToday} scan${cardStats.scansToday > 1 ? 's' : ''} de votre QR code aujourd'hui`,
-              details: `Total: ${cardStats.totalScans} scans`,
+              details: `Total: ${cardStats.totalScans} scans • ${cardStats.conversions} conversion${cardStats.conversions > 1 ? 's' : ''}`,
               date: new Date(),
               read: false,
               actionUrl: '#carte',
@@ -158,7 +158,27 @@ const Notifications = ({ onNotificationsUpdate }) => {
           }
         }
 
-        // Notification pour le dernier scan - UNIQUEMENT SI RÉEL
+        // Notification pour les conversions - Uniquement si des conversions réelles existent
+        if (cardStats.conversions > 0) {
+          const notifId = `card_conversions_${Date.now()}`;
+          if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'system',
+              category: 'card_conversions',
+              priority: 'high',
+              title: 'Conversions via votre carte de visite',
+              message: `${cardStats.conversions} prospect${cardStats.conversions > 1 ? 's' : ''} inscrit${cardStats.conversions > 1 ? 's' : ''} via votre QR code`,
+              details: `Taux de conversion: ${((cardStats.conversions / Math.max(cardStats.totalScans, 1)) * 100).toFixed(1)}%`,
+              date: new Date(),
+              read: false,
+              actionUrl: '#clients',
+              actionLabel: 'Voir les prospects'
+            });
+          }
+        }
+
+        // Notification pour le dernier scan - Uniquement si un scan réel existe
         if (cardStats.lastScan) {
           const lastScanDate = new Date(cardStats.lastScan);
           const now = new Date();
@@ -206,7 +226,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
               date: new Date(client.createdAt),
               read: false, // Toujours non lu pour les nouveaux clients
-              actionUrl: '#clients',
+              actionUrl: `/prospect/edit/${client._id}`,
               actionLabel: 'Voir le prospect',
               clientId: client._id,
               clientName: client.name
@@ -228,7 +248,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
               date: new Date(),
               read: false, // Non lu pour encourager l'action
-              actionUrl: '#clients',
+              actionUrl: `/prospect/edit/${client._id}`,
               actionLabel: 'Relancer le client',
               clientId: client._id,
               clientName: client.name
@@ -250,7 +270,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
               date: new Date(),
               read: false, // Non lu pour encourager l'action
-              actionUrl: '#clients',
+              actionUrl: `/prospect/edit/${client._id}`,
               actionLabel: 'Suivre le prospect',
               clientId: client._id,
               clientName: client.name
@@ -360,14 +380,14 @@ const Notifications = ({ onNotificationsUpdate }) => {
         }
       });
 
-      // ✅ NOTIFICATIONS SYSTÈME INTELLIGENTES - BASÉES SUR DES DONNÉES RÉELLES
+      // ✅ NOTIFICATIONS SYSTÈME INTELLIGENTES - Basées uniquement sur des données réelles
       const totalCA = devis.filter(d => d.status === 'fini').reduce((sum, d) => sum + calculateTTC(d), 0);
       const newClientsThisWeek = clients.filter(c => {
         const daysSince = Math.floor((new Date() - new Date(c.createdAt)) / (1000 * 60 * 60 * 24));
         return daysSince <= 7;
       }).length;
 
-      // Objectif CA atteint - UNIQUEMENT SI RÉEL
+      // Objectif CA atteint - Uniquement si le CA est réel et significatif
       if (totalCA > 10000) {
         const notifId = 'system_ca_goal';
         if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
@@ -387,7 +407,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
         }
       }
 
-      // Pic d'inscriptions - UNIQUEMENT SI RÉEL
+      // Pic d'inscriptions - Uniquement si des inscriptions réelles existent
       if (newClientsThisWeek >= 5) {
         const notifId = 'system_new_clients_peak';
         if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
@@ -412,7 +432,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       const needsBackupReminder = !lastBackupReminder || 
                                  ((new Date() - new Date(lastBackupReminder.date)) / (1000 * 60 * 60 * 24) > 7);
       
-      if (needsBackupReminder) {
+      if (needsBackupReminder && clients.length > 0) {
         const notifId = 'system_backup_reminder';
         if (!existingIds.has(notifId) && !deletedNotificationIds.includes(notifId)) {
           newNotifications.push({

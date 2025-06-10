@@ -25,9 +25,9 @@ const Dashboard = () => {
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
-  const [selectedProspectId, setSelectedProspectId] = useState(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -74,14 +74,6 @@ const Dashboard = () => {
     const hash = location.hash.replace('#', '');
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
-    }
-
-    // Vérifier si l'URL contient un paramètre prospect-id
-    const urlParams = new URLSearchParams(location.search);
-    const prospectId = urlParams.get('prospect-id');
-    if (prospectId) {
-      setSelectedProspectId(prospectId);
-      setActiveTab("prospect-edit");
     }
   }, [location]);
 
@@ -162,20 +154,10 @@ const Dashboard = () => {
     updateUnreadNotifications();
   }, []);
 
-  // Fonction pour éditer un prospect
-  const handleEditProspect = (prospectId) => {
-    setSelectedProspectId(prospectId);
+  // Gérer l'édition d'un prospect
+  const handleEditProspect = (prospect) => {
+    setSelectedProspect(prospect);
     setActiveTab("prospect-edit");
-    // Mettre à jour l'URL pour refléter l'état
-    navigate(`/dashboard?prospect-id=${prospectId}`);
-  };
-
-  // Fonction pour revenir à la liste des prospects
-  const handleBackToProspects = () => {
-    setSelectedProspectId(null);
-    setActiveTab("clients");
-    // Nettoyer l'URL
-    navigate("/dashboard#clients");
   };
 
   // Définition des sections de navigation
@@ -210,11 +192,11 @@ const Dashboard = () => {
       case "clients": return "Mes Prospects";
       case "devis": return "Mes Devis";
       case "devis-creation": return "Création de Devis";
-      case "prospect-edit": return "Modification du Prospect";
       case "billing": return "Facturation";
       case "notifications": return "Notifications";
       case "carte": return "Carte de Visite";
       case "settings": return "Paramètres";
+      case "prospect-edit": return "Modification Prospect";
       default: return "CRM Pro";
     }
   };
@@ -225,11 +207,11 @@ const Dashboard = () => {
       case "clients": return "👥";
       case "devis": return "📄";
       case "devis-creation": return "📝";
-      case "prospect-edit": return "✏️";
       case "billing": return "💰";
       case "notifications": return "🔔";
       case "carte": return "💼";
       case "settings": return "⚙️";
+      case "prospect-edit": return "✏️";
       default: return "📊";
     }
   };
@@ -270,14 +252,14 @@ const Dashboard = () => {
                       setEditingDevis(null);
                     }
                     if (item.id !== "clients" && item.id !== "prospect-edit") {
-                      setSelectedProspectId(null);
+                      setSelectedProspect(null);
                     }
                   }}
                   title={item.label}
                 >
                   <span className="nav-icon">
                     {item.icon}
-                    {item.badge && (
+                    {item.badge && item.badge > 0 && (
                       <span className="notifications-badge">{item.badge}</span>
                     )}
                   </span>
@@ -396,12 +378,18 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "prospect-edit" && selectedProspectId && (
+            {activeTab === "prospect-edit" && selectedProspect && (
               <ProspectEditPage 
-                id={selectedProspectId}
-                onBack={handleBackToProspects}
-                onRefresh={fetchClients}
-                inDashboard={true}
+                prospect={selectedProspect}
+                onBack={() => {
+                  setSelectedProspect(null);
+                  setActiveTab("clients");
+                }}
+                onSave={() => {
+                  fetchClients();
+                  setSelectedProspect(null);
+                  setActiveTab("clients");
+                }}
               />
             )}
 
