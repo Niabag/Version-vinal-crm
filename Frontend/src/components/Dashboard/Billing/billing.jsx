@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import InvoicePreview from './invoicePreview';
 import InvoiceTemplate from './InvoiceTemplate';
@@ -30,6 +30,10 @@ const Billing = ({ clients = [], onRefresh }) => {
   });
   // État pour activer/désactiver la prévisualisation automatique
   const [autoPreview, setAutoPreview] = useState(true);
+  // Référence pour le conteneur de prévisualisation
+  const previewContainerRef = useRef(null);
+  // État pour la prévisualisation dynamique
+  const [dynamicPreview, setDynamicPreview] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -152,6 +156,13 @@ const Billing = ({ clients = [], onRefresh }) => {
         ? prev.filter(id => id !== devisId)
         : [...prev, devisId]
     );
+    
+    // Faire défiler jusqu'à la prévisualisation si elle est visible
+    if (dynamicPreview && previewContainerRef.current) {
+      setTimeout(() => {
+        previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
   };
 
   const handleSelectAll = () => {
@@ -259,28 +270,29 @@ const Billing = ({ clients = [], onRefresh }) => {
     return subtotal - discountAmount;
   };
 
-  const saveInvoice = async () => {
+  const saveInvoice = async (updatedInvoice = null) => {
     try {
       setLoading(true);
       
-      const client = clients.find(c => c._id === newInvoice.clientId);
-      const selectedDevisData = devisList.filter(d => newInvoice.devisIds.includes(d._id));
-      const total = calculateInvoiceTotal();
+      const invoiceToSave = updatedInvoice || newInvoice;
+      const client = clients.find(c => c._id === invoiceToSave.clientId);
+      const selectedDevisData = devisList.filter(d => invoiceToSave.devisIds.includes(d._id));
+      const total = updatedInvoice ? updatedInvoice.amount : calculateInvoiceTotal();
 
       const invoice = {
         id: `INV-${Date.now()}`,
-        clientId: newInvoice.clientId,
+        clientId: invoiceToSave.clientId,
         clientName: client?.name || 'Client inconnu',
         amount: total,
-        status: 'pending',
-        dueDate: newInvoice.dueDate,
-        createdAt: new Date().toISOString(),
-        invoiceNumber: newInvoice.invoiceNumber,
-        devisIds: newInvoice.devisIds,
-        notes: newInvoice.notes,
-        paymentTerms: newInvoice.paymentTerms,
-        discount: newInvoice.discount,
-        taxRate: newInvoice.taxRate
+        status: invoiceToSave.status || 'pending',
+        dueDate: invoiceToSave.dueDate,
+        createdAt: invoiceToSave.createdAt || new Date().toISOString(),
+        invoiceNumber: invoiceToSave.invoiceNumber,
+        devisIds: invoiceToSave.devisIds,
+        notes: invoiceToSave.notes,
+        paymentTerms: invoiceToSave.paymentTerms,
+        discount: invoiceToSave.discount,
+        taxRate: invoiceToSave.taxRate
       };
 
       // Ajouter à la liste locale (en attendant l'API)
@@ -347,7 +359,6 @@ const Billing = ({ clients = [], onRefresh }) => {
 
       // Récupérer les détails des devis liés à la facture
       const devisDetails = await Promise.all(
-
         invoice.devisIds.map(async (id) => {
           try {
             return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
@@ -609,6 +620,17 @@ const Billing = ({ clients = [], onRefresh }) => {
                 <span className="toggle-label">Prévisualisation automatique</span>
               </label>
             </div>
+            
+            <div className="filter-group">
+              <label className="auto-preview-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={dynamicPreview} 
+                  onChange={() => setDynamicPreview(!dynamicPreview)}
+                />
+                <span className="toggle-label">Affichage dynamique</span>
+              </label>
+            </div>
 
             {selectedDevis.length > 0 && (
               <div className="bulk-actions">
@@ -680,7 +702,7 @@ const Billing = ({ clients = [], onRefresh }) => {
                   </div>
 
                   <div className="devis-card-content">
-                    <h3 className="devis-title">{devis.title || "Devis sans titre"}</h3>
+                    <h3 className="devis-card-title">{devis.title || "Devis sans titre"}</h3>
                     
                     <div className="devis-meta">
                       <div className="devis-client">
@@ -711,6 +733,38 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
         )}
       </div>
+
+      {/* Prévisualisation dynamique de la facture */}
+      {dynamicPreview && selectedDevis.length > 0 && (
+        <div className="dynamic-preview-container" ref={previewContainerRef}>
+          <div className="dynamic-preview-header">
+            <h2>📋 Prévisualisation de la facture</h2>
+            <p>Modifiez directement les informations ci-dessous</p>
+          </div>
+          
+          <div className="dynamic-preview-content">
+            <InvoicePreview
+              invoice={{
+                invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
+                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                createdAt: new Date().toISOString().split('T')[0],
+                status: 'draft',
+                devisIds: selectedDevis
+              }}
+              client={(() => {
+                const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
+                if (!firstDevis) return {};
+                const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
+                return clients.find(c => c._id === clientId) || {};
+              })()}
+              devisDetails={devisList.filter(d => selectedDevis.includes(d._id))}
+              onClose={() => setSelectedDevis([])}
+              onSave={saveInvoice}
+              editable={true}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Section des factures existantes */}
       <div className="billing-section">
@@ -909,7 +963,7 @@ const Billing = ({ clients = [], onRefresh }) => {
                 Annuler
               </button>
               <button 
-                onClick={saveInvoice}
+                onClick={() => saveInvoice()}
                 className="btn-save"
                 disabled={loading}
               >
@@ -920,7 +974,7 @@ const Billing = ({ clients = [], onRefresh }) => {
         </div>
       )}
 
-      {/* Modal d'aperçu de facture (ancienne version) */}
+      {/* Modal d'aperçu de facture */}
       {showInvoicePreview && (
         <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
           <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>

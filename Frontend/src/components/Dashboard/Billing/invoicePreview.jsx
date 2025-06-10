@@ -1,8 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import './invoicePreview.scss';
 
-const InvoicePreview = ({ invoice, client, devisDetails = [], onClose, onSave, editable = false }) => {
+const InvoicePreview = ({ 
+  invoice, 
+  client, 
+  devisDetails = [], 
+  onClose, 
+  onSave, 
+  editable = false 
+}) => {
   const invoiceRef = useRef(null);
   const [formData, setFormData] = useState({
     invoiceNumber: invoice?.invoiceNumber || `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
@@ -20,6 +27,29 @@ const InvoicePreview = ({ invoice, client, devisDetails = [], onClose, onSave, e
     entrepriseEmail: devisDetails[0]?.entrepriseEmail || "contact@entreprise.com",
     logoUrl: devisDetails[0]?.logoUrl || ""
   });
+
+  // Mettre à jour le formulaire si les props changent
+  useEffect(() => {
+    if (invoice || devisDetails.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        invoiceNumber: invoice?.invoiceNumber || prev.invoiceNumber,
+        dueDate: invoice?.dueDate || prev.dueDate,
+        createdAt: invoice?.createdAt || prev.createdAt,
+        notes: invoice?.notes || prev.notes,
+        paymentTerms: invoice?.paymentTerms || prev.paymentTerms,
+        discount: invoice?.discount || prev.discount,
+        taxRate: invoice?.taxRate || prev.taxRate,
+        status: invoice?.status || prev.status,
+        entrepriseName: devisDetails[0]?.entrepriseName || prev.entrepriseName,
+        entrepriseAddress: devisDetails[0]?.entrepriseAddress || prev.entrepriseAddress,
+        entrepriseCity: devisDetails[0]?.entrepriseCity || prev.entrepriseCity,
+        entreprisePhone: devisDetails[0]?.entreprisePhone || prev.entreprisePhone,
+        entrepriseEmail: devisDetails[0]?.entrepriseEmail || prev.entrepriseEmail,
+        logoUrl: devisDetails[0]?.logoUrl || prev.logoUrl
+      }));
+    }
+  }, [invoice, devisDetails]);
 
   const handlePrint = useReactToPrint({
     content: () => invoiceRef.current,
