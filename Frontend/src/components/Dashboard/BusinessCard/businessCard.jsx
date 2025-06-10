@@ -545,18 +545,6 @@ const BusinessCard = ({ userId, user }) => {
         { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    'funnel-site-last': {
-      name: '🎯 Site en Dernier',
-      description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
-      icon: '📝📥🌐',
-      sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
-      category: 'Tunnel de conversion',
-      actions: [
-        { type: 'form', order: 1, delay: 1000, active: true },
-        { type: 'download', order: 2, delay: 2000, active: true, file: 'carte-visite' },
-        { type: 'website', order: 3, delay: 3000, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
     'contact-only': {
       name: '📝 Contact Uniquement',
       description: 'Formulaire de contact professionnel pour capturer les prospects',
