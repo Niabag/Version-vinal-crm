@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
-import { getSubscriptionStatus, createPortalSession, SUBSCRIPTION_STATUS, getTrialDaysRemaining } from '../../services/subscription';
+import { getSubscriptionStatus, createPortalSession, createCheckoutSession, SUBSCRIPTION_STATUS, getTrialDaysRemaining } from '../../services/subscription';
 import './settings.scss';
 
 const Settings = () => {
@@ -18,6 +18,7 @@ const Settings = () => {
   });
   const [subscription, setSubscription] = useState(null);
   const [processingSubscription, setProcessingSubscription] = useState(false);
+  const [processingCheckout, setProcessingCheckout] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -133,6 +134,25 @@ const Settings = () => {
     }
   };
 
+  const handleSubscribe = async () => {
+    setProcessingCheckout(true);
+    setMessage('');
+    try {
+      const priceId = 'price_1OqXYZHGJMCmVBnT8YgYbL3M';
+      const { url } = await createCheckoutSession(priceId);
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setMessage("❌ Erreur: Impossible de créer la session de paiement");
+    } finally {
+      setProcessingCheckout(false);
+    }
+  };
+
   const exportData = async () => {
     try {
       setLoading(true);
@@ -236,8 +256,27 @@ const Settings = () => {
                 </div>
               </div>
             )}
-            
-            <button 
+
+            {subscription && subscription.trialStartDate && (
+              <div className="trial-period">
+                <div className="info-label">Période d'essai:</div>
+                <div className="period-value">
+                  {new Date(subscription.trialStartDate).toLocaleDateString('fr-FR')} - {new Date(subscription.trialEndDate).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
+            )}
+
+            {subscription && subscription.status !== SUBSCRIPTION_STATUS.ACTIVE && (
+              <button
+                onClick={handleSubscribe}
+                className="subscribe-btn"
+                disabled={processingCheckout}
+              >
+                {processingCheckout ? 'Redirection...' : "S'abonner"}
+              </button>
+            )}
+
+            <button
               onClick={handleManageSubscription}
               className="manage-subscription-btn"
               disabled={processingSubscription}
