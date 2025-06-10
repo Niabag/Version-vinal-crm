@@ -129,43 +129,9 @@ const DynamicInvoice = ({
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'paid': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'overdue': return '#ef4444';
-      case 'draft': return '#6b7280';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'paid': return 'Payée';
-      case 'pending': return 'En attente';
-      case 'overdue': return 'En retard';
-      case 'draft': return 'Brouillon';
-      default: return 'Inconnu';
-    }
-  };
-
   return (
     <div className="dynamic-invoice">
-      <div className="preview-toolbar">
-        <button onClick={handlePrint} className="toolbar-btn pdf-btn">
-          📄 Imprimer / PDF
-        </button>
-        <button onClick={handleSave} className="toolbar-btn save-btn">
-          💾 Enregistrer
-        </button>
-        {onCancel && (
-          <button onClick={onCancel} className="toolbar-btn close-btn">
-            ✕ Annuler
-          </button>
-        )}
-      </div>
-
-      <div className="preview-content" ref={invoiceRef}>
+      <div className="invoice-document" ref={invoiceRef}>
         <div className="document-header">
           <div className="company-info">
             {formData.logoUrl ? (
@@ -230,20 +196,6 @@ const DynamicInvoice = ({
                 onChange={(e) => handleInputChange("invoiceNumber", e.target.value)}
                 placeholder="Numéro de facture"
               />
-            </div>
-            <div className="invoice-status-selector">
-              <span className="label">Statut:</span>
-              <select
-                value={formData.status}
-                onChange={(e) => handleInputChange("status", e.target.value)}
-                className="status-select"
-                style={{ backgroundColor: getStatusColor(formData.status), color: 'white' }}
-              >
-                <option value="draft">Brouillon</option>
-                <option value="pending">En attente</option>
-                <option value="paid">Payée</option>
-                <option value="overdue">En retard</option>
-              </select>
             </div>
             <div className="invoice-date-container">
               <span className="label">Date:</span>
@@ -370,10 +322,18 @@ const DynamicInvoice = ({
         </div>
       </div>
 
-      <div className="preview-actions">
-        <button onClick={handleSave} className="save-invoice-btn">
-          💾 Enregistrer la facture
+      <div className="invoice-actions">
+        <button onClick={handlePrint} className="invoice-action-btn print-btn">
+          📄 Imprimer / PDF
         </button>
+        <button onClick={handleSave} className="invoice-action-btn save-btn">
+          💾 Enregistrer
+        </button>
+        {onCancel && (
+          <button onClick={onCancel} className="invoice-action-btn cancel-btn">
+            ✕ Annuler
+          </button>
+        )}
       </div>
     </div>
   );

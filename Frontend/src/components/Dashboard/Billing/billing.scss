@@ -196,7 +196,7 @@
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: white;
+  background: #f8fafc;
   font-weight: 500;
 }
 
@@ -310,7 +310,7 @@
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .select-all-checkbox input {
@@ -324,7 +324,7 @@
 .devis-grid,
 .invoices-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
@@ -374,6 +374,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 1rem;
 }
 
 .devis-card-title {
@@ -398,7 +399,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
-  color: #475569;
+  color: #718096;
   font-weight: 500;
 }
 
@@ -591,226 +592,45 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-/* ✅ MODAL */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-  backdrop-filter: blur(8px);
-}
-
-.modal-content {
+/* ✅ PRÉVISUALISATION DYNAMIQUE */
+.dynamic-preview-container {
   background: white;
   border-radius: 24px;
-  max-width: 700px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2.5rem;
+  margin-bottom: 3rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9;
+  animation: fadeInUp 0.6s ease-out;
+  scroll-margin-top: 20px;
 }
 
-.invoice-preview-modal {
-  max-width: 1000px;
-  background: transparent;
-  box-shadow: none;
-  border: none;
-  border-radius: 0;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem;
+.dynamic-preview-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
   border-bottom: 2px solid #f1f5f9;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-.modal-header h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.5rem;
+.dynamic-preview-header h2 {
+  font-size: 2rem;
   font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.75rem 0;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  cursor: pointer;
+.dynamic-preview-header p {
   color: #64748b;
-  transition: all 0.3s ease;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.modal-close:hover {
-  color: #0f172a;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.modal-body {
-  padding: 2rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 2rem;
-  border-top: 2px solid #f1f5f9;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-/* ✅ FORMULAIRE DE FACTURE */
-.invoice-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 600;
-  color: #374151;
-  font-size: 0.95rem;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  background: #f8fafc;
+  font-size: 1.1rem;
+  margin: 0;
   font-weight: 500;
 }
 
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-  transform: translateY(-1px);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
-  line-height: 1.5;
-}
-
-/* ✅ RÉSUMÉ DE FACTURE */
-.invoice-summary {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-top: 1rem;
-}
-
-.invoice-summary h4 {
-  margin: 0 0 1rem 0;
-  color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.summary-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.summary-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 500;
-}
-
-.summary-line.discount {
-  color: #f59e0b;
-}
-
-.summary-line.total {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #0f172a;
-  padding-top: 0.75rem;
-  border-top: 2px solid #e2e8f0;
-}
-
-/* ✅ BOUTONS */
-.btn-cancel,
-.btn-save {
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.btn-cancel {
-  background: #64748b;
-  color: white;
-}
-
-.btn-cancel:hover {
-  background: #475569;
-  transform: translateY(-2px);
-}
-
-.btn-save {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-}
-
-.btn-save:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-}
-
-.btn-save:disabled {
-  background: #64748b;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+.dynamic-preview-content {
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 /* États */
@@ -864,62 +684,35 @@
   line-height: 1.5;
 }
 
-.cta-button {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
+/* ✅ TOGGLE POUR LA PRÉVISUALISATION AUTOMATIQUE */
+.auto-preview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   cursor: pointer;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
   transition: all 0.3s ease;
 }
 
-.cta-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
-}
-
-/* ✅ PRÉVISUALISATION DYNAMIQUE */
-.dynamic-preview-container {
+.auto-preview-toggle:hover {
+  border-color: #3b82f6;
   background: white;
-  border-radius: 24px;
-  padding: 2.5rem;
-  margin-bottom: 3rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f1f5f9;
-  animation: fadeInUp 0.6s ease-out;
-  scroll-margin-top: 20px;
 }
 
-.dynamic-preview-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #f1f5f9;
+.auto-preview-toggle input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
 }
 
-.dynamic-preview-header h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 0.75rem 0;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.dynamic-preview-header p {
-  color: #64748b;
-  font-size: 1.1rem;
-  margin: 0;
-  font-weight: 500;
-}
-
-.dynamic-preview-content {
-  max-width: 1000px;
-  margin: 0 auto;
+.toggle-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
 }
 
 /* Responsive */
@@ -977,20 +770,6 @@
   .devis-grid,
   .invoices-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .modal-overlay {
-    padding: 1rem;
-  }
-  
-  .modal-header,
-  .modal-body,
-  .modal-footer {
-    padding: 1.5rem;
   }
   
   .devis-card-actions {
@@ -1130,35 +909,4 @@
 
 .create-invoice-btn:hover {
   animation: pulse 2s infinite;
-}
-
-/* ✅ TOGGLE POUR LA PRÉVISUALISATION AUTOMATIQUE */
-.auto-preview-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 0.5rem 1rem;
-  border-radius: 10px;
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.auto-preview-toggle:hover {
-  border-color: #3b82f6;
-  background: white;
-}
-
-.auto-preview-toggle input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #3b82f6;
-}
-
-.toggle-label {
-  font-weight: 600;
-  color: #374151;
-  font-size: 0.95rem;
 }

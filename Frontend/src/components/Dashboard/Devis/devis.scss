@@ -154,7 +154,7 @@
 .devis-card-amount {
   font-weight: 700;
   color: #48bb78;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -595,6 +595,12 @@
 
 .modal-body {
   padding: 2rem;
+}
+
+/* Section de prévisualisation de facture */
+.invoice-preview-section {
+  margin-top: 3rem;
+  scroll-margin-top: 20px;
 }
 
 /* Responsive */

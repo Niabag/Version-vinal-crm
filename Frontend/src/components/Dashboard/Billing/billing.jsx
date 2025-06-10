@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
-import InvoicePreview from './invoicePreview';
-import InvoiceTemplate from './InvoiceTemplate';
 import DynamicInvoice from './DynamicInvoice';
 import './billing.scss';
 
@@ -13,12 +11,6 @@ const Billing = ({ clients = [], onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
-  const [showCreateInvoice, setShowCreateInvoice] = useState(false);
-  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
-  const [showInvoiceTemplate, setShowInvoiceTemplate] = useState(false);
-  const [previewInvoice, setPreviewInvoice] = useState(null);
-  const [previewDevis, setPreviewDevis] = useState([]);
-  const [previewClient, setPreviewClient] = useState({});
   const [newInvoice, setNewInvoice] = useState({
     clientId: '',
     devisIds: [],
@@ -29,6 +21,7 @@ const Billing = ({ clients = [], onRefresh }) => {
     discount: 0,
     taxRate: 20
   });
+  
   // Référence pour le conteneur de prévisualisation
   const previewContainerRef = useRef(null);
   // État pour la prévisualisation dynamique
@@ -177,44 +170,6 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
-  const handleCreateInvoice = () => {
-    if (selectedDevis.length === 0) {
-      alert('Veuillez sélectionner au moins un devis');
-      return;
-    }
-
-    // Déterminer le client principal
-    const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
-    const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
-    
-    // Générer un numéro de facture
-    const invoiceNumber = `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
-    
-    // Date d'échéance par défaut (30 jours)
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    setNewInvoice({
-      clientId,
-      devisIds: selectedDevis,
-      invoiceNumber,
-      dueDate: dueDate.toISOString().split('T')[0],
-      notes: '',
-      paymentTerms: '30',
-      discount: 0,
-      taxRate: 20
-    });
-
-    setShowCreateInvoice(true);
-  };
-
-  const calculateInvoiceTotal = () => {
-    const selectedDevisData = devisList.filter(d => newInvoice.devisIds.includes(d._id));
-    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateTTC(devis), 0);
-    const discountAmount = subtotal * (newInvoice.discount / 100);
-    return subtotal - discountAmount;
-  };
-
   const saveInvoice = async (updatedInvoice = null) => {
     try {
       setLoading(true);
@@ -245,8 +200,6 @@ const Billing = ({ clients = [], onRefresh }) => {
       
       // Réinitialiser
       setSelectedDevis([]);
-      setShowCreateInvoice(false);
-      setShowInvoicePreview(false);
       setNewInvoice({
         clientId: '',
         devisIds: [],
@@ -262,33 +215,6 @@ const Billing = ({ clients = [], onRefresh }) => {
     } catch (error) {
       console.error('Erreur lors de la création de la facture:', error);
       alert('❌ Erreur lors de la création de la facture');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleViewInvoice = async (invoice) => {
-    try {
-      setLoading(true);
-      const devisDetails = await Promise.all(
-        invoice.devisIds.map(async (id) => {
-          try {
-            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
-          } catch (err) {
-            console.error('Erreur récupération devis:', err);
-            return null;
-          }
-        })
-      );
-      const validDevis = devisDetails.filter(Boolean);
-      const client = clients.find(c => c._id === invoice.clientId) || {};
-
-      setPreviewInvoice(invoice);
-      setPreviewDevis(validDevis);
-      setPreviewClient(client);
-      setShowInvoiceTemplate(true);
-    } catch (err) {
-      console.error('Erreur affichage facture:', err);
     } finally {
       setLoading(false);
     }
@@ -313,7 +239,6 @@ const Billing = ({ clients = [], onRefresh }) => {
           }
         })
       );
-
       const validDevis = devisDetails.filter(Boolean);
 
       // Fusionner tous les articles
@@ -384,6 +309,50 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
+    let newStatus;
+    switch (currentStatus) {
+      case 'draft':
+        newStatus = 'pending';
+        break;
+      case 'pending':
+        newStatus = 'paid';
+        break;
+      case 'paid':
+        newStatus = 'overdue';
+        break;
+      case 'overdue':
+        newStatus = 'draft';
+        break;
+      default:
+        newStatus = 'pending';
+    }
+
+    setInvoices(prev =>
+      prev.map(inv =>
+        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+      )
+    );
+
+    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("fr-FR");
+    } catch (error) {
+      return "";
+    }
+  };
+
+  const calculateInvoiceTotal = () => {
+    const selectedDevisData = devisList.filter(d => selectedDevis.includes(d._id));
+    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateTTC(devis), 0);
+    const discountAmount = subtotal * (newInvoice.discount / 100);
+    return subtotal - discountAmount;
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid': return '#10b981';
@@ -426,43 +395,6 @@ const Billing = ({ clients = [], onRefresh }) => {
         return 'Repasser en Brouillon';
       default:
         return 'Changer le statut';
-    }
-  };
-
-  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
-    let newStatus;
-    switch (currentStatus) {
-      case 'draft':
-        newStatus = 'pending';
-        break;
-      case 'pending':
-        newStatus = 'paid';
-        break;
-      case 'paid':
-        newStatus = 'overdue';
-        break;
-      case 'overdue':
-        newStatus = 'draft';
-        break;
-      default:
-        newStatus = 'pending';
-    }
-
-    setInvoices(prev =>
-      prev.map(inv =>
-        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
-      )
-    );
-
-    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString("fr-FR");
-    } catch (error) {
-      return "";
     }
   };
 
@@ -563,7 +495,24 @@ const Billing = ({ clients = [], onRefresh }) => {
             {selectedDevis.length > 0 && (
               <div className="bulk-actions">
                 <button 
-                  onClick={handleCreateInvoice}
+                  onClick={() => {
+                    // Créer une facture à partir des devis sélectionnés
+                    const firstDevis = devisList.find(d => d._id === selectedDevis[0]);
+                    if (!firstDevis) return;
+                    
+                    const clientId = typeof firstDevis.clientId === "object" ? firstDevis.clientId._id : firstDevis.clientId;
+                    
+                    setNewInvoice({
+                      clientId,
+                      devisIds: selectedDevis,
+                      invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
+                      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      notes: 'Merci pour votre confiance.',
+                      paymentTerms: '30',
+                      discount: 0,
+                      taxRate: 20
+                    });
+                  }}
                   className="create-invoice-btn"
                   disabled={loading}
                 >
@@ -669,7 +618,6 @@ const Billing = ({ clients = [], onRefresh }) => {
                 invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 createdAt: new Date().toISOString().split('T')[0],
-                status: 'draft',
                 devisIds: selectedDevis
               }}
               client={(() => {
@@ -741,13 +689,6 @@ const Billing = ({ clients = [], onRefresh }) => {
 
                 <div className="invoice-actions">
                   <button
-                    onClick={() => handleViewInvoice(invoice)}
-                    className="action-btn view-btn"
-                    title="Voir la facture"
-                  >
-                    👁️
-                  </button>
-                  <button
                     onClick={() => handleDownloadInvoicePDF(invoice)}
                     className="action-btn download-btn"
                     title="Télécharger PDF"
@@ -770,164 +711,6 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
         )}
       </div>
-
-      {/* Modal de création de facture */}
-      {showCreateInvoice && (
-        <div className="modal-overlay" onClick={() => setShowCreateInvoice(false)}>
-          <div className="modal-content create-invoice-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>💰 Créer une nouvelle facture</h3>
-              <button 
-                onClick={() => setShowCreateInvoice(false)}
-                className="modal-close"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="invoice-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Numéro de facture :</label>
-                    <input
-                      type="text"
-                      value={newInvoice.invoiceNumber}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, invoiceNumber: e.target.value }))}
-                      className="form-input"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Date d'échéance :</label>
-                    <input
-                      type="date"
-                      value={newInvoice.dueDate}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, dueDate: e.target.value }))}
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Conditions de paiement :</label>
-                    <select
-                      value={newInvoice.paymentTerms}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, paymentTerms: e.target.value }))}
-                      className="form-select"
-                    >
-                      <option value="15">15 jours</option>
-                      <option value="30">30 jours</option>
-                      <option value="45">45 jours</option>
-                      <option value="60">60 jours</option>
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Remise (%) :</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={newInvoice.discount}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Notes :</label>
-                  <textarea
-                    value={newInvoice.notes}
-                    onChange={(e) => setNewInvoice(prev => ({ ...prev, notes: e.target.value }))}
-                    className="form-textarea"
-                    rows={3}
-                    placeholder="Notes ou conditions particulières..."
-                  />
-                </div>
-
-                <div className="invoice-summary">
-                  <h4>Résumé de la facture :</h4>
-                  <div className="summary-details">
-                    <div className="summary-line">
-                      <span>Devis sélectionnés :</span>
-                      <span>{newInvoice.devisIds.length}</span>
-                    </div>
-                    <div className="summary-line">
-                      <span>Sous-total :</span>
-                      <span>{(calculateInvoiceTotal() / (1 - newInvoice.discount / 100)).toFixed(2)} €</span>
-                    </div>
-                    {newInvoice.discount > 0 && (
-                      <div className="summary-line discount">
-                        <span>Remise ({newInvoice.discount}%) :</span>
-                        <span>-{((calculateInvoiceTotal() / (1 - newInvoice.discount / 100)) * newInvoice.discount / 100).toFixed(2)} €</span>
-                      </div>
-                    )}
-                    <div className="summary-line total">
-                      <span>Total TTC :</span>
-                      <span>{calculateInvoiceTotal().toFixed(2)} €</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="modal-footer">
-              <button 
-                onClick={() => setShowCreateInvoice(false)}
-                className="btn-cancel"
-              >
-                Annuler
-              </button>
-              <button 
-                onClick={() => saveInvoice()}
-                className="btn-save"
-                disabled={loading}
-              >
-                {loading ? 'Création...' : '💰 Créer la facture'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal d'aperçu de facture */}
-      {showInvoicePreview && (
-        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
-          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>📄 Aperçu de la facture</h3>
-              <button onClick={() => setShowInvoicePreview(false)} className="modal-close">✕</button>
-            </div>
-            <div className="modal-body">
-              <InvoicePreview
-                invoice={previewInvoice}
-                devisDetails={previewDevis}
-                client={previewClient}
-                onClose={() => setShowInvoicePreview(false)}
-                onSave={saveInvoice}
-                editable={true}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de facture professionnelle */}
-      {showInvoiceTemplate && (
-        <div className="modal-overlay" onClick={() => setShowInvoiceTemplate(false)}>
-          <div className="modal-content invoice-template-modal" onClick={(e) => e.stopPropagation()}>
-            <InvoiceTemplate
-              invoice={previewInvoice}
-              devisDetails={previewDevis}
-              client={previewClient}
-              onClose={() => setShowInvoiceTemplate(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
