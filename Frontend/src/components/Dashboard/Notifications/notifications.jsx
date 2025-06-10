@@ -9,34 +9,13 @@ const Notifications = () => {
   const [typeFilter, setTypeFilter] = useState('all'); // all, client, devis, system
   const [sortBy, setSortBy] = useState('date'); // date, type, priority
   const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('notificationsData');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const withDates = parsed.map((n) => ({
-          ...n,
-          date: n.date ? new Date(n.date) : new Date(),
-        }));
-        setNotifications(withDates);
-        setLoading(false);
-      } catch (err) {
-        console.error('Failed to parse notifications from localStorage', err);
-        generateNotifications();
-      }
-    } else {
-      generateNotifications();
-    }
+    fetchNotifications();
   }, []);
 
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('notificationsData', JSON.stringify(notifications));
-    }
-  }, [notifications, loading]);
-
-  const generateNotifications = async () => {
+  const fetchNotifications = async () => {
     try {
       setLoading(true);
       
@@ -46,225 +25,247 @@ const Notifications = () => {
         apiRequest(API_ENDPOINTS.DEVIS.BASE)
       ]);
 
-      const notifications = [];
-      let notificationId = 1;
-
-      // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS CLIENTS
-      clients.forEach(client => {
-        const daysSinceCreation = Math.floor((new Date() - new Date(client.createdAt)) / (1000 * 60 * 60 * 24));
-        
-        // Nouveau client inscrit
-        if (daysSinceCreation <= 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'nouveau_client',
-            priority: 'high',
-            title: 'Nouveau prospect inscrit',
-            message: `${client.name} s'est inscrit via votre QR code`,
-            details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
-            date: new Date(client.createdAt),
-            read: Math.random() > 0.7, // 30% lues
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Voir le prospect',
-            clientId: client._id,
-            clientName: client.name
-          });
-        }
-
-        // Client inactif depuis longtemps
-        if (client.status === 'inactive' && daysSinceCreation > 30) {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'relance',
-            priority: 'medium',
-            title: 'Client inactif à relancer',
-            message: `${client.name} est inactif depuis plus de 30 jours`,
-            details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
-            date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.5,
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Relancer le client',
-            clientId: client._id,
-            clientName: client.name
-          });
-        }
-
-        // Prospect en attente
-        if (client.status === 'en_attente') {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'action_requise',
-            priority: 'high',
-            title: 'Prospect en attente de suivi',
-            message: `${client.name} nécessite un suivi commercial`,
-            details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
-            date: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.6,
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Suivre le prospect',
-            clientId: client._id,
-            clientName: client.name
-          });
-        }
-      });
-
-      // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS DEVIS
-      devis.forEach(devisItem => {
-        const client = clients.find(c => c._id === (typeof devisItem.clientId === 'object' ? devisItem.clientId._id : devisItem.clientId));
-        const daysSinceCreation = Math.floor((new Date() - new Date(devisItem.dateDevis || devisItem.date)) / (1000 * 60 * 60 * 24));
-        
-        // Nouveau devis créé
-        if (daysSinceCreation <= 3) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'nouveau_devis',
-            priority: 'medium',
-            title: 'Nouveau devis créé',
-            message: `Devis "${devisItem.title}" créé pour ${client?.name || 'Client inconnu'}`,
-            details: `Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC • Statut: ${getStatusLabel(devisItem.status)}`,
-            date: new Date(devisItem.dateDevis || devisItem.date),
-            read: Math.random() > 0.8,
-            actionUrl: '#devis',
-            actionLabel: 'Voir le devis',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
-        }
-
-        // Devis en attente depuis longtemps
-        if (devisItem.status === 'en_attente' && daysSinceCreation > 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'devis_attente',
-            priority: 'high',
-            title: 'Devis en attente de validation',
-            message: `Le devis "${devisItem.title}" attend une réponse depuis ${daysSinceCreation} jours`,
-            details: `Client: ${client?.name || 'Inconnu'} • Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
-            date: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.4,
-            actionUrl: '#devis',
-            actionLabel: 'Relancer le client',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
-        }
-
-        // Devis finalisé (succès)
-        if (devisItem.status === 'fini' && daysSinceCreation <= 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'devis_accepte',
-            priority: 'low',
-            title: 'Devis finalisé avec succès',
-            message: `Le devis "${devisItem.title}" a été finalisé`,
-            details: `Client: ${client?.name || 'Inconnu'} • CA réalisé: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
-            date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: Math.random() > 0.3,
-            actionUrl: '#devis',
-            actionLabel: 'Voir le devis',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
-        }
-
-        // Devis expirant bientôt
-        if (devisItem.dateValidite) {
-          const daysUntilExpiry = Math.floor((new Date(devisItem.dateValidite) - new Date()) / (1000 * 60 * 60 * 24));
-          if (daysUntilExpiry <= 3 && daysUntilExpiry >= 0 && devisItem.status !== 'fini') {
-            notifications.push({
-              id: notificationId++,
-              type: 'devis',
-              category: 'devis_expire',
-              priority: 'high',
-              title: 'Devis expirant bientôt',
-              message: `Le devis "${devisItem.title}" expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
-              details: `Client: ${client?.name || 'Inconnu'} • Date limite: ${new Date(devisItem.dateValidite).toLocaleDateString('fr-FR')}`,
-              date: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000),
-              read: Math.random() > 0.8,
-              actionUrl: '#devis',
-              actionLabel: 'Prolonger le devis',
-              devisId: devisItem._id,
-              devisTitle: devisItem.title,
-              clientName: client?.name
-            });
-          }
-        }
-      });
-
-      // ✅ NOTIFICATIONS SYSTÈME INTELLIGENTES
-      const totalCA = devis.filter(d => d.status === 'fini').reduce((sum, d) => sum + calculateTTC(d), 0);
-      const newClientsThisWeek = clients.filter(c => {
-        const daysSince = Math.floor((new Date() - new Date(c.createdAt)) / (1000 * 60 * 60 * 24));
-        return daysSince <= 7;
-      }).length;
-
-      // Objectif CA atteint
-      if (totalCA > 10000) {
-        notifications.push({
-          id: notificationId++,
-          type: 'system',
-          category: 'objectif_ca',
-          priority: 'low',
-          title: 'Objectif de chiffre d\'affaires atteint',
-          message: `Félicitations ! Vous avez dépassé les 10 000 € de CA`,
-          details: `CA total réalisé: ${totalCA.toFixed(2)} € • ${devis.filter(d => d.status === 'fini').length} devis finalisés`,
-          date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: Math.random() > 0.9,
-          actionUrl: '#dashboard',
-          actionLabel: 'Voir le tableau de bord'
-        });
-      }
-
-      // Pic d'inscriptions
-      if (newClientsThisWeek >= 5) {
-        notifications.push({
-          id: notificationId++,
-          type: 'system',
-          category: 'pic_inscriptions',
-          priority: 'medium',
-          title: 'Pic d\'inscriptions cette semaine',
-          message: `${newClientsThisWeek} nouveaux prospects se sont inscrits cette semaine`,
-          details: 'Votre QR code fonctionne bien ! Pensez à les contacter rapidement.',
-          date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: Math.random() > 0.7,
-          actionUrl: '#clients',
-          actionLabel: 'Voir les prospects'
-        });
-      }
-
-      // Rappel sauvegarde
-      notifications.push({
-        id: notificationId++,
-        type: 'system',
-        category: 'sauvegarde',
-        priority: 'low',
-        title: 'Sauvegarde recommandée',
-        message: 'Il est recommandé d\'exporter vos données régulièrement',
-        details: `${clients.length} prospects et ${devis.length} devis à sauvegarder`,
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        read: Math.random() > 0.5,
-        actionUrl: '#settings',
-        actionLabel: 'Exporter les données'
-      });
-
-      // Trier par date (plus récent en premier)
-      notifications.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      setNotifications(notifications);
+      const generatedNotifications = generateNotificationsFromData(clients, devis);
+      
+      // Sauvegarder dans localStorage pour persistance
+      localStorage.setItem('notificationsData', JSON.stringify(generatedNotifications));
+      
+      setNotifications(generatedNotifications);
+      setError(null);
     } catch (error) {
-      console.error('Erreur lors de la génération des notifications:', error);
+      console.error('Erreur lors du chargement des notifications:', error);
+      setError("Impossible de charger les notifications. Veuillez réessayer.");
+      
+      // Essayer de charger depuis localStorage en cas d'erreur
+      const stored = localStorage.getItem('notificationsData');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setNotifications(parsed);
+        } catch (parseError) {
+          console.error('Erreur lors du parsing des notifications stockées:', parseError);
+        }
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateNotificationsFromData = (clients, devis) => {
+    const notifications = [];
+    let notificationId = 1;
+
+    // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS CLIENTS
+    clients.forEach(client => {
+      const daysSinceCreation = Math.floor((new Date() - new Date(client.createdAt)) / (1000 * 60 * 60 * 24));
+      
+      // Nouveau client inscrit
+      if (daysSinceCreation <= 7) {
+        notifications.push({
+          id: notificationId++,
+          type: 'client',
+          category: 'nouveau_client',
+          priority: 'high',
+          title: 'Nouveau prospect inscrit',
+          message: `${client.name} s'est inscrit via votre QR code`,
+          details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
+          date: new Date(client.createdAt),
+          read: Math.random() > 0.7, // 30% lues
+          actionUrl: `/prospect/edit/${client._id}`,
+          actionLabel: 'Voir le prospect',
+          clientId: client._id,
+          clientName: client.name
+        });
+      }
+
+      // Client inactif depuis longtemps
+      if (client.status === 'inactive' && daysSinceCreation > 30) {
+        notifications.push({
+          id: notificationId++,
+          type: 'client',
+          category: 'relance',
+          priority: 'medium',
+          title: 'Client inactif à relancer',
+          message: `${client.name} est inactif depuis plus de 30 jours`,
+          details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
+          date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+          read: Math.random() > 0.5,
+          actionUrl: `/prospect/edit/${client._id}`,
+          actionLabel: 'Relancer le client',
+          clientId: client._id,
+          clientName: client.name
+        });
+      }
+
+      // Prospect en attente
+      if (client.status === 'en_attente') {
+        notifications.push({
+          id: notificationId++,
+          type: 'client',
+          category: 'action_requise',
+          priority: 'high',
+          title: 'Prospect en attente de suivi',
+          message: `${client.name} nécessite un suivi commercial`,
+          details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
+          date: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000),
+          read: Math.random() > 0.6,
+          actionUrl: `/prospect/edit/${client._id}`,
+          actionLabel: 'Suivre le prospect',
+          clientId: client._id,
+          clientName: client.name
+        });
+      }
+    });
+
+    // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS DEVIS
+    devis.forEach(devisItem => {
+      const client = clients.find(c => c._id === (typeof devisItem.clientId === 'object' ? devisItem.clientId._id : devisItem.clientId));
+      const daysSinceCreation = Math.floor((new Date() - new Date(devisItem.dateDevis || devisItem.date)) / (1000 * 60 * 60 * 24));
+      
+      // Nouveau devis créé
+      if (daysSinceCreation <= 3) {
+        notifications.push({
+          id: notificationId++,
+          type: 'devis',
+          category: 'nouveau_devis',
+          priority: 'medium',
+          title: 'Nouveau devis créé',
+          message: `Devis "${devisItem.title}" créé pour ${client?.name || 'Client inconnu'}`,
+          details: `Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC • Statut: ${getStatusLabel(devisItem.status)}`,
+          date: new Date(devisItem.dateDevis || devisItem.date),
+          read: Math.random() > 0.8,
+          actionUrl: '#devis',
+          actionLabel: 'Voir le devis',
+          devisId: devisItem._id,
+          devisTitle: devisItem.title,
+          clientName: client?.name
+        });
+      }
+
+      // Devis en attente depuis longtemps
+      if (devisItem.status === 'en_attente' && daysSinceCreation > 7) {
+        notifications.push({
+          id: notificationId++,
+          type: 'devis',
+          category: 'devis_attente',
+          priority: 'high',
+          title: 'Devis en attente de validation',
+          message: `Le devis "${devisItem.title}" attend une réponse depuis ${daysSinceCreation} jours`,
+          details: `Client: ${client?.name || 'Inconnu'} • Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
+          date: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000),
+          read: Math.random() > 0.4,
+          actionUrl: '#devis',
+          actionLabel: 'Relancer le client',
+          devisId: devisItem._id,
+          devisTitle: devisItem.title,
+          clientName: client?.name
+        });
+      }
+
+      // Devis finalisé (succès)
+      if (devisItem.status === 'fini' && daysSinceCreation <= 7) {
+        notifications.push({
+          id: notificationId++,
+          type: 'devis',
+          category: 'devis_accepte',
+          priority: 'low',
+          title: 'Devis finalisé avec succès',
+          message: `Le devis "${devisItem.title}" a été finalisé`,
+          details: `Client: ${client?.name || 'Inconnu'} • CA réalisé: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
+          date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+          read: Math.random() > 0.3,
+          actionUrl: '#devis',
+          actionLabel: 'Voir le devis',
+          devisId: devisItem._id,
+          devisTitle: devisItem.title,
+          clientName: client?.name
+        });
+      }
+
+      // Devis expirant bientôt
+      if (devisItem.dateValidite) {
+        const daysUntilExpiry = Math.floor((new Date(devisItem.dateValidite) - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysUntilExpiry <= 3 && daysUntilExpiry >= 0 && devisItem.status !== 'fini') {
+          notifications.push({
+            id: notificationId++,
+            type: 'devis',
+            category: 'devis_expire',
+            priority: 'high',
+            title: 'Devis expirant bientôt',
+            message: `Le devis "${devisItem.title}" expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
+            details: `Client: ${client?.name || 'Inconnu'} • Date limite: ${new Date(devisItem.dateValidite).toLocaleDateString('fr-FR')}`,
+            date: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000),
+            read: Math.random() > 0.8,
+            actionUrl: '#devis',
+            actionLabel: 'Prolonger le devis',
+            devisId: devisItem._id,
+            devisTitle: devisItem.title,
+            clientName: client?.name
+          });
+        }
+      }
+    });
+
+    // ✅ NOTIFICATIONS SYSTÈME INTELLIGENTES
+    const totalCA = devis.filter(d => d.status === 'fini').reduce((sum, d) => sum + calculateTTC(d), 0);
+    const newClientsThisWeek = clients.filter(c => {
+      const daysSince = Math.floor((new Date() - new Date(c.createdAt)) / (1000 * 60 * 60 * 24));
+      return daysSince <= 7;
+    }).length;
+
+    // Objectif CA atteint
+    if (totalCA > 10000) {
+      notifications.push({
+        id: notificationId++,
+        type: 'system',
+        category: 'objectif_ca',
+        priority: 'low',
+        title: 'Objectif de chiffre d\'affaires atteint',
+        message: `Félicitations ! Vous avez dépassé les 10 000 € de CA`,
+        details: `CA total réalisé: ${totalCA.toFixed(2)} € • ${devis.filter(d => d.status === 'fini').length} devis finalisés`,
+        date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
+        read: Math.random() > 0.9,
+        actionUrl: '#dashboard',
+        actionLabel: 'Voir le tableau de bord'
+      });
+    }
+
+    // Pic d'inscriptions
+    if (newClientsThisWeek >= 5) {
+      notifications.push({
+        id: notificationId++,
+        type: 'system',
+        category: 'pic_inscriptions',
+        priority: 'medium',
+        title: 'Pic d\'inscriptions cette semaine',
+        message: `${newClientsThisWeek} nouveaux prospects se sont inscrits cette semaine`,
+        details: 'Votre QR code fonctionne bien ! Pensez à les contacter rapidement.',
+        date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
+        read: Math.random() > 0.7,
+        actionUrl: '#clients',
+        actionLabel: 'Voir les prospects'
+      });
+    }
+
+    // Rappel sauvegarde
+    notifications.push({
+      id: notificationId++,
+      type: 'system',
+      category: 'sauvegarde',
+      priority: 'low',
+      title: 'Sauvegarde recommandée',
+      message: 'Il est recommandé d\'exporter vos données régulièrement',
+      details: `${clients.length} prospects et ${devis.length} devis à sauvegarder`,
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      read: Math.random() > 0.5,
+      actionUrl: '#settings',
+      actionLabel: 'Exporter les données'
+    });
+
+    // Trier par date (plus récent en premier)
+    notifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return notifications;
   };
 
   // Fonction pour calculer le TTC d'un devis
@@ -316,29 +317,39 @@ const Notifications = () => {
   });
 
   const markAsRead = (id) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev => {
+      const updated = prev.map(notif => 
         notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
+      );
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const markAsUnread = (id) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev => {
+      const updated = prev.map(notif => 
         notif.id === id ? { ...notif, read: false } : notif
-      )
-    );
+      );
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+    setNotifications(prev => {
+      const updated = prev.map(notif => ({ ...notif, read: true }));
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const deleteNotification = (id) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+    setNotifications(prev => {
+      const updated = prev.filter(notif => notif.id !== id);
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleSelectNotification = (id) => {
@@ -365,22 +376,26 @@ const Notifications = () => {
     );
     if (!confirmDelete) return;
 
-    setNotifications(prev => 
-      prev.filter(notif => !selectedNotifications.includes(notif.id))
-    );
+    setNotifications(prev => {
+      const updated = prev.filter(notif => !selectedNotifications.includes(notif.id));
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
     setSelectedNotifications([]);
   };
 
   const handleBulkMarkAsRead = () => {
     if (selectedNotifications.length === 0) return;
     
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev => {
+      const updated = prev.map(notif => 
         selectedNotifications.includes(notif.id) 
           ? { ...notif, read: true }
           : notif
-      )
-    );
+      );
+      localStorage.setItem('notificationsData', JSON.stringify(updated));
+      return updated;
+    });
     setSelectedNotifications([]);
   };
 
@@ -421,12 +436,12 @@ const Notifications = () => {
 
   const formatDate = (date) => {
     const now = new Date();
-    const diff = now - date;
+    const diff = now - new Date(date);
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
 
     if (days > 7) {
-      return date.toLocaleDateString('fr-FR');
+      return new Date(date).toLocaleDateString('fr-FR');
     } else if (days > 0) {
       return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
     } else if (hours > 0) {
@@ -436,17 +451,27 @@ const Notifications = () => {
     }
   };
 
+  const handleActionClick = (notification) => {
+    // Marquer comme lu quand on clique sur l'action
+    markAsRead(notification.id);
+    
+    // Rediriger vers l'URL d'action
+    if (notification.actionUrl) {
+      if (notification.actionUrl.startsWith('#')) {
+        // Navigation interne via hash
+        window.location.hash = notification.actionUrl.substring(1);
+      } else if (notification.actionUrl.startsWith('/')) {
+        // Navigation interne via path
+        window.location.href = notification.actionUrl;
+      } else {
+        // URL externe
+        window.open(notification.actionUrl, '_blank');
+      }
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
-
-  if (loading) {
-    return (
-      <div className="notifications-loading">
-        <div className="loading-spinner">⏳</div>
-        <p>Chargement des notifications...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="notifications-container">
@@ -508,6 +533,10 @@ const Notifications = () => {
         </div>
 
         <div className="actions-section">
+          <button onClick={fetchNotifications} className="action-btn refresh-btn">
+            🔄 Actualiser
+          </button>
+          
           {unreadCount > 0 && (
             <button onClick={markAllAsRead} className="action-btn mark-all-read">
               ✓ Tout marquer comme lu ({unreadCount})
@@ -541,9 +570,25 @@ const Notifications = () => {
         </div>
       )}
 
+      {/* Message d'erreur */}
+      {error && (
+        <div className="error-message-container">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">{error}</div>
+          <button onClick={fetchNotifications} className="retry-button">
+            🔄 Réessayer
+          </button>
+        </div>
+      )}
+
       {/* Liste des notifications */}
       <div className="notifications-list">
-        {filteredNotifications.length === 0 ? (
+        {loading ? (
+          <div className="loading-state">
+            <div className="loading-spinner">⏳</div>
+            <p>Chargement des notifications...</p>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
           <div className="no-notifications">
             <div className="no-notifications-icon">🔕</div>
             <h3>Aucune notification</h3>
@@ -604,9 +649,12 @@ const Notifications = () => {
 
                 {notification.actionUrl && (
                   <div className="notification-action">
-                    <a href={notification.actionUrl} className="action-link">
+                    <button 
+                      onClick={() => handleActionClick(notification)} 
+                      className="action-link"
+                    >
                       {notification.actionLabel || 'Voir plus'}
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>

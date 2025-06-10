@@ -157,6 +157,11 @@
   white-space: nowrap;
 }
 
+.refresh-btn {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+}
+
 .mark-all-read {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
@@ -362,20 +367,23 @@
 }
 
 .action-link {
-  color: #3b82f6;
+  color: white;
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9rem;
   padding: 0.5rem 1rem;
-  background: rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   border-radius: 8px;
   transition: all 0.3s ease;
   display: inline-block;
+  border: none;
+  cursor: pointer;
 }
 
 .action-link:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .notification-actions {
@@ -474,6 +482,45 @@
   color: #475569;
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+/* ✅ MESSAGE D'ERREUR */
+.error-message-container {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.error-icon {
+  font-size: 2rem;
+  color: #b91c1c;
+}
+
+.error-text {
+  flex: 1;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.retry-button {
+  background: white;
+  color: #b91c1c;
+  border: 2px solid #b91c1c;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-button:hover {
+  background: #b91c1c;
+  color: white;
 }
 
 /* ✅ RESPONSIVE */

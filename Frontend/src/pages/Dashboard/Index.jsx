@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const userMenuRef = useRef(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
@@ -73,7 +73,26 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
+    
+    // Charger le nombre de notifications non lues
+    loadUnreadNotificationsCount();
   }, [location]);
+
+  const loadUnreadNotificationsCount = () => {
+    try {
+      const stored = localStorage.getItem('notificationsData');
+      if (stored) {
+        const notifications = JSON.parse(stored);
+        const unreadCount = notifications.filter(n => !n.read).length;
+        setUnreadNotifications(unreadCount);
+      } else {
+        setUnreadNotifications(0);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des notifications:', error);
+      setUnreadNotifications(0);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -90,6 +109,9 @@ const Dashboard = () => {
     try {
       const data = await apiRequest(API_ENDPOINTS.CLIENTS.BASE);
       setClients(Array.isArray(data) ? data : []);
+      
+      // Recharger le nombre de notifications après mise à jour des clients
+      loadUnreadNotificationsCount();
     } catch (err) {
       console.error("Erreur lors de la récupération des clients:", err);
       setError("Erreur lors de la récupération des clients.");
@@ -100,6 +122,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchClients();
+    
+    // Mettre en place un intervalle pour actualiser les notifications
+    const notificationInterval = setInterval(loadUnreadNotificationsCount, 60000); // Toutes les minutes
+    
+    return () => {
+      clearInterval(notificationInterval);
+    };
   }, []);
 
   const handleViewClientDevis = (client) => {
@@ -221,12 +250,17 @@ const Dashboard = () => {
                       setSelectedClientForDevis(null);
                       setEditingDevis(null);
                     }
+                    
+                    // Si on clique sur notifications, recharger le compteur
+                    if (item.id === "notifications") {
+                      loadUnreadNotificationsCount();
+                    }
                   }}
                   title={item.label}
                 >
                   <span className="nav-icon">
                     {item.icon}
-                    {item.badge && (
+                    {item.badge > 0 && (
                       <span className="notifications-badge">{item.badge}</span>
                     )}
                   </span>
@@ -375,8 +409,14 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "notifications" && <Notifications />}
+            {activeTab === "notifications" && (
+              <Notifications 
+                onNotificationsUpdate={loadUnreadNotificationsCount}
+              />
+            )}
+            
             {activeTab === "settings" && <Settings />}
+            
             {activeTab === "carte" && (
               <BusinessCard 
                 userId={userId} 
