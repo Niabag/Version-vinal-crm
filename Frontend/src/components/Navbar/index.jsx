@@ -61,9 +61,8 @@ const Navbar = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
-  // Masquer la navbar uniquement sur la page dashboard (elle a sa propre navigation)
-  // Ne plus masquer sur la page SubscriptionRequired
-  if (location.pathname === "/dashboard") {
+  // Masquer la navbar sur la page dashboard et sur les pages de scan QR code
+  if (location.pathname === "/dashboard" || location.pathname.startsWith("/register-client/")) {
     return null;
   }
 
@@ -91,7 +90,7 @@ const Navbar = () => {
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
           {!token ? (
             <>
-              <Link to="/\" className="nav-link\" onClick={closeMenu}>
+              <Link to="/" className="nav-link\" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
               <Link to="/pricing" className="nav-link" onClick={closeMenu}>
