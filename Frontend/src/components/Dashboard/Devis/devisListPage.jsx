@@ -840,7 +840,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                         </div>
                         <div className="devis-card-amount">
                           <span>💰</span>
-                          <span>{calculateTTC(devisItem).toFixed(2)} € TTC</span>
+                          <span>600.00 € TTC</span>
                         </div>
                       </div>
                     </div>
