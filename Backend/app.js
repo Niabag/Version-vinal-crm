@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 // Import des configurations
@@ -14,6 +16,53 @@ const businessCardRoutes = require("./routes/businessCardRoutes"); // ✅ NOUVEA
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 
 const app = express();
+
+// ✅ Création du serveur HTTP pour Socket.io
+const server = http.createServer(app);
+
+// ✅ Configuration de Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// ✅ Stockage des connexions utilisateurs
+const userConnections = new Map();
+
+// ✅ Gestion des connexions Socket.io
+io.on("connection", (socket) => {
+  console.log("✅ Nouvelle connexion Socket.io:", socket.id);
+
+  // Authentification de l'utilisateur
+  socket.on("authenticate", (userId) => {
+    if (userId) {
+      console.log(`✅ Utilisateur ${userId} authentifié sur socket ${socket.id}`);
+      // Stocker la connexion de l'utilisateur
+      userConnections.set(userId, socket.id);
+      // Rejoindre une room spécifique à l'utilisateur
+      socket.join(`user-${userId}`);
+    }
+  });
+
+  // Déconnexion
+  socket.on("disconnect", () => {
+    console.log("❌ Déconnexion Socket.io:", socket.id);
+    // Supprimer la connexion de l'utilisateur
+    for (const [userId, socketId] of userConnections.entries()) {
+      if (socketId === socket.id) {
+        userConnections.delete(userId);
+        break;
+      }
+    }
+  });
+});
+
+// ✅ Exporter io pour l'utiliser dans d'autres fichiers
+app.set("io", io);
+app.set("userConnections", userConnections);
 
 // ✅ Connexion à la base de données
 connectDB();
@@ -71,4 +120,5 @@ app.use((error, req, res, next) => {
   });
 });
 
-module.exports = app;
+// ✅ Exporter le serveur HTTP au lieu de l'app Express
+module.exports = server;

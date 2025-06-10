@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './notifications.scss';
 
@@ -16,6 +16,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [nextRefreshIn, setNextRefreshIn] = useState(60);
   const [notificationSound] = useState(new Audio('/notification-sound.mp3')); // Assurez-vous d'ajouter ce fichier audio
+  const socketRef = useRef(null);
 
   // Charger les notifications au démarrage
   useEffect(() => {
@@ -54,12 +55,116 @@ const Notifications = ({ onNotificationsUpdate }) => {
       }
     }, 1000);
 
+    // ✅ NOUVEAU: Initialiser la connexion WebSocket
+    initializeSocket();
+
     // Nettoyage
     return () => {
       clearInterval(interval);
       clearInterval(countdownInterval);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
   }, [autoRefreshEnabled]);
+
+  // ✅ NOUVELLE FONCTION: Initialiser la connexion WebSocket
+  const initializeSocket = () => {
+    try {
+      // Importer dynamiquement socket.io-client
+      import('socket.io-client').then(({ io }) => {
+        const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        
+        // Créer la connexion
+        const socket = io(SOCKET_URL, {
+          withCredentials: true,
+          transports: ['websocket']
+        });
+        
+        // Stocker la référence du socket
+        socketRef.current = socket;
+        
+        // Événements de connexion
+        socket.on('connect', () => {
+          console.log('✅ Connecté au serveur de notifications en temps réel');
+          
+          // Authentifier l'utilisateur
+          const token = localStorage.getItem('token');
+          if (token) {
+            const userId = getUserIdFromToken(token);
+            if (userId) {
+              socket.emit('authenticate', userId);
+              console.log('🔐 Authentification socket envoyée pour userId:', userId);
+            }
+          }
+        });
+        
+        // Écouter les nouvelles notifications
+        socket.on('notification', (notification) => {
+          console.log('🔔 Nouvelle notification reçue:', notification);
+          
+          // Ajouter la notification à la liste
+          setNotifications(prev => {
+            // Vérifier si la notification existe déjà
+            const exists = prev.some(n => 
+              n.id === notification.id || 
+              (n.type === notification.type && 
+               n.category === notification.category && 
+               n.title === notification.title &&
+               n.date === notification.date)
+            );
+            
+            if (exists) return prev;
+            
+            // Ajouter l'ID unique si manquant
+            const notifWithId = {
+              ...notification,
+              id: notification.id || `${notification.type}_${notification.category}_${Date.now()}`
+            };
+            
+            // Jouer le son de notification
+            try {
+              notificationSound.play();
+            } catch (error) {
+              console.error("Erreur lors de la lecture du son:", error);
+            }
+            
+            // Mettre à jour le compteur
+            if (onNotificationsUpdate) {
+              onNotificationsUpdate();
+            }
+            
+            return [notifWithId, ...prev];
+          });
+        });
+        
+        // Erreurs de connexion
+        socket.on('connect_error', (error) => {
+          console.error('❌ Erreur de connexion au serveur de notifications:', error);
+        });
+        
+        socket.on('disconnect', () => {
+          console.log('❌ Déconnecté du serveur de notifications');
+        });
+      }).catch(err => {
+        console.error('❌ Erreur lors du chargement de socket.io-client:', err);
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'initialisation du socket:', error);
+    }
+  };
+
+  // Extraire l'ID utilisateur du token JWT
+  const getUserIdFromToken = (token) => {
+    try {
+      const payloadBase64 = token.split(".")[1];
+      const payload = atob(payloadBase64);
+      return JSON.parse(payload).userId;
+    } catch (error) {
+      console.error("Erreur lors du décodage du token:", error);
+      return null;
+    }
+  };
 
   // Persistance des notifications et des IDs supprimés
   useEffect(() => {

@@ -40,6 +40,24 @@ exports.registerClient = async (req, res) => {
 
     await newClient.save();
     console.log("✅ Client enregistré avec succès !");
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${userId}`).emit("notification", {
+        type: "client",
+        category: "nouveau_client",
+        title: "Nouveau prospect inscrit",
+        message: `${name} s'est inscrit via votre QR code`,
+        details: `Email: ${email} • Téléphone: ${phone}${company ? ` • Entreprise: ${company}` : ''}`,
+        date: new Date(),
+        read: false,
+        clientId: newClient._id,
+        clientName: name
+      });
+      console.log(`✅ Notification envoyée à l'utilisateur ${userId}`);
+    }
+    
     res.status(201).json({ message: "Client enregistré avec succès !" });
 
   } catch (error) {
@@ -89,6 +107,24 @@ exports.updateClientStatus = async (req, res) => {
     await client.save();
 
     console.log(`✅ Statut du client ${client.name} mis à jour: ${status}`);
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "client",
+        category: "status_update",
+        title: "Statut de prospect mis à jour",
+        message: `Le statut de ${client.name} a été changé en "${status}"`,
+        details: `Email: ${client.email} • Téléphone: ${client.phone}`,
+        date: new Date(),
+        read: false,
+        clientId: client._id,
+        clientName: client.name
+      });
+      console.log(`✅ Notification de changement de statut envoyée à l'utilisateur ${req.userId}`);
+    }
+    
     res.json({ 
       message: "Statut mis à jour avec succès", 
       client: {
@@ -154,6 +190,24 @@ exports.updateClient = async (req, res) => {
     await client.save();
 
     console.log(`✅ Client ${client.name} mis à jour avec succès`);
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "client",
+        category: "client_update",
+        title: "Prospect mis à jour",
+        message: `Les informations de ${client.name} ont été mises à jour`,
+        details: `Email: ${client.email} • Téléphone: ${client.phone}`,
+        date: new Date(),
+        read: false,
+        clientId: client._id,
+        clientName: client.name
+      });
+      console.log(`✅ Notification de mise à jour client envoyée à l'utilisateur ${req.userId}`);
+    }
+    
     res.json({ 
       message: "Client mis à jour avec succès", 
       client 
@@ -182,6 +236,22 @@ exports.deleteClient = async (req, res) => {
     await Client.findByIdAndDelete(clientId);
 
     console.log(`✅ Client ${client.name} et ses devis supprimés`);
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "client",
+        category: "client_deleted",
+        title: "Prospect supprimé",
+        message: `${client.name} a été supprimé de votre liste`,
+        details: `Tous les devis associés ont également été supprimés`,
+        date: new Date(),
+        read: false
+      });
+      console.log(`✅ Notification de suppression client envoyée à l'utilisateur ${req.userId}`);
+    }
+    
     res.status(200).json({ message: "✅ Client et ses devis supprimés" });
   } catch (err) {
     console.error("❌ Erreur suppression client :", err);

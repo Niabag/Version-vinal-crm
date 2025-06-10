@@ -28,6 +28,8 @@ const Dashboard = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
+  const socketRef = useRef(null);
+  const [notificationSound] = useState(new Audio('/notification-sound.mp3'));
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -61,6 +63,9 @@ const Dashboard = () => {
       const decodedToken = decodeToken(token);
       if (decodedToken && decodedToken.userId) {
         setUserId(decodedToken.userId);
+        
+        // ✅ NOUVEAU: Initialiser la connexion WebSocket
+        initializeSocket(decodedToken.userId);
       } else {
         console.error("❌ Impossible de décoder userId du token");
       }
@@ -75,7 +80,75 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
+    
+    // Nettoyage à la déconnexion
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [location]);
+
+  // ✅ NOUVELLE FONCTION: Initialiser la connexion WebSocket
+  const initializeSocket = (userId) => {
+    try {
+      // Importer dynamiquement socket.io-client
+      import('socket.io-client').then(({ io }) => {
+        const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        
+        // Créer la connexion
+        const socket = io(SOCKET_URL, {
+          withCredentials: true,
+          transports: ['websocket']
+        });
+        
+        // Stocker la référence du socket
+        socketRef.current = socket;
+        
+        // Événements de connexion
+        socket.on('connect', () => {
+          console.log('✅ Connecté au serveur de notifications en temps réel');
+          
+          // Authentifier l'utilisateur
+          socket.emit('authenticate', userId);
+          console.log('🔐 Authentification socket envoyée pour userId:', userId);
+        });
+        
+        // Écouter les nouvelles notifications
+        socket.on('notification', (notification) => {
+          console.log('🔔 Nouvelle notification reçue:', notification);
+          
+          // Jouer le son de notification
+          try {
+            notificationSound.play();
+          } catch (error) {
+            console.error("Erreur lors de la lecture du son:", error);
+          }
+          
+          // Mettre à jour le compteur de notifications non lues
+          setUnreadNotifications(prev => prev + 1);
+          
+          // Si on est sur l'onglet notifications, actualiser les notifications
+          if (activeTab === 'notifications') {
+            updateUnreadNotifications();
+          }
+        });
+        
+        // Erreurs de connexion
+        socket.on('connect_error', (error) => {
+          console.error('❌ Erreur de connexion au serveur de notifications:', error);
+        });
+        
+        socket.on('disconnect', () => {
+          console.log('❌ Déconnecté du serveur de notifications');
+        });
+      }).catch(err => {
+        console.error('❌ Erreur lors du chargement de socket.io-client:', err);
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'initialisation du socket:', error);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -124,6 +197,7 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
     navigate("/");
   };
 

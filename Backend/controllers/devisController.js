@@ -46,6 +46,29 @@ exports.createDevis = async (req, res) => {
     });
 
     await newDevis.save();
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      // Récupérer les infos du client
+      const Client = require("../models/client");
+      const client = await Client.findById(clientId);
+      
+      io.to(`user-${userId}`).emit("notification", {
+        type: "devis",
+        category: "nouveau_devis",
+        title: "Nouveau devis créé",
+        message: `Devis "${title}" créé pour ${client?.name || 'Client inconnu'}`,
+        details: `Montant: ${amount} € • Statut: Nouveau`,
+        date: new Date(),
+        read: false,
+        devisId: newDevis._id,
+        devisTitle: title,
+        clientName: client?.name
+      });
+      console.log(`✅ Notification de création de devis envoyée à l'utilisateur ${userId}`);
+    }
+    
     res.status(201).json({ message: "✅ Devis créé avec succès", devis: newDevis });
   } catch (error) {
     console.error("❌ Erreur création devis :", error);
@@ -108,6 +131,28 @@ exports.updateDevis = async (req, res) => {
       { new: true }
     );
 
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      // Récupérer les infos du client
+      const Client = require("../models/client");
+      const client = await Client.findById(updatedDevis.clientId);
+      
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "devis",
+        category: "devis_update",
+        title: "Devis mis à jour",
+        message: `Le devis "${updatedDevis.title}" a été modifié`,
+        details: `Client: ${client?.name || 'Inconnu'} • Montant: ${updatedDevis.amount} €`,
+        date: new Date(),
+        read: false,
+        devisId: updatedDevis._id,
+        devisTitle: updatedDevis.title,
+        clientName: client?.name
+      });
+      console.log(`✅ Notification de mise à jour de devis envoyée à l'utilisateur ${req.userId}`);
+    }
+
     res.json(updatedDevis);
   } catch (error) {
     console.error("❌ Erreur mise à jour devis :", error);
@@ -141,6 +186,29 @@ exports.updateDevisStatus = async (req, res) => {
     await devis.save();
 
     console.log(`✅ Statut du devis ${devis.title} mis à jour: ${status}`);
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      // Récupérer les infos du client
+      const Client = require("../models/client");
+      const client = await Client.findById(devis.clientId);
+      
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "devis",
+        category: "devis_status",
+        title: "Statut de devis modifié",
+        message: `Le devis "${devis.title}" est maintenant "${status}"`,
+        details: `Client: ${client?.name || 'Inconnu'} • Montant: ${devis.amount} €`,
+        date: new Date(),
+        read: false,
+        devisId: devis._id,
+        devisTitle: devis.title,
+        clientName: client?.name
+      });
+      console.log(`✅ Notification de changement de statut de devis envoyée à l'utilisateur ${req.userId}`);
+    }
+    
     res.json({ 
       message: "Statut mis à jour avec succès", 
       devis: {
@@ -164,6 +232,21 @@ exports.deleteDevis = async (req, res) => {
     }
 
     await devis.deleteOne();
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${req.userId}`).emit("notification", {
+        type: "devis",
+        category: "devis_deleted",
+        title: "Devis supprimé",
+        message: `Le devis "${devis.title}" a été supprimé`,
+        date: new Date(),
+        read: false
+      });
+      console.log(`✅ Notification de suppression de devis envoyée à l'utilisateur ${req.userId}`);
+    }
+    
     res.status(200).json({ message: "✅ Devis supprimé avec succès." });
   } catch (error) {
     console.error("❌ Erreur suppression devis :", error);

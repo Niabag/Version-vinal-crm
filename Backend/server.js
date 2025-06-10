@@ -1,5 +1,4 @@
-const http = require("http");
-const app = require("./app");
+const server = require("./app");
 
 // ✅ Normalisation du port
 const normalizePort = val => {
@@ -7,7 +6,6 @@ const normalizePort = val => {
   return isNaN(port) ? val : (port >= 0 ? port : false);
 };
 const port = normalizePort(process.env.PORT || "5000");
-app.set("port", port);
 
 // ✅ Gestion des erreurs
 const errorHandler = error => {
@@ -29,9 +27,6 @@ const errorHandler = error => {
       throw error;
   }
 };
-
-// ✅ Création du serveur HTTP avec Express
-const server = http.createServer(app);
 
 server.on("error", errorHandler);
 server.on("listening", () => {

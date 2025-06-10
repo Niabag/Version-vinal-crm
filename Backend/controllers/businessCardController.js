@@ -381,6 +381,22 @@ const trackCardView = async (req, res) => {
     await businessCard.save();
     
     console.log("✅ Vue de carte enregistrée, total:", businessCard.stats.views);
+    
+    // ✅ NOUVEAU: Envoyer une notification en temps réel
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${userId}`).emit("notification", {
+        type: "system",
+        category: "card_scan",
+        title: "Nouvelle vue de votre carte",
+        message: "Quelqu'un vient de scanner votre QR code",
+        details: `Date: ${new Date().toLocaleString('fr-FR')}`,
+        date: new Date(),
+        read: false
+      });
+      console.log(`✅ Notification de scan de carte envoyée à l'utilisateur ${userId}`);
+    }
+    
     res.status(200).json({ 
       message: "Vue enregistrée avec succès",
       views: businessCard.stats.views
