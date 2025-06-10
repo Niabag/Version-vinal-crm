@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import './DynamicInvoice.scss';
+import { calculateTTC, calculateHT, calculateTVA, calculateTVABreakdown } from '../../../utils/calculateTTC';
 
 const DynamicInvoice = ({ 
   invoice, 
@@ -76,37 +77,38 @@ const DynamicInvoice = ({
 
   // Calcul des totaux
   const calculateTotals = () => {
-    let subtotal = 0;
-    let totalTax = 0;
-
-    devisDetails.forEach(devis => {
-      if (devis.articles && Array.isArray(devis.articles)) {
-        devis.articles.forEach(article => {
-          const price = parseFloat(article.unitPrice || 0);
-          const qty = parseFloat(article.quantity || 0);
-          const tvaRate = parseFloat(article.tvaRate || 0);
-          
-          if (!isNaN(price) && !isNaN(qty)) {
-            const lineTotal = price * qty;
-            subtotal += lineTotal;
-            totalTax += lineTotal * (tvaRate / 100);
-          }
-        });
-      }
-    });
-
-    // Appliquer la remise
+    // Calculer le sous-total HT
+    const subtotal = devisDetails.reduce((sum, devis) => sum + calculateHT(devis), 0);
+    
+    // Calculer la TVA
+    const totalTax = devisDetails.reduce((sum, devis) => sum + calculateTVA(devis), 0);
+    
+    // Appliquer la remise sur le HT
     const discountAmount = subtotal * (formData.discount / 100);
     const discountedSubtotal = subtotal - discountAmount;
     
     // Recalculer la TVA après remise si nécessaire
     const finalTax = totalTax * (1 - formData.discount / 100);
     
+    // Calculer le total TTC
     const total = discountedSubtotal + finalTax;
-    return { subtotal, discountAmount, discountedSubtotal, totalTax: finalTax, total };
+    
+    return { 
+      subtotal, 
+      discountAmount, 
+      discountedSubtotal, 
+      totalTax: finalTax, 
+      total,
+      tvaBreakdown: calculateTVABreakdown(devisDetails.reduce((acc, devis) => {
+        return {
+          ...acc,
+          articles: [...(acc.articles || []), ...(devis.articles || [])]
+        };
+      }, {}))
+    };
   };
 
-  const { subtotal, discountAmount, discountedSubtotal, totalTax, total } = calculateTotals();
+  const { subtotal, discountAmount, discountedSubtotal, totalTax, total, tvaBreakdown } = calculateTotals();
 
   // Formatage de la date
   const formatDate = (dateStr) => {
@@ -568,7 +570,6 @@ const DynamicInvoice = ({
           </p>
         </div>
       </div>
-
     </div>
   );
 };
