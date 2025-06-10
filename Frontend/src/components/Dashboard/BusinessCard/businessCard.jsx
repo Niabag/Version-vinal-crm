@@ -8,13 +8,14 @@ const BusinessCard = ({ userId, user }) => {
     cardImage: '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg',
     showQR: true,
     qrPosition: 'top-right',
-    qrSize: 100,
+    qrSize: 150,
     actions: []
   });
   
   const [qrValue, setQrValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
+  const [error, setError] = useState(null);
   
   // États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
@@ -251,15 +252,19 @@ const BusinessCard = ({ userId, user }) => {
   const saveBusinessCardToDB = async (cardImage = null, config = null) => {
     try {
       setLoading(true);
+      setError(null);
       
       const configToSave = config || cardConfig;
+      
+      // Assurez-vous que qrSize est au moins 100px (minimum requis par le backend)
+      const qrSize = Math.max(100, Math.min(200, Number(configToSave.qrSize) || 150));
       
       const cleanedConfig = {
         showQR: Boolean(configToSave.showQR !== undefined ? configToSave.showQR : true),
         qrPosition: ['bottom-right', 'bottom-left', 'top-right', 'top-left'].includes(configToSave.qrPosition) 
           ? configToSave.qrPosition 
           : 'top-right',
-        qrSize: Math.max(50, Math.min(200, Number(configToSave.qrSize) || 100)),
+        qrSize: qrSize,
         actions: Array.isArray(configToSave.actions) ? configToSave.actions : []
       };
       
@@ -286,7 +291,8 @@ const BusinessCard = ({ userId, user }) => {
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);
-      showErrorMessage('❌ Erreur lors de la sauvegarde');
+      setError(error.message || 'Erreur lors de la sauvegarde');
+      showErrorMessage('❌ Erreur lors de la sauvegarde: ' + (error.message || ''));
     } finally {
       setLoading(false);
     }
@@ -343,6 +349,11 @@ const BusinessCard = ({ userId, user }) => {
   };
 
   const handleConfigChange = async (field, value) => {
+    // Pour qrSize, assurez-vous que la valeur est au moins 100px
+    if (field === 'qrSize') {
+      value = Math.max(100, Math.min(200, Number(value) || 150));
+    }
+    
     const newConfig = {
       ...cardConfig,
       [field]: value
@@ -575,10 +586,10 @@ const BusinessCard = ({ userId, user }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>Taille du QR code :</label>
+                  <label>Taille du QR code (min: 100px, max: 200px) :</label>
                   <input
                     type="range"
-                    min="80"
+                    min="100"
                     max="200"
                     value={cardConfig.qrSize}
                     onChange={(e) => handleConfigChange('qrSize', parseInt(e.target.value))}
@@ -805,6 +816,15 @@ const BusinessCard = ({ userId, user }) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Affichage des erreurs */}
+      {error && (
+        <div className="error-message-container">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">{error}</div>
+          <button onClick={() => setError(null)} className="error-dismiss">Fermer</button>
         </div>
       )}
     </div>
