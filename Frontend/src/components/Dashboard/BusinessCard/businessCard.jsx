@@ -29,8 +29,8 @@ const BusinessCard = ({ userId, user }) => {
   // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
   const actionSchemas = {
 
-    'lead-generation': {
-      name: 'Génération de Leads',
+    'website-form': {
+      name: 'Site web → Formulaire',
       description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
       icon: '🚀📝',
       sequence: 'Site web (1s) → Formulaire (2s)',
