@@ -7,6 +7,7 @@ const {
   getPublicBusinessCard // ✅ NOUVEAU: Importer la nouvelle fonction
 } = require("../controllers/businessCardController");
 const authMiddleware = require("../middleware/auth");
+const { checkSubscription } = require("../middleware/subscription");
 
 const router = express.Router();
 
@@ -14,16 +15,16 @@ const router = express.Router();
 router.get("/public/:userId", getPublicBusinessCard); // ✅ NOUVEAU
 
 // 📌 Sauvegarder/mettre à jour la carte de visite
-router.post("/", authMiddleware, saveBusinessCard);
+router.post("/", authMiddleware, checkSubscription, saveBusinessCard);
 
 // 📌 Récupérer la carte de visite de l'utilisateur authentifié
-router.get("/", authMiddleware, getBusinessCard);
+router.get("/", authMiddleware, checkSubscription, getBusinessCard);
 
 // 📌 Mettre à jour seulement la configuration
-router.patch("/config", authMiddleware, updateCardConfig);
+router.patch("/config", authMiddleware, checkSubscription, updateCardConfig);
 
 // 📌 Supprimer la carte de visite
-router.delete("/", authMiddleware, deleteBusinessCard);
+router.delete("/", authMiddleware, checkSubscription, deleteBusinessCard);
 
 module.exports = router;
 
