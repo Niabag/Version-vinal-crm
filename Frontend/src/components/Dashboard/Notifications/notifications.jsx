@@ -10,6 +10,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const [sortBy, setSortBy] = useState('date'); // date, type, priority
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [error, setError] = useState(null);
+  const [lastGeneratedTime, setLastGeneratedTime] = useState(null);
 
   // Charger les notifications au démarrage
   useEffect(() => {
@@ -20,13 +21,14 @@ const Notifications = ({ onNotificationsUpdate }) => {
   useEffect(() => {
     if (!loading) {
       localStorage.setItem('notificationsData', JSON.stringify(notifications));
+      localStorage.setItem('lastGeneratedTime', lastGeneratedTime ? lastGeneratedTime.toISOString() : null);
       
       // Mettre à jour le compteur de notifications non lues dans le parent
       if (onNotificationsUpdate) {
         onNotificationsUpdate();
       }
     }
-  }, [notifications, loading, onNotificationsUpdate]);
+  }, [notifications, loading, onNotificationsUpdate, lastGeneratedTime]);
 
   const loadNotifications = () => {
     setLoading(true);
@@ -35,6 +37,8 @@ const Notifications = ({ onNotificationsUpdate }) => {
     try {
       // Récupérer les notifications stockées
       const stored = localStorage.getItem('notificationsData');
+      const lastGenTime = localStorage.getItem('lastGeneratedTime');
+      
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
@@ -44,13 +48,18 @@ const Notifications = ({ onNotificationsUpdate }) => {
             date: n.date ? new Date(n.date) : new Date(),
           }));
           setNotifications(withDates);
+          
+          if (lastGenTime) {
+            setLastGeneratedTime(new Date(lastGenTime));
+          }
+          
           setLoading(false);
         } catch (err) {
           console.error('Failed to parse notifications from localStorage', err);
-          generateNotifications();
+          generateNotifications(true);
         }
       } else {
-        generateNotifications();
+        generateNotifications(true);
       }
     } catch (err) {
       setError("Erreur lors du chargement des notifications");
@@ -58,7 +67,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
     }
   };
 
-  const generateNotifications = async () => {
+  const generateNotifications = async (isFirstLoad = false) => {
     try {
       setLoading(true);
       
@@ -68,7 +77,12 @@ const Notifications = ({ onNotificationsUpdate }) => {
         apiRequest(API_ENDPOINTS.DEVIS.BASE)
       ]);
 
-      const notifications = [];
+      // Si ce n'est pas le premier chargement, conserver les notifications existantes
+      // et leur statut de lecture
+      const existingNotifications = isFirstLoad ? [] : [...notifications];
+      const existingIds = new Set(existingNotifications.map(n => n.id));
+      
+      const newNotifications = [];
       let notificationId = Date.now();
 
       // ✅ NOTIFICATIONS BASÉES SUR LES VRAIS CLIENTS
@@ -77,59 +91,68 @@ const Notifications = ({ onNotificationsUpdate }) => {
         
         // Nouveau client inscrit
         if (daysSinceCreation <= 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'nouveau_client',
-            priority: 'high',
-            title: 'Nouveau prospect inscrit',
-            message: `${client.name} s'est inscrit via votre QR code`,
-            details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
-            date: new Date(client.createdAt),
-            read: false, // Toujours non lu pour les nouveaux clients
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Voir le prospect',
-            clientId: client._id,
-            clientName: client.name
-          });
+          const notifId = `client_new_${client._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'client',
+              category: 'nouveau_client',
+              priority: 'high',
+              title: 'Nouveau prospect inscrit',
+              message: `${client.name} s'est inscrit via votre QR code`,
+              details: `Email: ${client.email} • Téléphone: ${client.phone}${client.company ? ` • Entreprise: ${client.company}` : ''}`,
+              date: new Date(client.createdAt),
+              read: false, // Toujours non lu pour les nouveaux clients
+              actionUrl: `/prospect/edit/${client._id}`,
+              actionLabel: 'Voir le prospect',
+              clientId: client._id,
+              clientName: client.name
+            });
+          }
         }
 
         // Client inactif depuis longtemps
         if (client.status === 'inactive' && daysSinceCreation > 30) {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'relance',
-            priority: 'medium',
-            title: 'Client inactif à relancer',
-            message: `${client.name} est inactif depuis plus de 30 jours`,
-            details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
-            date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: false, // Non lu pour encourager l'action
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Relancer le client',
-            clientId: client._id,
-            clientName: client.name
-          });
+          const notifId = `client_inactive_${client._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'client',
+              category: 'relance',
+              priority: 'medium',
+              title: 'Client inactif à relancer',
+              message: `${client.name} est inactif depuis plus de 30 jours`,
+              details: `Dernière activité: ${new Date(client.updatedAt).toLocaleDateString('fr-FR')}`,
+              date: new Date(),
+              read: false, // Non lu pour encourager l'action
+              actionUrl: `/prospect/edit/${client._id}`,
+              actionLabel: 'Relancer le client',
+              clientId: client._id,
+              clientName: client.name
+            });
+          }
         }
 
         // Prospect en attente
         if (client.status === 'en_attente') {
-          notifications.push({
-            id: notificationId++,
-            type: 'client',
-            category: 'action_requise',
-            priority: 'high',
-            title: 'Prospect en attente de suivi',
-            message: `${client.name} nécessite un suivi commercial`,
-            details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
-            date: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000),
-            read: false, // Non lu pour encourager l'action
-            actionUrl: `/prospect/edit/${client._id}`,
-            actionLabel: 'Suivre le prospect',
-            clientId: client._id,
-            clientName: client.name
-          });
+          const notifId = `client_pending_${client._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'client',
+              category: 'action_requise',
+              priority: 'high',
+              title: 'Prospect en attente de suivi',
+              message: `${client.name} nécessite un suivi commercial`,
+              details: `Statut: En attente • ${client.company ? `Entreprise: ${client.company}` : 'Particulier'}`,
+              date: new Date(),
+              read: false, // Non lu pour encourager l'action
+              actionUrl: `/prospect/edit/${client._id}`,
+              actionLabel: 'Suivre le prospect',
+              clientId: client._id,
+              clientName: client.name
+            });
+          }
         }
       });
 
@@ -140,84 +163,96 @@ const Notifications = ({ onNotificationsUpdate }) => {
         
         // Nouveau devis créé
         if (daysSinceCreation <= 3) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'nouveau_devis',
-            priority: 'medium',
-            title: 'Nouveau devis créé',
-            message: `Devis "${devisItem.title}" créé pour ${client?.name || 'Client inconnu'}`,
-            details: `Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC • Statut: ${getStatusLabel(devisItem.status)}`,
-            date: new Date(devisItem.dateDevis || devisItem.date),
-            read: false, // Non lu pour les nouveaux devis
-            actionUrl: '#devis',
-            actionLabel: 'Voir le devis',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
+          const notifId = `devis_new_${devisItem._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'devis',
+              category: 'nouveau_devis',
+              priority: 'medium',
+              title: 'Nouveau devis créé',
+              message: `Devis "${devisItem.title}" créé pour ${client?.name || 'Client inconnu'}`,
+              details: `Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC • Statut: ${getStatusLabel(devisItem.status)}`,
+              date: new Date(devisItem.dateDevis || devisItem.date),
+              read: false, // Non lu pour les nouveaux devis
+              actionUrl: '#devis',
+              actionLabel: 'Voir le devis',
+              devisId: devisItem._id,
+              devisTitle: devisItem.title,
+              clientName: client?.name
+            });
+          }
         }
 
         // Devis en attente depuis longtemps
         if (devisItem.status === 'en_attente' && daysSinceCreation > 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'devis_attente',
-            priority: 'high',
-            title: 'Devis en attente de validation',
-            message: `Le devis "${devisItem.title}" attend une réponse depuis ${daysSinceCreation} jours`,
-            details: `Client: ${client?.name || 'Inconnu'} • Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
-            date: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000),
-            read: false, // Non lu pour encourager l'action
-            actionUrl: '#devis',
-            actionLabel: 'Relancer le client',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
+          const notifId = `devis_waiting_${devisItem._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'devis',
+              category: 'devis_attente',
+              priority: 'high',
+              title: 'Devis en attente de validation',
+              message: `Le devis "${devisItem.title}" attend une réponse depuis ${daysSinceCreation} jours`,
+              details: `Client: ${client?.name || 'Inconnu'} • Montant: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
+              date: new Date(),
+              read: false, // Non lu pour encourager l'action
+              actionUrl: '#devis',
+              actionLabel: 'Relancer le client',
+              devisId: devisItem._id,
+              devisTitle: devisItem.title,
+              clientName: client?.name
+            });
+          }
         }
 
         // Devis finalisé (succès)
         if (devisItem.status === 'fini' && daysSinceCreation <= 7) {
-          notifications.push({
-            id: notificationId++,
-            type: 'devis',
-            category: 'devis_accepte',
-            priority: 'low',
-            title: 'Devis finalisé avec succès',
-            message: `Le devis "${devisItem.title}" a été finalisé`,
-            details: `Client: ${client?.name || 'Inconnu'} • CA réalisé: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
-            date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-            read: false, // Non lu pour les bonnes nouvelles aussi
-            actionUrl: '#devis',
-            actionLabel: 'Voir le devis',
-            devisId: devisItem._id,
-            devisTitle: devisItem.title,
-            clientName: client?.name
-          });
+          const notifId = `devis_success_${devisItem._id}`;
+          if (!existingIds.has(notifId)) {
+            newNotifications.push({
+              id: notifId,
+              type: 'devis',
+              category: 'devis_accepte',
+              priority: 'low',
+              title: 'Devis finalisé avec succès',
+              message: `Le devis "${devisItem.title}" a été finalisé`,
+              details: `Client: ${client?.name || 'Inconnu'} • CA réalisé: ${calculateTTC(devisItem).toFixed(2)} € TTC`,
+              date: new Date(),
+              read: false, // Non lu pour les bonnes nouvelles aussi
+              actionUrl: '#devis',
+              actionLabel: 'Voir le devis',
+              devisId: devisItem._id,
+              devisTitle: devisItem.title,
+              clientName: client?.name
+            });
+          }
         }
 
         // Devis expirant bientôt
         if (devisItem.dateValidite) {
           const daysUntilExpiry = Math.floor((new Date(devisItem.dateValidite) - new Date()) / (1000 * 60 * 60 * 24));
           if (daysUntilExpiry <= 3 && daysUntilExpiry >= 0 && devisItem.status !== 'fini') {
-            notifications.push({
-              id: notificationId++,
-              type: 'devis',
-              category: 'devis_expire',
-              priority: 'high',
-              title: 'Devis expirant bientôt',
-              message: `Le devis "${devisItem.title}" expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
-              details: `Client: ${client?.name || 'Inconnu'} • Date limite: ${new Date(devisItem.dateValidite).toLocaleDateString('fr-FR')}`,
-              date: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000),
-              read: false, // Non lu pour encourager l'action
-              actionUrl: '#devis',
-              actionLabel: 'Prolonger le devis',
-              devisId: devisItem._id,
-              devisTitle: devisItem.title,
-              clientName: client?.name
-            });
+            const notifId = `devis_expiring_${devisItem._id}`;
+            if (!existingIds.has(notifId)) {
+              newNotifications.push({
+                id: notifId,
+                type: 'devis',
+                category: 'devis_expire',
+                priority: 'high',
+                title: 'Devis expirant bientôt',
+                message: `Le devis "${devisItem.title}" expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
+                details: `Client: ${client?.name || 'Inconnu'} • Date limite: ${new Date(devisItem.dateValidite).toLocaleDateString('fr-FR')}`,
+                date: new Date(),
+                read: false, // Non lu pour encourager l'action
+                actionUrl: '#devis',
+                actionLabel: 'Prolonger le devis',
+                devisId: devisItem._id,
+                devisTitle: devisItem.title,
+                clientName: client?.name
+              });
+            }
           }
         }
       });
@@ -231,58 +266,86 @@ const Notifications = ({ onNotificationsUpdate }) => {
 
       // Objectif CA atteint
       if (totalCA > 10000) {
-        notifications.push({
-          id: notificationId++,
-          type: 'system',
-          category: 'objectif_ca',
-          priority: 'low',
-          title: 'Objectif de chiffre d\'affaires atteint',
-          message: `Félicitations ! Vous avez dépassé les 10 000 € de CA`,
-          details: `CA total réalisé: ${totalCA.toFixed(2)} € • ${devis.filter(d => d.status === 'fini').length} devis finalisés`,
-          date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: false, // Non lu pour les bonnes nouvelles
-          actionUrl: '#dashboard',
-          actionLabel: 'Voir le tableau de bord'
-        });
+        const notifId = 'system_ca_goal';
+        if (!existingIds.has(notifId)) {
+          newNotifications.push({
+            id: notifId,
+            type: 'system',
+            category: 'objectif_ca',
+            priority: 'low',
+            title: 'Objectif de chiffre d\'affaires atteint',
+            message: `Félicitations ! Vous avez dépassé les 10 000 € de CA`,
+            details: `CA total réalisé: ${totalCA.toFixed(2)} € • ${devis.filter(d => d.status === 'fini').length} devis finalisés`,
+            date: new Date(),
+            read: false, // Non lu pour les bonnes nouvelles
+            actionUrl: '#dashboard',
+            actionLabel: 'Voir le tableau de bord'
+          });
+        }
       }
 
       // Pic d'inscriptions
       if (newClientsThisWeek >= 5) {
-        notifications.push({
-          id: notificationId++,
-          type: 'system',
-          category: 'pic_inscriptions',
-          priority: 'medium',
-          title: 'Pic d\'inscriptions cette semaine',
-          message: `${newClientsThisWeek} nouveaux prospects se sont inscrits cette semaine`,
-          details: 'Votre QR code fonctionne bien ! Pensez à les contacter rapidement.',
-          date: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-          read: false, // Non lu pour encourager l'action
-          actionUrl: '#clients',
-          actionLabel: 'Voir les prospects'
-        });
+        const notifId = 'system_new_clients_peak';
+        if (!existingIds.has(notifId)) {
+          newNotifications.push({
+            id: notifId,
+            type: 'system',
+            category: 'pic_inscriptions',
+            priority: 'medium',
+            title: 'Pic d\'inscriptions cette semaine',
+            message: `${newClientsThisWeek} nouveaux prospects se sont inscrits cette semaine`,
+            details: 'Votre QR code fonctionne bien ! Pensez à les contacter rapidement.',
+            date: new Date(),
+            read: false, // Non lu pour encourager l'action
+            actionUrl: '#clients',
+            actionLabel: 'Voir les prospects'
+          });
+        }
       }
 
-      // Rappel sauvegarde
-      notifications.push({
-        id: notificationId++,
-        type: 'system',
-        category: 'sauvegarde',
-        priority: 'low',
-        title: 'Sauvegarde recommandée',
-        message: 'Il est recommandé d\'exporter vos données régulièrement',
-        details: `${clients.length} prospects et ${devis.length} devis à sauvegarder`,
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        read: false, // Non lu pour encourager l'action
-        actionUrl: '#settings',
-        actionLabel: 'Exporter les données'
+      // Rappel sauvegarde (une fois par semaine)
+      const lastBackupReminder = existingNotifications.find(n => n.category === 'sauvegarde');
+      const needsBackupReminder = !lastBackupReminder || 
+                                 ((new Date() - new Date(lastBackupReminder.date)) / (1000 * 60 * 60 * 24) > 7);
+      
+      if (needsBackupReminder) {
+        const notifId = 'system_backup_reminder';
+        if (!existingIds.has(notifId)) {
+          newNotifications.push({
+            id: notifId,
+            type: 'system',
+            category: 'sauvegarde',
+            priority: 'low',
+            title: 'Sauvegarde recommandée',
+            message: 'Il est recommandé d\'exporter vos données régulièrement',
+            details: `${clients.length} prospects et ${devis.length} devis à sauvegarder`,
+            date: new Date(),
+            read: false, // Non lu pour encourager l'action
+            actionUrl: '#settings',
+            actionLabel: 'Exporter les données'
+          });
+        }
+      }
+
+      // Fusionner les nouvelles notifications avec les existantes
+      // en préservant l'état de lecture des notifications existantes
+      const mergedNotifications = [...existingNotifications];
+      
+      // Ajouter uniquement les nouvelles notifications
+      newNotifications.forEach(newNotif => {
+        const existingIndex = mergedNotifications.findIndex(n => n.id === newNotif.id);
+        if (existingIndex === -1) {
+          // C'est une nouvelle notification, l'ajouter
+          mergedNotifications.push(newNotif);
+        }
       });
 
       // Trier par date (plus récent en premier)
-      notifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+      mergedNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      setNotifications(notifications);
-      localStorage.setItem('notificationsData', JSON.stringify(notifications));
+      setNotifications(mergedNotifications);
+      setLastGeneratedTime(new Date());
       
       // Mettre à jour le compteur dans le parent
       if (onNotificationsUpdate) {
@@ -469,7 +532,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
 
   const handleRefresh = () => {
-    generateNotifications();
+    generateNotifications(false);
   };
 
   if (loading) {
