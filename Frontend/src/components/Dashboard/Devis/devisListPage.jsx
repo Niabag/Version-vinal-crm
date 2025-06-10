@@ -429,7 +429,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
         </div>
       `);
 
-      // ✅ TRAITER CHAQUE LIGNE INDIVIDUELLEMENT
+      // TRAITER CHAQUE LIGNE INDIVIDUELLEMENT
       for (let i = 0; i < devis.articles.length; i++) {
         const article = devis.articles[i];
         const price = parseFloat(article.unitPrice || "0");
@@ -529,7 +529,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
           <div style="margin-bottom: 2rem;">
             <h4 style="margin: 0 0 1rem 0; color: #0f172a; font-size: 1.1rem; font-weight: 600;">Conditions</h4>
             <div style="color: #475569; line-height: 1.6; white-space: pre-line;">
-              ${devis.conditions || `• Facture valable jusqu'au ${formatDate(devis.dateValidite)}\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI (si applicable)`}
+              ${devis.conditions || `• Facture valable jusqu'au ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}\n• Règlement à 30 jours fin de mois\n• TVA non applicable, art. 293 B du CGI (si applicable)`}
             </div>
           </div>
           
@@ -730,7 +730,7 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                   onClick={() => handleCreateInvoice(devisItem)}
                 >
                   {/* Section supérieure */}
-                  <div className="card-top-section">
+                  <div className="devis-card-top">
                     {/* Avatar pour le devis */}
                     <div className="devis-avatar">
                       {devisItem.title ? devisItem.title.charAt(0).toUpperCase() : "D"}
@@ -756,17 +756,19 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                   </div>
 
                   {/* Section contenu principal */}
-                  <div className="card-content">
-                    <h3 className="devis-card-title">{devisItem.title || "Devis sans titre"}</h3>
-                    
-                    <div className="devis-card-meta">
-                      <div className="devis-card-date">
-                        <span>📅</span>
-                        <span>{formatDate(devisItem.dateDevis)}</span>
-                      </div>
-                      <div className="devis-card-amount">
-                        <span>💰</span>
-                        <span>{ttc.toFixed(2)} € TTC</span>
+                  <div className="devis-card-content">
+                    <div className="devis-card-header">
+                      <h3 className="devis-card-title">{devisItem.title || "Devis sans titre"}</h3>
+                      
+                      <div className="devis-card-meta">
+                        <div className="devis-card-date">
+                          <span>📅</span>
+                          <span>{formatDate(devisItem.dateDevis)}</span>
+                        </div>
+                        <div className="devis-card-amount">
+                          <span>💰</span>
+                          <span>{ttc.toFixed(2)} € TTC</span>
+                        </div>
                       </div>
                     </div>
 

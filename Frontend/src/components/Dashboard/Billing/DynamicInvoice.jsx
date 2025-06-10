@@ -114,7 +114,7 @@ const DynamicInvoice = ({
     try {
       return new Date(dateStr).toLocaleDateString("fr-FR");
     } catch (error) {
-      return dateStr;
+      return "";
     }
   };
 
@@ -257,7 +257,7 @@ const DynamicInvoice = ({
           <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">DÉTAIL DES PRESTATIONS</h3>
           <table style="width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);">
             <thead>
-              <tr style="background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white;">
+              <tr style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white;">
                 <th style="padding: 1rem; text-align: left; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
                 <th style="padding: 1rem; text-align: center; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Quantité</th>
                 <th style="padding: 1rem; text-align: center; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Prix unitaire</th>

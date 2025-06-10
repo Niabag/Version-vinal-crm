@@ -364,7 +364,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
           </div>
           <div>
             <div style="font-weight: 600; font-size: 0.9rem; opacity: 0.9;">Client :</div>
-            <div style="background: rgba(255, 255, 255, 0.2); padding: 0.5rem; border-radius: 6px; font-weight: 600;">${clientInfo.name || devis.clientName || 'Client non défini'}</div>
+            <div style="background: rgba(255, 255, 255, 0.2); padding: 0.5rem; border-radius: 6px; font-weight: 600;">${clientInfo.name || 'Client non défini'}</div>
           </div>
         </div>
       </div>
@@ -441,11 +441,11 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.75rem; align-self: end;">
-          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8f9fa; border-radius: 6px; font-weight: 500;">
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 6px; font-weight: 500;">
             <span>Total HT :</span>
             <span>${totalHT.toFixed(2)} €</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8f9fa; border-radius: 6px; font-weight: 500;">
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 6px; font-weight: 500;">
             <span>Total TVA :</span>
             <span>${totalTVA.toFixed(2)} €</span>
           </div>
@@ -459,7 +459,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
   };
 
   const generateConditionsHTML = (devis) => `
-    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea; margin-top: 30px;">
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea; margin-top: 30px;">
       <div style="margin-bottom: 2rem;">
         <p style="margin: 0.5rem 0; color: #4a5568; line-height: 1.6;"><strong>Conditions :</strong></p>
         <p style="margin: 0.5rem 0; color: #4a5568; line-height: 1.6;">• Devis valable jusqu'au ${formatDate(devis.dateValidite) || "date à définir"}</p>
@@ -576,41 +576,45 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
           <div className="devis-grid">
             {filteredDevisList
               .filter((devis) => devis.title && devis.title.trim() !== "")
-              .map((devis) => (
-                <div key={devis._id} className="devis-card">
-                  <div className="devis-card-header">
-                    <h3 className="devis-card-title">{devis.title}</h3>
-                    <div className="devis-card-meta">
-                      <span>📅 {formatDate(devis.dateDevis)}</span>
-                      <span className="devis-card-amount">
-                        💰 {calculateTTC(devis).toFixed(2)} € TTC
-                      </span>
+              .map((devis) => {
+                const ttc = calculateTTC(devis);
+                
+                return (
+                  <div key={devis._id} className="devis-card">
+                    <div className="devis-card-header">
+                      <h3 className="devis-card-title">{devis.title}</h3>
+                      <div className="devis-card-meta">
+                        <span>📅 {formatDate(devis.dateDevis)}</span>
+                        <span className="devis-card-amount">
+                          💰 {ttc.toFixed(2)} € TTC
+                        </span>
+                      </div>
+                    </div>
+                    <div className="devis-card-actions">
+                      <button 
+                        className="card-btn card-btn-edit"
+                        onClick={() => handleSelectDevis(devis)}
+                      >
+                        ✏️ Modifier
+                      </button>
+                      <button 
+                        className="card-btn card-btn-pdf"
+                        onClick={() => handleDownloadPDF(devis)}
+                        disabled={loading}
+                      >
+                        {loading ? "⏳" : "📄"} PDF
+                      </button>
+                      <button 
+                        className="card-btn card-btn-delete"
+                        onClick={() => handleDelete(devis._id)}
+                        title="Supprimer"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
-                  <div className="devis-card-actions">
-                    <button 
-                      className="card-btn card-btn-edit"
-                      onClick={() => handleSelectDevis(devis)}
-                    >
-                      ✏️ Modifier
-                    </button>
-                    <button 
-                      className="card-btn card-btn-pdf"
-                      onClick={() => handleDownloadPDF(devis)}
-                      disabled={loading}
-                    >
-                      {loading ? "⏳" : "📄"} PDF
-                    </button>
-                    <button 
-                      className="card-btn card-btn-delete"
-                      onClick={() => handleDelete(devis._id)}
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         )}
       </div>
