@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
+import QRCode from 'react-qr-code';
 import './registerClient.scss';
 
 const RegisterClient = () => {
@@ -416,25 +417,158 @@ const RegisterClient = () => {
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Télécharger l'image de la carte de visite
+      // Télécharger l'image de la carte de visite avec QR code intégré
       if (businessCard && businessCard.cardImage) {
-        const link = document.createElement('a');
-        link.download = 'carte-visite-numerique.png';
-        link.href = businessCard.cardImage;
-        link.click();
+        // Créer un canvas pour intégrer le QR code sur l'image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Charger l'image de la carte
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        
+        img.onload = async () => {
+          // Définir les dimensions du canvas
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Dessiner l'image de base
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Ajouter le QR code si configuré
+          if (businessCard.cardConfig && businessCard.cardConfig.showQR) {
+            // Générer le QR code
+            const qrSize = businessCard.cardConfig.qrSize || 120;
+            const position = businessCard.cardConfig.qrPosition || 'top-right';
+            
+            let qrX, qrY;
+            const margin = 30;
+            
+            switch (position) {
+              case 'bottom-right':
+                qrX = canvas.width - qrSize - margin;
+                qrY = canvas.height - qrSize - margin;
+                break;
+              case 'bottom-left':
+                qrX = margin;
+                qrY = canvas.height - qrSize - margin;
+                break;
+              case 'top-right':
+                qrX = canvas.width - qrSize - margin;
+                qrY = margin;
+                break;
+              case 'top-left':
+                qrX = margin;
+                qrY = margin;
+                break;
+              default:
+                qrX = canvas.width - qrSize - margin;
+                qrY = margin;
+            }
+            
+            // Générer le QR code
+            const qrUrl = `${window.location.origin}/register-client/${userId}`;
+            
+            try {
+              const QRCode = await import('qrcode');
+              const qrDataUrl = await QRCode.default.toDataURL(qrUrl, {
+                width: qrSize,
+                margin: 2,
+                color: {
+                  dark: '#1f2937',
+                  light: '#ffffff'
+                },
+                errorCorrectionLevel: 'M'
+              });
+              
+              const qrImage = new Image();
+              qrImage.onload = () => {
+                // Fond blanc avec bordure pour le QR code
+                ctx.fillStyle = 'white';
+                ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+                
+                // Bordure subtile
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+                
+                // QR code
+                ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+                
+                // Télécharger l'image finale
+                const finalImage = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'carte-visite-numerique.png';
+                link.href = finalImage;
+                link.click();
+                
+                setExecutionStatus(prev => [...prev, {
+                  action: 'download',
+                  status: 'completed',
+                  message: 'Carte de visite téléchargée avec succès !'
+                }]);
+              };
+              
+              qrImage.src = qrDataUrl;
+              
+            } catch (qrError) {
+              console.error('Erreur génération QR code:', qrError);
+              // Fallback: télécharger l'image sans QR code
+              const link = document.createElement('a');
+              link.download = 'carte-visite-numerique.png';
+              link.href = businessCard.cardImage;
+              link.click();
+              
+              setExecutionStatus(prev => [...prev, {
+                action: 'download',
+                status: 'completed',
+                message: 'Carte de visite téléchargée (sans QR code)'
+              }]);
+            }
+          } else {
+            // Télécharger l'image sans QR code
+            const link = document.createElement('a');
+            link.download = 'carte-visite-numerique.png';
+            link.href = businessCard.cardImage;
+            link.click();
+            
+            setExecutionStatus(prev => [...prev, {
+              action: 'download',
+              status: 'completed',
+              message: 'Carte de visite téléchargée avec succès !'
+            }]);
+          }
+        };
+        
+        img.onerror = () => {
+          console.error('Erreur chargement image');
+          // Fallback: télécharger l'image brute
+          const link = document.createElement('a');
+          link.download = 'carte-visite-numerique.png';
+          link.href = businessCard.cardImage;
+          link.click();
+          
+          setExecutionStatus(prev => [...prev, {
+            action: 'download',
+            status: 'completed',
+            message: 'Carte de visite téléchargée (sans QR code)'
+          }]);
+        };
+        
+        img.src = businessCard.cardImage;
       } else {
         // Fallback sur une image par défaut
         const link = document.createElement('a');
         link.download = 'carte-visite-numerique.png';
         link.href = '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
         link.click();
+        
+        setExecutionStatus(prev => [...prev, {
+          action: 'download',
+          status: 'completed',
+          message: 'Carte de visite téléchargée (image par défaut)'
+        }]);
       }
-
-      setExecutionStatus(prev => [...prev, {
-        action: 'download',
-        status: 'completed',
-        message: 'Carte de visite téléchargée avec succès !'
-      }]);
 
     } catch (error) {
       console.error('Erreur téléchargement:', error);
@@ -466,25 +600,158 @@ const RegisterClient = () => {
           message: 'Téléchargement de votre carte de visite...'
         }]);
 
-        // Télécharger l'image de la carte de visite
+        // Télécharger l'image de la carte de visite avec QR code intégré
         if (businessCard && businessCard.cardImage) {
-          const link = document.createElement('a');
-          link.download = 'carte-visite-numerique.png';
-          link.href = businessCard.cardImage;
-          link.click();
+          // Créer un canvas pour intégrer le QR code sur l'image
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Charger l'image de la carte
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          
+          img.onload = async () => {
+            // Définir les dimensions du canvas
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Dessiner l'image de base
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Ajouter le QR code si configuré
+            if (businessCard.cardConfig && businessCard.cardConfig.showQR) {
+              // Générer le QR code
+              const qrSize = businessCard.cardConfig.qrSize || 120;
+              const position = businessCard.cardConfig.qrPosition || 'top-right';
+              
+              let qrX, qrY;
+              const margin = 30;
+              
+              switch (position) {
+                case 'bottom-right':
+                  qrX = canvas.width - qrSize - margin;
+                  qrY = canvas.height - qrSize - margin;
+                  break;
+                case 'bottom-left':
+                  qrX = margin;
+                  qrY = canvas.height - qrSize - margin;
+                  break;
+                case 'top-right':
+                  qrX = canvas.width - qrSize - margin;
+                  qrY = margin;
+                  break;
+                case 'top-left':
+                  qrX = margin;
+                  qrY = margin;
+                  break;
+                default:
+                  qrX = canvas.width - qrSize - margin;
+                  qrY = margin;
+              }
+              
+              // Générer le QR code
+              const qrUrl = `${window.location.origin}/register-client/${userId}`;
+              
+              try {
+                const QRCode = await import('qrcode');
+                const qrDataUrl = await QRCode.default.toDataURL(qrUrl, {
+                  width: qrSize,
+                  margin: 2,
+                  color: {
+                    dark: '#1f2937',
+                    light: '#ffffff'
+                  },
+                  errorCorrectionLevel: 'M'
+                });
+                
+                const qrImage = new Image();
+                qrImage.onload = () => {
+                  // Fond blanc avec bordure pour le QR code
+                  ctx.fillStyle = 'white';
+                  ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+                  
+                  // Bordure subtile
+                  ctx.strokeStyle = '#e5e7eb';
+                  ctx.lineWidth = 2;
+                  ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+                  
+                  // QR code
+                  ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+                  
+                  // Télécharger l'image finale
+                  const finalImage = canvas.toDataURL('image/png');
+                  const link = document.createElement('a');
+                  link.download = 'carte-visite-numerique.png';
+                  link.href = finalImage;
+                  link.click();
+                  
+                  setExecutionStatus(prev => [...prev, {
+                    action: 'download',
+                    status: 'completed',
+                    message: 'Carte de visite téléchargée avec succès !'
+                  }]);
+                };
+                
+                qrImage.src = qrDataUrl;
+                
+              } catch (qrError) {
+                console.error('Erreur génération QR code:', qrError);
+                // Fallback: télécharger l'image sans QR code
+                const link = document.createElement('a');
+                link.download = 'carte-visite-numerique.png';
+                link.href = businessCard.cardImage;
+                link.click();
+                
+                setExecutionStatus(prev => [...prev, {
+                  action: 'download',
+                  status: 'completed',
+                  message: 'Carte de visite téléchargée (sans QR code)'
+                }]);
+              }
+            } else {
+              // Télécharger l'image sans QR code
+              const link = document.createElement('a');
+              link.download = 'carte-visite-numerique.png';
+              link.href = businessCard.cardImage;
+              link.click();
+              
+              setExecutionStatus(prev => [...prev, {
+                action: 'download',
+                status: 'completed',
+                message: 'Carte de visite téléchargée avec succès !'
+              }]);
+            }
+          };
+          
+          img.onerror = () => {
+            console.error('Erreur chargement image');
+            // Fallback: télécharger l'image brute
+            const link = document.createElement('a');
+            link.download = 'carte-visite-numerique.png';
+            link.href = businessCard.cardImage;
+            link.click();
+            
+            setExecutionStatus(prev => [...prev, {
+              action: 'download',
+              status: 'completed',
+              message: 'Carte de visite téléchargée (sans QR code)'
+            }]);
+          };
+          
+          img.src = businessCard.cardImage;
         } else {
           // Fallback sur une image par défaut
           const link = document.createElement('a');
           link.download = 'carte-visite-numerique.png';
           link.href = '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
           link.click();
+          
+          setExecutionStatus(prev => [...prev, {
+            action: 'download',
+            status: 'completed',
+            message: 'Carte de visite téléchargée (image par défaut)'
+          }]);
         }
-
-        setExecutionStatus(prev => [...prev, {
-          action: 'download',
-          status: 'completed',
-          message: 'Carte de visite téléchargée avec succès !'
-        }]);
       } catch (error) {
         console.error('Erreur téléchargement:', error);
         setExecutionStatus(prev => [...prev, {
