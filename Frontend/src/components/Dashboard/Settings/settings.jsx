@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
+import {
+  getSubscriptionStatus,
+  createPortalSession,
+  createCheckoutSession,
+  startFreeTrial,
+  SUBSCRIPTION_STATUS,
+  getTrialDaysRemaining,
+  DEFAULT_TRIAL_DAYS,
+} from '../../../services/subscription';
 import './settings.scss';
 
 const Settings = () => {
@@ -13,9 +22,13 @@ const Settings = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [subscription, setSubscription] = useState(null);
+  const [processingSubscription, setProcessingSubscription] = useState(false);
+  const [processingCheckout, setProcessingCheckout] = useState(false);
 
   useEffect(() => {
     fetchUserData();
+    fetchSubscriptionData();
   }, []);
 
   const fetchUserData = async () => {
@@ -29,6 +42,15 @@ const Settings = () => {
       }));
     } catch (error) {
       console.error('Erreur lors du chargement des données utilisateur:', error);
+    }
+  };
+
+  const fetchSubscriptionData = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      setSubscription(status);
+    } catch (error) {
+      console.error("Erreur lors du chargement des données d'abonnement:", error);
     }
   };
 
@@ -103,6 +125,54 @@ const Settings = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    setProcessingSubscription(true);
+    try {
+      const { url } = await createPortalSession();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      setMessage("❌ Erreur: Impossible d'accéder au portail d'abonnement");
+    } finally {
+      setProcessingSubscription(false);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    setProcessingCheckout(true);
+    setMessage('');
+    try {
+      const priceId = 'price_1OqXYZHGJMCmVBnT8YgYbL3M';
+      const { url } = await createCheckoutSession(priceId);
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setMessage("❌ Erreur: Impossible de créer la session de paiement");
+    } finally {
+      setProcessingCheckout(false);
+    }
+  };
+
+  const handleStartTrial = async () => {
+    setProcessingCheckout(true);
+    setMessage('');
+    try {
+      await startFreeTrial(DEFAULT_TRIAL_DAYS);
+      await fetchSubscriptionData();
+    } catch (error) {
+      console.error('Error starting free trial:', error);
+      setMessage("❌ Erreur: Impossible de démarrer l'essai gratuit");
+    } finally {
+      setProcessingCheckout(false);
+    }
+  };
+
   const exportData = async () => {
     try {
       setLoading(true);
@@ -136,6 +206,43 @@ const Settings = () => {
     }
   };
 
+  const getSubscriptionStatusText = () => {
+    if (!subscription) return 'Chargement...';
+
+    switch (subscription.status) {
+      case SUBSCRIPTION_STATUS.ACTIVE:
+        return 'Actif';
+      case SUBSCRIPTION_STATUS.TRIAL:
+        const daysRemaining = getTrialDaysRemaining(subscription.trialEndDate);
+        return `Essai gratuit (${daysRemaining} jour${daysRemaining !== 1 ? 's' : ''} restant${daysRemaining !== 1 ? 's' : ''})`;
+      case SUBSCRIPTION_STATUS.EXPIRED:
+        return 'Essai expiré';
+      case SUBSCRIPTION_STATUS.CANCELED:
+        return 'Annulé';
+      case SUBSCRIPTION_STATUS.PAST_DUE:
+        return 'Paiement en retard';
+      default:
+        return 'Inconnu';
+    }
+  };
+
+  const getSubscriptionStatusColor = () => {
+    if (!subscription) return '#64748b';
+
+    switch (subscription.status) {
+      case SUBSCRIPTION_STATUS.ACTIVE:
+        return '#10b981';
+      case SUBSCRIPTION_STATUS.TRIAL:
+        return '#f59e0b';
+      case SUBSCRIPTION_STATUS.EXPIRED:
+      case SUBSCRIPTION_STATUS.CANCELED:
+      case SUBSCRIPTION_STATUS.PAST_DUE:
+        return '#ef4444';
+      default:
+        return '#64748b';
+    }
+  };
+
   return (
     <div className="settings-container">
       <h2>⚙️ Paramètres</h2>
@@ -147,6 +254,70 @@ const Settings = () => {
       )}
 
       <div className="settings-sections">
+        <section className="settings-section subscription-section">
+          <h3>💳 Abonnement</h3>
+          <div className="subscription-info">
+            <div className="subscription-status">
+              <div className="info-label">Statut de l'abonnement:</div>
+              <div
+                className="status-value"
+                style={{ color: getSubscriptionStatusColor() }}
+              >
+                {getSubscriptionStatusText()}
+              </div>
+            </div>
+
+            {subscription && subscription.currentPeriodEnd && (
+              <div className="subscription-period">
+                <div className="info-label">Prochaine facturation:</div>
+                <div className="period-value">
+                  {new Date(subscription.currentPeriodEnd).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
+            )}
+
+            {subscription && subscription.trialStartDate && (
+              <div className="trial-period">
+                <div className="info-label">Période d'essai:</div>
+                <div className="period-value">
+                  {new Date(subscription.trialStartDate).toLocaleDateString('fr-FR')} - {new Date(subscription.trialEndDate).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
+            )}
+
+            {subscription &&
+              subscription.status !== SUBSCRIPTION_STATUS.ACTIVE &&
+              !subscription.hasHadTrial && (
+                <button
+                  onClick={handleStartTrial}
+                  className="trial-button"
+                  disabled={processingCheckout}
+                >
+                  {processingCheckout ?
+                    'Activation...' : `Commencer l'essai gratuit (${DEFAULT_TRIAL_DAYS} jours)`}
+                </button>
+            )}
+
+            {subscription && subscription.status !== SUBSCRIPTION_STATUS.ACTIVE && (
+              <button
+                onClick={handleSubscribe}
+                className="subscribe-btn"
+                disabled={processingCheckout}
+              >
+                {processingCheckout ? 'Redirection...' : "S'abonner"}
+              </button>
+            )}
+
+            <button
+              onClick={handleManageSubscription}
+              className="manage-subscription-btn"
+              disabled={processingSubscription}
+            >
+              {processingSubscription ? 'Chargement...' : 'Gérer mon abonnement'}
+            </button>
+          </div>
+        </section>
+
         <section className="settings-section">
           <h3>👤 Informations du profil</h3>
           <form onSubmit={handleProfileUpdate}>
