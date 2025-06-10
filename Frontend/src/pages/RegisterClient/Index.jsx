@@ -66,7 +66,6 @@ const RegisterClient = () => {
   const fetchBusinessCard = async () => {
     try {
       setLoading(true);
-      // ✅ CORRECTION: Utiliser l'userId directement dans l'URL
       const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
       setBusinessCard(response.businessCard);
       
@@ -79,7 +78,6 @@ const RegisterClient = () => {
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la carte:', error);
-      // ✅ En cas d'erreur, afficher le formulaire par défaut
       console.log('Erreur chargement carte - Affichage du formulaire par défaut');
       setShowForm(true);
       setLoading(false);
@@ -106,7 +104,7 @@ const RegisterClient = () => {
       return;
     }
 
-    // ✅ DÉTECTION DU TYPE DE SCHÉMA
+    // Détection du type de schéma
     const hasWebsite = sortedActions.some(a => a.type === 'website');
     const hasForm = sortedActions.some(a => a.type === 'form');
     const hasDownload = sortedActions.some(a => a.type === 'download');
@@ -134,7 +132,7 @@ const RegisterClient = () => {
     setSchemaType(detectedSchema);
     console.log(`📋 Schéma détecté: ${detectedSchema}`);
 
-    // ✅ EXÉCUTION SELON LE SCHÉMA
+    // Exécution selon le schéma
     switch (detectedSchema) {
       case 'website-only':
         await executeWebsiteOnlySchema(sortedActions);
@@ -148,7 +146,6 @@ const RegisterClient = () => {
         await executeFormWebsiteSchema(sortedActions);
         break;
       
-
       case 'contact-download':
         await executeContactDownloadSchema(sortedActions);
         break;
@@ -181,7 +178,7 @@ const RegisterClient = () => {
     setLoading(false);
   };
 
-  // ✅ SCHÉMA 1: Site Web Direct (website uniquement)
+  // SCHÉMA 1: Site Web Direct (website uniquement)
   const executeWebsiteOnlySchema = async (actions) => {
     console.log('🌐 Exécution: Site Web Direct');
     const websiteAction = actions.find(a => a.type === 'website');
@@ -202,7 +199,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 2: Site web puis Formulaire (website → form)
+  // SCHÉMA 2: Site web puis Formulaire (website → form)
   const executeWebsiteFormSchema = async (actions) => {
     console.log('🚀 Exécution: Site web puis Formulaire');
     
@@ -233,8 +230,7 @@ const RegisterClient = () => {
     }
   };
 
-
-  // ✅ SCHÉMA 3: Formulaire puis Site Web (form → website)
+  // SCHÉMA 3: Formulaire puis Site Web (form → website)
   const executeFormWebsiteSchema = async (actions) => {
     console.log('📝🌐 Exécution: Formulaire puis Site Web');
     setShowForm(true);
@@ -251,9 +247,8 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 4: Contact → Carte (form → download)
+  // SCHÉMA 4: Contact → Carte (form → download)
   const executeContactDownloadSchema = async (actions) => {
-
     console.log('📝 Exécution: Contact → Carte');
     setShowForm(true);
     
@@ -269,8 +264,7 @@ const RegisterClient = () => {
     }]);
   };
 
-
-  // ✅ SCHÉMA 5: Tunnel Complet (website → form → download)
+  // SCHÉMA 5: Tunnel Complet (website → form → download)
   const executeCompleteFunnelSchema = async (actions) => {
     console.log('🎯 Exécution: Tunnel Complet');
     
@@ -307,7 +301,7 @@ const RegisterClient = () => {
     }
   };
 
-  // ✅ SCHÉMA 5bis: Tunnel Complet, site en dernier (form → download → website)
+  // SCHÉMA 5bis: Tunnel Complet, site en dernier (form → download → website)
   const executeFunnelSiteLastSchema = async (actions) => {
     console.log('🎯🌐 Exécution: Tunnel Complet - Site en dernier');
     setShowForm(true);
@@ -329,7 +323,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 6: Contact Uniquement (form seulement)
+  // SCHÉMA 6: Contact Uniquement (form seulement)
   const executeContactOnlySchema = async (actions) => {
     console.log('📝 Exécution: Contact Uniquement');
     setShowForm(true);
@@ -340,13 +334,13 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA 7: Carte de Visite (download seulement)
+  // SCHÉMA 7: Carte de Visite (download seulement)
   const executeCardDownloadSchema = async (actions) => {
     console.log('📥 Exécution: Carte de Visite');
     const downloadAction = actions.find(a => a.type === 'download');
     
-    // Afficher le bouton de téléchargement au lieu de télécharger automatiquement
-    setShowForm(true);
+    // Afficher uniquement le bouton de téléchargement, pas de formulaire
+    setShowForm(false);
     setPendingActions([downloadAction]);
     
     setExecutionStatus([{
@@ -356,7 +350,7 @@ const RegisterClient = () => {
     }]);
   };
 
-  // ✅ SCHÉMA PERSONNALISÉ
+  // SCHÉMA PERSONNALISÉ
   const executeCustomSchema = async (actions) => {
     console.log('🔧 Exécution: Schéma Personnalisé');
     // Pour les schémas personnalisés, on affiche le formulaire par défaut
@@ -564,41 +558,6 @@ const RegisterClient = () => {
     }));
   };
 
-  const getSchemaName = () => {
-    switch (schemaType) {
-      case 'website-only': return '🌐 Site Web Direct';
-
-      case 'website-form': return 'Site web → Formulaire';
-      case 'form-website': return '📝→🌐 Formulaire puis Site';
-
-      case 'contact-download': return '📝 Contact → Carte';
-      case 'site-last-funnel': return '🎯 Site en Dernier';
-
-      case 'complete-funnel': return '🎯 Tunnel Complet';
-      case 'funnel-site-last': return '🎯 Site en Dernier';
-      case 'contact-only': return '📝 Contact Uniquement';
-      case 'card-download': return '📥 Carte de Visite';
-      case 'custom': return '🔧 Stratégie Personnalisée';
-      default: return 'Configuration par défaut';
-    }
-  };
-
-  const getSchemaSequence = () => {
-    if (!businessCard?.cardConfig?.actions) return [];
-    
-    return businessCard.cardConfig.actions
-      .filter(a => a.active)
-      .sort((a, b) => (a.order || 1) - (b.order || 1))
-      .map(action => {
-        switch (action.type) {
-          case 'website': return '🌐 Site web';
-          case 'form': return '📝 Formulaire contact';
-          case 'download': return '📥 Téléchargement carte';
-          default: return '❓ Action inconnue';
-        }
-      });
-  };
-
   if (loading && !showForm) {
     return (
       <div className="professional-contact-page">
@@ -635,91 +594,6 @@ const RegisterClient = () => {
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
 
-        {/* Affichage du schéma actif */}
-        {businessCard?.cardConfig?.actions && (
-          <div className="schema-display">
-            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
-            <div className="schema-sequence">
-              {getSchemaSequence().map((step, index) => (
-                <span key={index} className="schema-step">
-                  {step}
-                  {index < getSchemaSequence().length - 1 && ' →'}
-                </span>
-              ))}
-            </div>
-            
-            {/* Affichage de l'URL du site web si configurée */}
-            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
-              <div className="website-info">
-                <div className="website-label">🌐 URL du site web :</div>
-                <a 
-                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="website-link"
-                >
-                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Message de redirection depuis le site web */}
-        {hasRedirectedFromWebsite && showForm && (
-          <div className="redirection-info">
-            <div className="redirection-icon">✅</div>
-            <div className="redirection-content">
-              <h4>Vous avez été redirigé depuis notre site web</h4>
-              <p>Merci de votre intérêt ! Veuillez remplir le formulaire ci-dessous pour nous contacter.</p>
-              <div className="website-badge">
-                <span className="website-icon">🌐</span>
-                <a 
-                  href={businessCard?.cardConfig?.actions?.find(a => a.type === 'website')?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {businessCard?.cardConfig?.actions?.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Actions manuelles disponibles */}
-        {businessCard?.cardConfig?.actions && showForm && !submitted && (
-          <div className="actions-manual">
-            {businessCard.cardConfig.actions
-              .filter(action => action.active)
-              .sort((a, b) => (a.order || 1) - (b.order || 1))
-              .map((action, index) => (
-                <div key={action.id || index} className="action-manual-item">
-                  {action.type === 'website' && (
-                    <button 
-                      onClick={handleManualWebsiteVisit}
-                      className="action-btn website-btn"
-                    >
-                      <span className="btn-icon">🌐</span>
-                      <span className="btn-text">Visiter notre site web</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
-                    </button>
-                  )}
-                  
-                  {action.type === 'download' && (
-                    <button 
-                      onClick={handleManualDownload}
-                      className="action-btn download-btn"
-                    >
-                      <span className="btn-icon">📥</span>
-                      <span className="btn-text">Télécharger notre carte de visite</span>
-                      <span className="btn-order">Action {action.order || index + 1}</span>
-                    </button>
-                  )}
-                </div>
-              ))}
-          </div>
-        )}
-
         {/* Statut d'exécution */}
         {executionStatus.length > 0 && (
           <div className="execution-status">
@@ -737,18 +611,35 @@ const RegisterClient = () => {
           </div>
         )}
 
-        {/* Actions en attente */}
-        {pendingActions.length > 0 && showForm && !submitted && (
-          <div className="pending-actions">
-            <h4>🕒 Actions en attente après soumission :</h4>
-            <ul>
-              {pendingActions.map((action, index) => (
-                <li key={index}>
-                  {action.type === 'download' && '📥 Téléchargement de votre carte de visite'}
-                  {action.type === 'website' && '🌐 Ouverture de notre site web'}
-                </li>
+        {/* Actions manuelles disponibles */}
+        {businessCard?.cardConfig?.actions && (
+          <div className="actions-manual">
+            {businessCard.cardConfig.actions
+              .filter(action => action.active)
+              .sort((a, b) => (a.order || 1) - (b.order || 1))
+              .map((action, index) => (
+                <div key={action.id || index} className="action-manual-item">
+                  {action.type === 'website' && (
+                    <button 
+                      onClick={handleManualWebsiteVisit}
+                      className="action-btn website-btn"
+                    >
+                      <span className="btn-icon">🌐</span>
+                      <span className="btn-text">Visiter notre site web</span>
+                    </button>
+                  )}
+                  
+                  {action.type === 'download' && (
+                    <button 
+                      onClick={handleManualDownload}
+                      className="action-btn download-btn"
+                    >
+                      <span className="btn-icon">📥</span>
+                      <span className="btn-text">Télécharger notre carte de visite</span>
+                    </button>
+                  )}
+                </div>
               ))}
-            </ul>
           </div>
         )}
 
@@ -890,13 +781,6 @@ const RegisterClient = () => {
                 </span>
               </button>
             </form>
-          </div>
-        )}
-
-        {/* Message général si aucune action configurée */}
-        {!businessCard?.cardConfig?.actions?.length && !showForm && (
-          <div className="general-message">
-            <p>Aucune action spécifique configurée. Contactez-nous directement pour plus d'informations.</p>
           </div>
         )}
       </div>
