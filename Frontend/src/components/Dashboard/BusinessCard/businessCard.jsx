@@ -16,7 +16,7 @@ const BusinessCard = ({ userId, user }) => {
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
   
-  // États pour les schémas prédéfinis
+  // ✅ États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
   
   const [stats, setStats] = useState({
@@ -26,66 +26,71 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // SCHÉMAS AMÉLIORÉS: Noms plus clairs et actions manuelles
+  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies avec noms plus clairs
   const actionSchemas = {
     'form-only': {
-      name: '📝 Formulaire de Contact',
-      description: 'Affiche uniquement un formulaire de contact pour collecter les informations de vos prospects',
+      name: '📝 Formulaire Simple',
+      description: 'Affiche uniquement un formulaire de contact pour capturer les informations du prospect',
       icon: '📝',
       sequence: 'Formulaire de contact',
-      category: 'Simple et Efficace',
+      category: 'Capture de leads',
       actions: [
         { type: 'form', order: 1, delay: 0, active: true }
       ]
     },
-    'website-only': {
-      name: '🌐 Lien vers Site Web',
-      description: 'Propose un bouton pour visiter votre site web',
-      icon: '🌐',
-      sequence: 'Bouton vers site web',
-      category: 'Redirection Simple',
-      actions: [
-        { type: 'website', order: 1, delay: 0, active: true, url: 'https://www.votre-site.com' }
-      ]
-    },
+    
     'download-only': {
-      name: '📥 Téléchargement Carte',
-      description: 'Propose un bouton pour télécharger votre carte de visite numérique',
+      name: '📥 Téléchargement Direct',
+      description: 'Propose uniquement le téléchargement de votre carte de visite',
       icon: '📥',
       sequence: 'Téléchargement carte',
-      category: 'Partage Direct',
+      category: 'Partage direct',
       actions: [
         { type: 'download', order: 1, delay: 0, active: true, file: 'carte-visite' }
       ]
     },
-    'form-website': {
-      name: '📝 Formulaire + Site Web',
-      description: 'Formulaire de contact avec bouton pour visiter votre site web',
-      icon: '📝🌐',
-      sequence: 'Formulaire + Bouton site web',
-      category: 'Conversion Complète',
+    
+    'website-only': {
+      name: '🌐 Site Web Direct',
+      description: 'Propose uniquement un lien vers votre site web principal',
+      icon: '🌐',
+      sequence: 'Site web',
+      category: 'Redirection simple',
       actions: [
-        { type: 'form', order: 1, delay: 0, active: true },
-        { type: 'website', order: 2, delay: 0, active: true, url: 'https://www.votre-site.com' }
+        { type: 'website', order: 1, delay: 0, active: true, url: 'https://www.votre-site.com' }
       ]
     },
+    
     'form-download': {
       name: '📝 Formulaire + Carte',
-      description: 'Formulaire de contact avec bouton pour télécharger votre carte',
+      description: 'Formulaire de contact avec option de téléchargement de votre carte',
       icon: '📝📥',
-      sequence: 'Formulaire + Téléchargement carte',
-      category: 'Capture de Leads',
+      sequence: 'Formulaire + Téléchargement',
+      category: 'Capture de leads',
       actions: [
         { type: 'form', order: 1, delay: 0, active: true },
         { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' }
       ]
     },
-    'complete-package': {
-      name: '🎯 Pack Complet',
-      description: 'Formulaire de contact avec boutons pour télécharger votre carte et visiter votre site',
+    
+    'form-website': {
+      name: '📝 Formulaire + Site',
+      description: 'Formulaire de contact avec lien vers votre site web',
+      icon: '📝🌐',
+      sequence: 'Formulaire + Site web',
+      category: 'Conversion maximale',
+      actions: [
+        { type: 'form', order: 1, delay: 0, active: true },
+        { type: 'website', order: 2, delay: 0, active: true, url: 'https://www.votre-site.com' }
+      ]
+    },
+    
+    'complete-funnel': {
+      name: '🎯 Tunnel Complet',
+      description: 'Formulaire de contact avec options de téléchargement et lien vers votre site',
       icon: '📝📥🌐',
       sequence: 'Formulaire + Carte + Site web',
-      category: 'Solution Complète',
+      category: 'Tunnel de conversion',
       actions: [
         { type: 'form', order: 1, delay: 0, active: true },
         { type: 'download', order: 2, delay: 0, active: true, file: 'carte-visite' },
@@ -134,7 +139,10 @@ const BusinessCard = ({ userId, user }) => {
     }
     
     try {
+      // Toujours rediriger vers la page d'inscription client, peu importe les actions configurées
+      // Les actions seront présentées comme des boutons sur cette page
       const targetUrl = `${FRONTEND_ROUTES.CLIENT_REGISTER(userId)}`;
+      
       setQrValue(targetUrl);
       console.log("✅ QR code généré:", targetUrl);
     } catch (error) {
@@ -172,7 +180,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Appliquer un schéma prédéfini
+  // ✅ FONCTION CORRIGÉE: Appliquer un schéma prédéfini
   const handleApplySchema = async (schemaKey) => {
     const schema = actionSchemas[schemaKey];
     if (!schema) return;
@@ -184,7 +192,8 @@ const BusinessCard = ({ userId, user }) => {
     const actionsWithIds = schema.actions.map((action, index) => ({
       ...action,
       id: Date.now() + index,
-      order: action.order || (index + 1)
+      order: action.order || (index + 1),
+      delay: 0 // Tous les délais sont à 0 pour éviter l'exécution automatique
     }));
 
     const updatedConfig = {
@@ -196,10 +205,10 @@ const BusinessCard = ({ userId, user }) => {
     await saveBusinessCardToDB(null, updatedConfig);
     
     setShowSchemasModal(false);
-    showSuccessMessage(`✅ Stratégie "${schema.name}" appliquée avec succès !`);
+    showSuccessMessage(`✅ Schéma "${schema.name}" appliqué avec succès !`);
   };
 
-  // Réinitialiser toutes les actions
+  // ✅ FONCTION: Réinitialiser toutes les actions
   const handleClearAllActions = async () => {
     const confirmClear = window.confirm(
       "❗ Supprimer toutes les actions configurées ?"
@@ -217,7 +226,7 @@ const BusinessCard = ({ userId, user }) => {
     showSuccessMessage('✅ Toutes les actions ont été supprimées');
   };
 
-  // Modifier l'URL d'un schéma
+  // ✅ FONCTION: Modifier l'URL d'un schéma
   const handleEditSchemaUrl = async (actionId, newUrl) => {
     const updatedActions = cardConfig.actions.map(action =>
       action.id === actionId ? { ...action, url: newUrl } : action
@@ -338,7 +347,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Téléchargement de la vraie carte de visite
+  // ✅ FONCTION CORRIGÉE: Téléchargement de la vraie carte de visite
   const downloadBusinessCard = async () => {
     try {
       setLoading(true);
@@ -362,7 +371,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Génération de la vraie carte avec les données utilisateur
+  // ✅ FONCTION CORRIGÉE: Génération de la vraie carte avec les données utilisateur
   const generateBusinessCardWithQR = async () => {
     return new Promise(async (resolve) => {
       try {
@@ -422,7 +431,7 @@ const BusinessCard = ({ userId, user }) => {
     });
   };
 
-  // Ajouter les informations utilisateur sur la carte
+  // ✅ NOUVELLE FONCTION: Ajouter les informations utilisateur sur la carte
   const addUserInfoToCard = async (ctx, canvas) => {
     try {
       // Zone de texte (côté gauche de la carte)
@@ -465,7 +474,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // Ajouter le QR code sur la carte
+  // ✅ FONCTION CORRIGÉE: Ajouter le QR code sur la carte
   const addQRCodeToCard = async (ctx, canvas) => {
     try {
       const qrSize = cardConfig.qrSize || 120;
@@ -499,7 +508,7 @@ const BusinessCard = ({ userId, user }) => {
       console.log(`📍 Position QR: ${position} (${qrX}, ${qrY}) taille: ${qrSize}px`);
       
       // Générer le QR code avec la vraie URL
-      const qrUrl = window.location.href;
+      const qrUrl = qrValue;
       
       // Utiliser la bibliothèque QRCode
       try {
@@ -575,7 +584,7 @@ const BusinessCard = ({ userId, user }) => {
     console.log('✅ QR code fallback ajouté');
   };
 
-  // Générer une carte par défaut professionnelle
+  // ✅ FONCTION CORRIGÉE: Générer une carte par défaut professionnelle
   const generateDefaultBusinessCard = async (ctx, canvas) => {
     // Fond dégradé professionnel
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -827,11 +836,11 @@ const BusinessCard = ({ userId, user }) => {
             )}
           </div>
 
-          {/* SECTION AMÉLIORÉE: Stratégies de conversion */}
+          {/* ✅ SECTION CORRIGÉE: Schémas prédéfinis professionnels */}
           <div className="config-section">
             <h3>🚀 Stratégies de Conversion</h3>
             <p className="section-description">
-              Choisissez une stratégie pour votre page de contact QR code
+              Choisissez une stratégie optimisée pour maximiser vos conversions
             </p>
 
             <div className="schemas-actions">
@@ -862,12 +871,12 @@ const BusinessCard = ({ userId, user }) => {
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.length - 1 && ' + '}
+                        {index < cardConfig.actions.length - 1 && ' → '}
                       </span>
                     ))}
                 </div>
                 
-                {/* Édition rapide des URLs */}
+                {/* ✅ Édition rapide des URLs */}
                 <div className="schema-edit-section">
                   {cardConfig.actions
                     .filter(action => action.type === 'website')
@@ -958,7 +967,7 @@ const BusinessCard = ({ userId, user }) => {
                   )}
                   {cardConfig.actions.filter(a => a.active).length > 0 && (
                     <div className="qr-actions-info">
-                      <strong>Éléments configurés :</strong>
+                      <strong>Actions configurées :</strong>
                       <ul>
                         {cardConfig.actions
                           .filter(a => a.active)
@@ -992,7 +1001,7 @@ const BusinessCard = ({ userId, user }) => {
         </div>
       </div>
 
-      {/* MODAL AMÉLIORÉE: Sélection de stratégies */}
+      {/* ✅ MODAL CORRIGÉE: Sélection de schémas professionnels */}
       {showSchemasModal && (
         <div className="modal-overlay" onClick={() => setShowSchemasModal(false)}>
           <div className="modal-content schemas-modal" onClick={(e) => e.stopPropagation()}>
@@ -1008,7 +1017,7 @@ const BusinessCard = ({ userId, user }) => {
             
             <div className="modal-body">
               <p className="schemas-description">
-                Sélectionnez une stratégie pour la page que verront vos prospects après avoir scanné votre QR code :
+                Sélectionnez une stratégie optimisée pour maximiser la conversion de vos prospects :
               </p>
               
               <div className="schemas-grid">
@@ -1025,7 +1034,7 @@ const BusinessCard = ({ userId, user }) => {
                     <h4>{schema.name}</h4>
                     <p className="schema-description">{schema.description}</p>
                     <div className="schema-sequence-preview">
-                      <strong>Éléments :</strong>
+                      <strong>Séquence :</strong>
                       <span>{schema.sequence}</span>
                     </div>
                   </div>

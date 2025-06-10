@@ -12,24 +12,21 @@ const RegisterClient = () => {
     email: '',
     phone: '',
     company: '',
+    address: '',
+    postalCode: '',
+    city: '',
+    subject: 'Demande de contact',
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [businessCard, setBusinessCard] = useState(null);
-  const [showDownloadButton, setShowDownloadButton] = useState(false);
+  const [executionStatus, setExecutionStatus] = useState([]);
+  const [showForm, setShowForm] = useState(false);
   const [showWebsiteButton, setShowWebsiteButton] = useState(false);
+  const [showDownloadButton, setShowDownloadButton] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
-
-  useEffect(() => {
-    if (userId) {
-      trackCardView();
-      fetchBusinessCard();
-    } else {
-      setError('ID utilisateur manquant');
-      setLoading(false);
-    }
-  }, [userId]);
+  const [schemaType, setSchemaType] = useState('');
 
   const trackCardView = async () => {
     try {
@@ -42,37 +39,109 @@ const RegisterClient = () => {
     }
   };
 
+  useEffect(() => {
+    if (userId) {
+      trackCardView();
+      fetchBusinessCard();
+    } else {
+      setError('ID utilisateur manquant');
+      setLoading(false);
+    }
+  }, [userId]);
+
   const fetchBusinessCard = async () => {
     try {
       setLoading(true);
+      // Utiliser l'userId directement dans l'URL
       const response = await apiRequest(`${API_ENDPOINTS.BUSINESS_CARDS.BASE}/public/${userId}`);
       
       if (response && response.businessCard) {
         setBusinessCard(response.businessCard);
         
-        // Vérifier les actions configurées
         if (response.businessCard.cardConfig && response.businessCard.cardConfig.actions) {
-          const actions = response.businessCard.cardConfig.actions;
-          
-          // Vérifier s'il y a une action de téléchargement
-          const downloadAction = actions.find(a => a.type === 'download' && a.active);
-          if (downloadAction) {
-            setShowDownloadButton(true);
-          }
-          
-          // Vérifier s'il y a une action de site web
-          const websiteAction = actions.find(a => a.type === 'website' && a.active);
-          if (websiteAction && websiteAction.url) {
-            setShowWebsiteButton(true);
-            setWebsiteUrl(websiteAction.url);
-          }
+          analyzeActions(response.businessCard.cardConfig.actions);
+        } else {
+          console.log('Aucune action configurée - Affichage du formulaire par défaut');
+          setShowForm(true);
+          setLoading(false);
         }
+      } else {
+        throw new Error('Carte de visite non trouvée');
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la carte:', error);
-    } finally {
+      // En cas d'erreur, afficher le formulaire par défaut
+      console.log('Erreur chargement carte - Affichage du formulaire par défaut');
+      setShowForm(true);
       setLoading(false);
     }
+  };
+
+  // Nouvelle fonction pour analyser les actions et configurer l'interface
+  const analyzeActions = (actions) => {
+    if (!actions || actions.length === 0) {
+      console.log('Aucune action - Formulaire par défaut');
+      setShowForm(true);
+      setLoading(false);
+      return;
+    }
+
+    const activeActions = actions.filter(action => action.active);
+    const sortedActions = activeActions.sort((a, b) => (a.order || 1) - (b.order || 1));
+
+    console.log('🎯 Actions actives à analyser:', sortedActions);
+
+    if (sortedActions.length === 0) {
+      console.log('Aucune action active - Formulaire par défaut');
+      setShowForm(true);
+      setLoading(false);
+      return;
+    }
+
+    // Détection du type de schéma
+    const hasWebsite = sortedActions.some(a => a.type === 'website');
+    const hasForm = sortedActions.some(a => a.type === 'form');
+    const hasDownload = sortedActions.some(a => a.type === 'download');
+
+    let detectedSchema = '';
+    
+    if (hasWebsite && !hasForm && !hasDownload) {
+      detectedSchema = 'website-only';
+    } else if (!hasWebsite && hasForm && !hasDownload) {
+      detectedSchema = 'form-only';
+    } else if (!hasWebsite && !hasForm && hasDownload) {
+      detectedSchema = 'download-only';
+    } else if (hasWebsite && hasForm) {
+      detectedSchema = 'form-website';
+    } else if (hasForm && hasDownload) {
+      detectedSchema = 'form-download';
+    } else if (hasWebsite && hasForm && hasDownload) {
+      detectedSchema = 'complete-funnel';
+    } else {
+      detectedSchema = 'custom';
+    }
+
+    setSchemaType(detectedSchema);
+    console.log(`📋 Schéma détecté: ${detectedSchema}`);
+
+    // Configuration de l'interface en fonction du schéma
+    if (hasForm) {
+      setShowForm(true);
+    }
+    
+    if (hasWebsite) {
+      const websiteAction = sortedActions.find(a => a.type === 'website');
+      if (websiteAction && websiteAction.url) {
+        setWebsiteUrl(websiteAction.url);
+        setShowWebsiteButton(true);
+      }
+    }
+    
+    if (hasDownload) {
+      setShowDownloadButton(true);
+    }
+    
+    setLoading(false);
   };
 
   const handleInputChange = (e) => {
@@ -94,6 +163,12 @@ const RegisterClient = () => {
       });
 
       setSubmitted(true);
+      setExecutionStatus(prev => [...prev, {
+        action: 'form',
+        status: 'completed',
+        message: 'Formulaire soumis avec succès !'
+      }]);
+
     } catch (err) {
       console.error('Erreur lors de l\'inscription:', err);
       setError(err.message || 'Erreur lors de l\'inscription');
@@ -102,36 +177,79 @@ const RegisterClient = () => {
     }
   };
 
-  const handleDownloadCard = () => {
-    if (businessCard && businessCard.cardImage) {
-      const link = document.createElement('a');
-      link.download = 'carte-visite.png';
-      link.href = businessCard.cardImage;
-      link.click();
-    }
-  };
-
-  const handleVisitWebsite = () => {
+  const handleWebsiteVisit = () => {
     if (websiteUrl) {
       window.open(websiteUrl, '_blank');
+      setExecutionStatus(prev => [...prev, {
+        action: 'website',
+        status: 'completed',
+        message: 'Site web ouvert dans un nouvel onglet'
+      }]);
+    } else {
+      setError('URL du site web non configurée');
     }
   };
 
-  if (loading && !submitted) {
+  const handleDownloadCard = async () => {
+    try {
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'executing',
+        message: 'Téléchargement de la carte de visite...'
+      }]);
+
+      // Simuler un téléchargement
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const link = document.createElement('a');
+      link.download = 'carte-visite-numerique.png';
+      link.href = businessCard.cardImage || '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg';
+      link.click();
+
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'completed',
+        message: 'Carte de visite téléchargée avec succès !'
+      }]);
+
+    } catch (error) {
+      console.error('Erreur téléchargement:', error);
+      setExecutionStatus(prev => [...prev, {
+        action: 'download',
+        status: 'error',
+        message: 'Erreur lors du téléchargement'
+      }]);
+    }
+  };
+
+  const getSchemaName = () => {
+    switch (schemaType) {
+      case 'website-only': return '🌐 Site Web Direct';
+      case 'form-only': return '📝 Formulaire Simple';
+      case 'download-only': return '📥 Téléchargement Direct';
+      case 'form-website': return '📝 Formulaire + Site';
+      case 'form-download': return '📝 Formulaire + Carte';
+      case 'complete-funnel': return '🎯 Tunnel Complet';
+      case 'custom': return '🔧 Stratégie Personnalisée';
+      default: return 'Configuration par défaut';
+    }
+  };
+
+  if (loading) {
     return (
       <div className="professional-contact-page">
         <div className="loading-container">
           <div className="loading-content">
             <div className="loading-spinner"></div>
             <h2>Chargement...</h2>
-            <p>Préparation du formulaire de contact</p>
+            <p>Préparation de votre expérience personnalisée</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !showForm && !showWebsiteButton && !showDownloadButton) {
     return (
       <div className="professional-contact-page">
         <div className="contact-container">
@@ -147,78 +265,73 @@ const RegisterClient = () => {
   return (
     <div className="professional-contact-page">
       <div className="contact-container">
-        {/* En-tête simplifié */}
+        {/* En-tête professionnel */}
         <div className="contact-header">
           <h1 className="contact-title">💼 CRM Pro</h1>
-          <p className="contact-subtitle">Formulaire de contact</p>
+          <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
+
+        {/* Actions disponibles */}
+        <div className="actions-manual">
+          {showWebsiteButton && (
+            <div className="action-manual-item">
+              <button 
+                onClick={handleWebsiteVisit}
+                className="action-btn website-btn"
+              >
+                <span className="btn-icon">🌐</span>
+                <span className="btn-text">Visiter notre site web</span>
+              </button>
+            </div>
+          )}
+          
+          {showDownloadButton && (
+            <div className="action-manual-item">
+              <button 
+                onClick={handleDownloadCard}
+                className="action-btn download-btn"
+              >
+                <span className="btn-icon">📥</span>
+                <span className="btn-text">Télécharger notre carte de visite</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Statut d'exécution */}
+        {executionStatus.length > 0 && (
+          <div className="execution-status">
+            {executionStatus.map((status, index) => (
+              <div key={index} className={`status-message ${status.status}`}>
+                <span className="status-icon">
+                  {status.status === 'completed' ? '✅' : 
+                   status.status === 'executing' ? '⏳' : 
+                   status.status === 'form-shown' ? '📝' : '❓'}
+                </span>
+                <span>{status.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Message de succès */}
         {submitted && (
           <div className="success-message">
-            <div className="success-icon">✅</div>
+            <div className="success-icon">🎉</div>
             <div className="success-content">
               <h4>Merci pour votre inscription !</h4>
               <p>Nous avons bien reçu vos informations et vous recontacterons très prochainement.</p>
-              
-              {/* Boutons d'action après soumission */}
-              <div className="post-submit-actions">
-                {showDownloadButton && (
-                  <button 
-                    onClick={handleDownloadCard}
-                    className="action-button download-button"
-                  >
-                    <span className="button-icon">📥</span>
-                    <span className="button-text">Télécharger la carte de visite</span>
-                  </button>
-                )}
-                
-                {showWebsiteButton && (
-                  <button 
-                    onClick={handleVisitWebsite}
-                    className="action-button website-button"
-                  >
-                    <span className="button-icon">🌐</span>
-                    <span className="button-text">Visiter le site web</span>
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         )}
 
-        {/* Formulaire de contact simplifié */}
-        {!submitted && (
+        {/* Formulaire de contact */}
+        {showForm && !submitted && (
           <div className="contact-form-section">
             <div className="form-header">
               <h2 className="form-title">📝 Formulaire de Contact</h2>
               <p className="form-description">Laissez-nous vos coordonnées et nous vous recontacterons rapidement</p>
             </div>
-
-            {/* Boutons d'action avant soumission */}
-            {(showDownloadButton || showWebsiteButton) && (
-              <div className="pre-submit-actions">
-                {showDownloadButton && (
-                  <button 
-                    onClick={handleDownloadCard}
-                    className="action-button download-button"
-                  >
-                    <span className="button-icon">📥</span>
-                    <span className="button-text">Télécharger la carte de visite</span>
-                  </button>
-                )}
-                
-                {showWebsiteButton && (
-                  <button 
-                    onClick={handleVisitWebsite}
-                    className="action-button website-button"
-                  >
-                    <span className="button-icon">🌐</span>
-                    <span className="button-text">Visiter le site web</span>
-                  </button>
-                )}
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="contact-form">
               <div className="form-row">
@@ -259,7 +372,7 @@ const RegisterClient = () => {
                 <div className="form-group">
                   <label className="form-label">
                     <span className="label-icon">📞</span>
-                    Téléphone *
+                    Téléphone
                   </label>
                   <input
                     type="tel"
@@ -268,7 +381,6 @@ const RegisterClient = () => {
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="06 12 34 56 78"
-                    required
                   />
                 </div>
 
@@ -290,6 +402,26 @@ const RegisterClient = () => {
 
               <div className="form-group">
                 <label className="form-label">
+                  <span className="label-icon">📋</span>
+                  Sujet
+                </label>
+                <select
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  className="form-select"
+                >
+                  <option value="Demande de contact">Demande de contact</option>
+                  <option value="Demande de devis">Demande de devis</option>
+                  <option value="Information produit">Information produit</option>
+                  <option value="Support technique">Support technique</option>
+                  <option value="Partenariat">Partenariat</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
                   <span className="label-icon">💬</span>
                   Message *
                 </label>
@@ -298,7 +430,7 @@ const RegisterClient = () => {
                   value={formData.message}
                   onChange={handleInputChange}
                   className="form-textarea"
-                  placeholder="Comment pouvons-nous vous aider ?"
+                  placeholder="Décrivez votre demande ou votre projet..."
                   required
                   rows={4}
                 />
@@ -315,6 +447,13 @@ const RegisterClient = () => {
                 </span>
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Message si aucune action configurée */}
+        {!showForm && !showWebsiteButton && !showDownloadButton && (
+          <div className="general-message">
+            <p>Aucune action spécifique configurée. Contactez-nous directement pour plus d'informations.</p>
           </div>
         )}
       </div>
