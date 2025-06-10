@@ -41,17 +41,6 @@ const BusinessCard = ({ userId, user }) => {
         { id: Date.now(), type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' }
       ]
     },
-    'website-form': {
-      name: '🚀📝 Site web → Formulaire',
-      description: 'Site web immédiat puis formulaire de contact pour maximiser les conversions',
-      icon: '🚀📝',
-      sequence: 'Site web (1s) → Formulaire (2s)',
-      category: 'Conversion maximale',
-      actions: [
-        { id: Date.now(), type: 'website', order: 1, delay: 1000, active: true, url: 'https://www.votre-site.com' },
-        { id: Date.now() + 1, type: 'form', order: 2, delay: 2000, active: true }
-      ]
-    },
     'form-website': {
       name: '📝→🌐 Formulaire puis Site',
       description: 'Collecte des informations avant de rediriger vers votre site web',
