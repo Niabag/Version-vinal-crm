@@ -119,7 +119,7 @@ const Analytics = () => {
       const tauxConversion = totalClients > 0 ? (totalDevis / totalClients) * 100 : 0;
       const tauxReussite = totalDevis > 0 ? (finiDevis / totalDevis) * 100 : 0;
 
-      // ✅ STATISTIQUES CARTE DE VISITE - Utiliser uniquement les données réelles de l'API
+      // ✅ STATISTIQUES CARTE DE VISITE - Utiliser les données réelles de l'API
       let cardScansTotal = 0;
       let cardScansToday = 0;
       let cardScansThisMonth = 0;
@@ -185,7 +185,7 @@ const Analytics = () => {
           company: c.company
         }));
 
-      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE - Uniquement si des données réelles existent
+      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE
       let cardActivity = [];
       if (cardStatsData && cardStatsData.lastScan) {
         cardActivity = [{
@@ -431,51 +431,49 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* ✅ SECTION: STATISTIQUES CARTE DE VISITE - Uniquement si des données réelles existent */}
-      {cardStats && (
-        <div className="kpi-section">
-          <h2>💼 Carte de Visite Numérique</h2>
-          <div className="kpi-grid">
-            <div className="kpi-card">
-              <div className="kpi-icon">📱</div>
-              <div className="kpi-content">
-                <h3>{stats.cardScansTotal}</h3>
-                <p>Scans Totaux</p>
-                <span className="kpi-trend positive">+{stats.cardScansToday} aujourd'hui</span>
-              </div>
+      {/* ✅ NOUVELLE SECTION: STATISTIQUES CARTE DE VISITE */}
+      <div className="kpi-section">
+        <h2>💼 Carte de Visite Numérique</h2>
+        <div className="kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-icon">📱</div>
+            <div className="kpi-content">
+              <h3>{stats.cardScansTotal}</h3>
+              <p>Scans Totaux</p>
+              <span className="kpi-trend positive">+{stats.cardScansToday} aujourd'hui</span>
             </div>
-            
-            <div className="kpi-card">
-              <div className="kpi-icon">📅</div>
-              <div className="kpi-content">
-                <h3>{stats.cardScansThisMonth}</h3>
-                <p>Scans ce mois</p>
-                <span className="kpi-trend">{(stats.cardScansThisMonth / 30).toFixed(1)} par jour</span>
-              </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">📅</div>
+            <div className="kpi-content">
+              <h3>{stats.cardScansThisMonth}</h3>
+              <p>Scans ce mois</p>
+              <span className="kpi-trend">{(stats.cardScansThisMonth / 30).toFixed(1)} par jour</span>
             </div>
-            
-            <div className="kpi-card">
-              <div className="kpi-icon">🔄</div>
-              <div className="kpi-content">
-                <h3>{stats.cardConversions}</h3>
-                <p>Conversions</p>
-                <span className="kpi-trend">{stats.cardConversionRate.toFixed(1)}% de taux</span>
-              </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">🔄</div>
+            <div className="kpi-content">
+              <h3>{stats.cardConversions}</h3>
+              <p>Conversions</p>
+              <span className="kpi-trend">{stats.cardConversionRate.toFixed(1)}% de taux</span>
             </div>
-            
-            <div className="kpi-card">
-              <div className="kpi-icon">🔗</div>
-              <div className="kpi-content">
-                <h3>{cardStats?.lastScan ? formatTimeAgo(cardStats.lastScan) : 'Aucun'}</h3>
-                <p>Dernier Scan</p>
-                <span className="kpi-trend">
-                  <a href="#carte" style={{color: 'inherit', textDecoration: 'none'}}>Voir les détails →</a>
-                </span>
-              </div>
+          </div>
+          
+          <div className="kpi-card">
+            <div className="kpi-icon">🔗</div>
+            <div className="kpi-content">
+              <h3>{cardStats?.lastScan ? formatTimeAgo(cardStats.lastScan) : 'Aucun'}</h3>
+              <p>Dernier Scan</p>
+              <span className="kpi-trend">
+                <a href="#carte" style={{color: 'inherit', textDecoration: 'none'}}>Voir les détails →</a>
+              </span>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ✅ SECTION 2: PROSPECTS ET DEVIS */}
       <div className="stats-section">
