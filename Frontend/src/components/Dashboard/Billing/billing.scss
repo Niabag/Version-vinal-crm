@@ -479,6 +479,15 @@
   gap: 0.25rem;
 }
 
+.invoice-status.clickable {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.invoice-status.clickable:hover {
+  transform: scale(1.05);
+}
+
 .invoice-content {
   display: flex;
   flex-direction: column;
