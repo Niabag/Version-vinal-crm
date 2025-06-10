@@ -63,6 +63,23 @@ const actionSchema = new mongoose.Schema({
   }
 }, { _id: false }); // ✅ Pas d'_id automatique pour les sous-documents
 
+// ✅ SCHÉMA POUR LES STATISTIQUES
+const statsSchema = new mongoose.Schema({
+  views: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  lastViewed: {
+    type: Date,
+    default: null
+  },
+  viewDates: {
+    type: [Date],
+    default: []
+  }
+}, { _id: false });
+
 const businessCardSchema = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -121,6 +138,11 @@ const businessCardSchema = new mongoose.Schema({
         message: 'Les actions doivent être un tableau'
       }
     }
+  },
+  // ✅ NOUVEAU: Statistiques de la carte
+  stats: {
+    type: statsSchema,
+    default: () => ({})
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

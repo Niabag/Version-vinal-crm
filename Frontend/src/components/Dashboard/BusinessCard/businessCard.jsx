@@ -159,12 +159,23 @@ const BusinessCard = ({ userId, user }) => {
 
   const fetchStats = async () => {
     try {
+      if (!userId) return;
+      
       const data = await apiRequest(
         API_ENDPOINTS.BUSINESS_CARDS.STATS(userId)
       );
+      
+      console.log("📊 Statistiques récupérées:", data);
       setStats(data);
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
+      // Initialiser avec des valeurs par défaut en cas d'erreur
+      setStats({
+        scansToday: 0,
+        scansThisMonth: 0,
+        totalScans: 0,
+        conversions: 0
+      });
     }
   };
 
@@ -281,6 +292,9 @@ const BusinessCard = ({ userId, user }) => {
         cardImage: response.businessCard.cardImage
       }));
       console.log('✅ Carte de visite sauvegardée en BDD');
+      
+      // Rafraîchir les statistiques après sauvegarde
+      fetchStats();
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);

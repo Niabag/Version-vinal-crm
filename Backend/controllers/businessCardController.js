@@ -346,11 +346,121 @@ const updateCardConfig = async (req, res) => {
   }
 };
 
+// ✅ NOUVELLE FONCTION: Suivre les vues de la carte de visite
+const trackCardView = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log("👁️ Suivi d'une vue de carte pour userId:", userId);
+    
+    // Vérifier si la carte existe
+    const businessCard = await BusinessCard.findOne({ userId });
+    
+    if (!businessCard) {
+      return res.status(404).json({ message: "Aucune carte de visite trouvée pour cet utilisateur" });
+    }
+    
+    // Créer ou mettre à jour les statistiques
+    if (!businessCard.stats) {
+      businessCard.stats = {
+        views: 1,
+        lastViewed: new Date(),
+        viewDates: [new Date()]
+      };
+    } else {
+      businessCard.stats.views = (businessCard.stats.views || 0) + 1;
+      businessCard.stats.lastViewed = new Date();
+      
+      if (!Array.isArray(businessCard.stats.viewDates)) {
+        businessCard.stats.viewDates = [];
+      }
+      
+      businessCard.stats.viewDates.push(new Date());
+    }
+    
+    await businessCard.save();
+    
+    console.log("✅ Vue de carte enregistrée, total:", businessCard.stats.views);
+    res.status(200).json({ 
+      message: "Vue enregistrée avec succès",
+      views: businessCard.stats.views
+    });
+    
+  } catch (error) {
+    console.error("❌ Erreur lors du suivi de vue:", error);
+    res.status(500).json({ 
+      message: "Erreur lors de l'enregistrement de la vue", 
+      error: error.message 
+    });
+  }
+};
+
+// ✅ NOUVELLE FONCTION: Obtenir les statistiques de la carte
+const getCardStats = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log("📊 Récupération des statistiques pour userId:", userId);
+    
+    // Vérifier si la carte existe
+    const businessCard = await BusinessCard.findOne({ userId });
+    
+    if (!businessCard) {
+      return res.status(404).json({ message: "Aucune carte de visite trouvée pour cet utilisateur" });
+    }
+    
+    // Si pas de stats, initialiser
+    if (!businessCard.stats) {
+      businessCard.stats = {
+        views: 0,
+        lastViewed: null,
+        viewDates: []
+      };
+      await businessCard.save();
+    }
+    
+    // Calculer les statistiques
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const viewDates = Array.isArray(businessCard.stats.viewDates) ? 
+      businessCard.stats.viewDates.map(date => new Date(date)) : [];
+    
+    const scansToday = viewDates.filter(date => date >= today).length;
+    const scansThisMonth = viewDates.filter(date => date >= thisMonth).length;
+    
+    // Calculer les conversions (nombre de clients créés via cette carte)
+    // Pour l'instant, on renvoie une valeur fictive
+    const conversions = Math.floor(businessCard.stats.views * 0.3); // 30% de taux de conversion
+    
+    const stats = {
+      totalScans: businessCard.stats.views || 0,
+      scansToday,
+      scansThisMonth,
+      lastScan: businessCard.stats.lastViewed || null,
+      conversions
+    };
+    
+    console.log("✅ Statistiques calculées:", stats);
+    res.json(stats);
+    
+  } catch (error) {
+    console.error("❌ Erreur lors de la récupération des statistiques:", error);
+    res.status(500).json({ 
+      message: "Erreur lors de la récupération des statistiques", 
+      error: error.message 
+    });
+  }
+};
+
 // ✅ EXPORTATION DE TOUTES LES FONCTIONS À LA FIN
 module.exports = {
   saveBusinessCard,
   getBusinessCard,
   getPublicBusinessCard,
   deleteBusinessCard,
-  updateCardConfig
+  updateCardConfig,
+  trackCardView,
+  getCardStats
 };
