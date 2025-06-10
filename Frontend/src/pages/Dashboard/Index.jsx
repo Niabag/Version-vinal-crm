@@ -8,7 +8,6 @@ import Settings from "../../components/Dashboard/Settings/settings";
 import Notifications from "../../components/Dashboard/Notifications/notifications";
 import BusinessCard from "../../components/Dashboard/BusinessCard/businessCard";
 import Billing from "../../components/Dashboard/Billing/billing";
-import SubscriptionBanner from "../../components/SubscriptionBanner/Index";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
 import "./dashboard.scss";
 
@@ -190,8 +189,6 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-layout">
-      {/* Subscription Banner */}
-      <SubscriptionBanner />
       
       {/* ✅ SIDEBAR MODERNE */}
       <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
