@@ -36,6 +36,16 @@ export const API_ENDPOINTS = {
     DELETE: (devisId) => `${API_CONFIG.BASE_URL}/devis/${devisId}`,
   },
 
+  // Factures
+  INVOICES: {
+    BASE: `${API_CONFIG.BASE_URL}/invoices`,
+    BY_CLIENT: (clientId) => `${API_CONFIG.BASE_URL}/invoices/client/${clientId}`,
+    BY_ID: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}`,
+    UPDATE: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}`,
+    UPDATE_STATUS: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}/status`,
+    DELETE: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}`,
+  },
+
   // Cartes de visite
   BUSINESS_CARDS: {
     BASE: `${API_CONFIG.BASE_URL}/business-cards`,

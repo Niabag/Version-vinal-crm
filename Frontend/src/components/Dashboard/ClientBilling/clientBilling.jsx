@@ -37,36 +37,9 @@ const ClientBilling = ({ client, onBack }) => {
   const fetchClientInvoices = async () => {
     try {
       setLoading(true);
-      // Simulation - à remplacer par un vrai endpoint API
-      // const data = await apiRequest(API_ENDPOINTS.INVOICES.BY_CLIENT(client._id));
-      
-      // Simulation de données
-      const mockInvoices = [
-        {
-          id: `INV-${client._id.substring(0, 5)}-001`,
-          clientId: client._id,
-          clientName: client.name,
-          amount: 600.00,
-          status: 'paid',
-          dueDate: '2024-05-15',
-          createdAt: '2024-04-15',
-          invoiceNumber: `FACT-2024-${String(Math.floor(Math.random() * 100)).padStart(3, '0')}`,
-          devisIds: []
-        },
-        {
-          id: `INV-${client._id.substring(0, 5)}-002`,
-          clientId: client._id,
-          clientName: client.name,
-          amount: 850.00,
-          status: 'pending',
-          dueDate: '2024-05-30',
-          createdAt: '2024-04-30',
-          invoiceNumber: `FACT-2024-${String(Math.floor(Math.random() * 100) + 100).padStart(3, '0')}`,
-          devisIds: []
-        }
-      ];
-      
-      setInvoices(mockInvoices);
+      // Utiliser l'API réelle
+      const data = await apiRequest(API_ENDPOINTS.INVOICES.BY_CLIENT(client._id));
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Erreur récupération factures:", err);
       setError("Erreur lors de la récupération des factures");
@@ -78,9 +51,7 @@ const ClientBilling = ({ client, onBack }) => {
   const fetchClientDevis = async () => {
     try {
       const data = await apiRequest(API_ENDPOINTS.DEVIS.BY_CLIENT(client._id));
-      // Filtrer uniquement les devis finalisés
-      const finishedDevis = data.filter(devis => devis.status === 'fini');
-      setDevisForClient(finishedDevis);
+      setDevisForClient(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Erreur récupération devis:", err);
     }
@@ -109,11 +80,11 @@ const ClientBilling = ({ client, onBack }) => {
           clientId: client._id,
           dateDevis: invoice.createdAt,
           dateValidite: invoice.dueDate,
-          entrepriseName: "Votre Entreprise",
-          entrepriseAddress: "123 Rue Exemple",
-          entrepriseCity: "75000 Paris",
-          entreprisePhone: "01 23 45 67 89",
-          entrepriseEmail: "contact@entreprise.com",
+          entrepriseName: invoice.entrepriseName || "Votre Entreprise",
+          entrepriseAddress: invoice.entrepriseAddress || "123 Rue Exemple",
+          entrepriseCity: invoice.entrepriseCity || "75000 Paris",
+          entreprisePhone: invoice.entreprisePhone || "01 23 45 67 89",
+          entrepriseEmail: invoice.entrepriseEmail || "contact@entreprise.com",
           articles: [
             {
               description: "Prestation complète",
@@ -159,11 +130,11 @@ const ClientBilling = ({ client, onBack }) => {
           clientId: client._id,
           dateDevis: invoice.createdAt,
           dateValidite: invoice.dueDate,
-          entrepriseName: "Votre Entreprise",
-          entrepriseAddress: "123 Rue Exemple",
-          entrepriseCity: "75000 Paris",
-          entreprisePhone: "01 23 45 67 89",
-          entrepriseEmail: "contact@entreprise.com",
+          entrepriseName: invoice.entrepriseName || "Votre Entreprise",
+          entrepriseAddress: invoice.entrepriseAddress || "123 Rue Exemple",
+          entrepriseCity: invoice.entrepriseCity || "75000 Paris",
+          entreprisePhone: invoice.entreprisePhone || "01 23 45 67 89",
+          entrepriseEmail: invoice.entrepriseEmail || "contact@entreprise.com",
           articles: [
             {
               description: "Prestation complète",
@@ -215,11 +186,11 @@ const ClientBilling = ({ client, onBack }) => {
           clientId: client._id,
           dateDevis: invoice.createdAt,
           dateValidite: invoice.dueDate,
-          entrepriseName: "Votre Entreprise",
-          entrepriseAddress: "123 Rue Exemple",
-          entrepriseCity: "75000 Paris",
-          entreprisePhone: "01 23 45 67 89",
-          entrepriseEmail: "contact@entreprise.com",
+          entrepriseName: invoice.entrepriseName || "Votre Entreprise",
+          entrepriseAddress: invoice.entrepriseAddress || "123 Rue Exemple",
+          entrepriseCity: invoice.entrepriseCity || "75000 Paris",
+          entreprisePhone: invoice.entreprisePhone || "01 23 45 67 89",
+          entrepriseEmail: invoice.entrepriseEmail || "contact@entreprise.com",
           articles: [
             {
               description: "Prestation complète",
@@ -292,13 +263,23 @@ const ClientBilling = ({ client, onBack }) => {
     }
   };
 
-  const handleDeleteInvoice = (invoiceId) => {
+  const handleDeleteInvoice = async (invoiceId) => {
     if (window.confirm("Supprimer cette facture ?")) {
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      try {
+        await apiRequest(API_ENDPOINTS.INVOICES.DELETE(invoiceId), {
+          method: "DELETE"
+        });
+        
+        setInvoices(prev => prev.filter(inv => inv._id !== invoiceId));
+        alert("✅ Facture supprimée avec succès");
+      } catch (error) {
+        console.error("Erreur suppression facture:", error);
+        alert("❌ Erreur lors de la suppression de la facture");
+      }
     }
   };
 
-  const handleStatusClick = (invoiceId, currentStatus) => {
+  const handleStatusClick = async (invoiceId, currentStatus) => {
     let newStatus;
     switch (currentStatus) {
       case 'draft':
@@ -317,13 +298,23 @@ const ClientBilling = ({ client, onBack }) => {
         newStatus = 'pending';
     }
 
-    setInvoices(prev =>
-      prev.map(inv =>
-        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
-      )
-    );
+    try {
+      await apiRequest(API_ENDPOINTS.INVOICES.UPDATE_STATUS(invoiceId), {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      setInvoices(prev =>
+        prev.map(inv =>
+          inv._id === invoiceId ? { ...inv, status: newStatus } : inv
+        )
+      );
 
-    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+      alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+    } catch (error) {
+      console.error("Erreur mise à jour statut:", error);
+      alert("❌ Erreur lors de la mise à jour du statut");
+    }
   };
 
   const handleSelectDevis = (devisId) => {
@@ -383,19 +374,22 @@ const ClientBilling = ({ client, onBack }) => {
 
       // Créer une nouvelle facture pour l'aperçu
       const newInvoiceData = {
-        id: `INV-${Date.now()}`,
+        invoiceNumber: newInvoice.invoiceNumber,
         clientId: client._id,
-        clientName: client.name,
+        devisIds: selectedDevis,
         amount: calculateInvoiceTotal(),
         status: 'draft',
         dueDate: newInvoice.dueDate,
         createdAt: new Date().toISOString(),
-        invoiceNumber: newInvoice.invoiceNumber,
-        devisIds: selectedDevis,
         notes: newInvoice.notes,
         paymentTerms: newInvoice.paymentTerms,
         discount: newInvoice.discount,
-        taxRate: newInvoice.taxRate
+        taxRate: newInvoice.taxRate,
+        entrepriseName: selectedDevisData[0]?.entrepriseName || "Votre Entreprise",
+        entrepriseAddress: selectedDevisData[0]?.entrepriseAddress || "123 Rue Exemple",
+        entrepriseCity: selectedDevisData[0]?.entrepriseCity || "75000 Paris",
+        entreprisePhone: selectedDevisData[0]?.entreprisePhone || "01 23 45 67 89",
+        entrepriseEmail: selectedDevisData[0]?.entrepriseEmail || "contact@entreprise.com"
       };
 
       setSelectedInvoice(newInvoiceData);
@@ -411,16 +405,30 @@ const ClientBilling = ({ client, onBack }) => {
     }
   };
 
-  const handleSaveInvoice = (updatedInvoice) => {
+  const handleSaveInvoice = async (updatedInvoice) => {
     try {
+      setLoading(true);
+      
       if (isCreatingNew) {
-        // Ajouter la nouvelle facture
-        setInvoices(prev => [updatedInvoice, ...prev]);
+        // Créer une nouvelle facture
+        const response = await apiRequest(API_ENDPOINTS.INVOICES.BASE, {
+          method: "POST",
+          body: JSON.stringify(updatedInvoice)
+        });
+        
+        // Ajouter la nouvelle facture à la liste
+        setInvoices(prev => [response.invoice, ...prev]);
         alert('✅ Facture créée avec succès !');
       } else {
         // Mettre à jour une facture existante
+        const response = await apiRequest(API_ENDPOINTS.INVOICES.UPDATE(updatedInvoice._id), {
+          method: "PUT",
+          body: JSON.stringify(updatedInvoice)
+        });
+        
+        // Mettre à jour la liste
         setInvoices(prev => 
-          prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv)
+          prev.map(inv => inv._id === updatedInvoice._id ? response.invoice : inv)
         );
         alert('✅ Facture mise à jour avec succès !');
       }
@@ -442,6 +450,8 @@ const ClientBilling = ({ client, onBack }) => {
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement de la facture:', error);
       alert('❌ Erreur lors de l\'enregistrement de la facture');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -601,14 +611,14 @@ const ClientBilling = ({ client, onBack }) => {
           <h3>Factures de {client.name}</h3>
           <div className="invoices-grid">
             {invoices.map((invoice) => (
-              <div key={invoice.id} className="invoice-card">
+              <div key={invoice._id} className="invoice-card">
                 <div className="invoice-header">
                   <div className="invoice-number">{invoice.invoiceNumber}</div>
                   <div
                     className="invoice-status clickable"
                     style={{ backgroundColor: getStatusColor(invoice.status), color: 'white' }}
                     title={getNextStatusLabel(invoice.status)}
-                    onClick={() => handleStatusClick(invoice.id, invoice.status)}
+                    onClick={() => handleStatusClick(invoice._id, invoice.status)}
                   >
                     {getStatusIcon(invoice.status)} {getStatusLabel(invoice.status)}
                   </div>
@@ -630,7 +640,7 @@ const ClientBilling = ({ client, onBack }) => {
                   </div>
 
                   <div className="invoice-devis">
-                    <span>📄 Devis inclus : {invoice.devisIds.length || "Aucun"}</span>
+                    <span>📄 Devis inclus : {invoice.devisIds?.length || "Aucun"}</span>
                   </div>
                 </div>
 
@@ -660,7 +670,7 @@ const ClientBilling = ({ client, onBack }) => {
                     📧
                   </button>
                   <button
-                    onClick={() => handleDeleteInvoice(invoice.id)}
+                    onClick={() => handleDeleteInvoice(invoice._id)}
                     className="action-btn delete-btn"
                     title="Supprimer la facture"
                   >
@@ -775,7 +785,7 @@ const ClientBilling = ({ client, onBack }) => {
                   </div>
                 ) : (
                   <div className="no-devis-message">
-                    <p>Aucun devis finalisé disponible pour ce client.</p>
+                    <p>Aucun devis disponible pour ce client.</p>
                     <p>La facture sera créée sans référence à un devis.</p>
                   </div>
                 )}
