@@ -73,9 +73,6 @@ const Navbar = () => {
               <Link to="/\" className="nav-link\" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
-              <Link to="/features" className="nav-link" onClick={closeMenu}>
-                ⭐ Fonctionnalités
-              </Link>
               <Link to="/pricing" className="nav-link" onClick={closeMenu}>
                 💰 Tarifs
               </Link>
