@@ -1,4 +1,4 @@
-const User = require("../models/user");
+const User = require("../models/User");
 
 // Middleware to check if user has valid subscription or trial
 exports.checkSubscription = async (req, res, next) => {
