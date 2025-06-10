@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
 import QRCode from 'react-qr-code';
@@ -29,6 +29,7 @@ const RegisterClient = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [hasRedirectedFromWebsite, setHasRedirectedFromWebsite] = useState(false);
   const [schemaType, setSchemaType] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const trackCardView = async () => {
     try {
@@ -362,9 +363,14 @@ const RegisterClient = () => {
         message: 'Téléchargement de votre carte de visite...'
       }]);
       
-      setTimeout(async () => {
-        await handleDownloadAction(downloadAction);
-      }, 1000);
+      // Éviter les téléchargements multiples
+      if (!isDownloading) {
+        setIsDownloading(true);
+        setTimeout(async () => {
+          await handleDownloadAction(downloadAction);
+          setIsDownloading(false);
+        }, 1000);
+      }
     }
   };
 
@@ -412,6 +418,13 @@ const RegisterClient = () => {
 
   const handleDownloadAction = async (action) => {
     try {
+      // Éviter les téléchargements multiples
+      if (isDownloading) {
+        console.log("Téléchargement déjà en cours, ignoré");
+        return;
+      }
+      
+      setIsDownloading(true);
       setExecutionStatus(prev => [...prev, {
         action: 'download',
         status: 'executing',
@@ -510,6 +523,8 @@ const RegisterClient = () => {
                   status: 'completed',
                   message: 'Carte de visite téléchargée avec succès !'
                 }]);
+                
+                setIsDownloading(false);
               };
               
               qrImage.src = qrDataUrl;
@@ -527,6 +542,8 @@ const RegisterClient = () => {
                 status: 'completed',
                 message: 'Carte de visite téléchargée (sans QR code)'
               }]);
+              
+              setIsDownloading(false);
             }
           } else {
             // Télécharger l'image sans QR code
@@ -540,6 +557,8 @@ const RegisterClient = () => {
               status: 'completed',
               message: 'Carte de visite téléchargée avec succès !'
             }]);
+            
+            setIsDownloading(false);
           }
         };
         
@@ -556,6 +575,8 @@ const RegisterClient = () => {
             status: 'completed',
             message: 'Carte de visite téléchargée (sans QR code)'
           }]);
+          
+          setIsDownloading(false);
         };
         
         img.src = businessCard.cardImage;
@@ -571,6 +592,8 @@ const RegisterClient = () => {
           status: 'completed',
           message: 'Carte de visite téléchargée (image par défaut)'
         }]);
+        
+        setIsDownloading(false);
       }
 
     } catch (error) {
@@ -580,6 +603,7 @@ const RegisterClient = () => {
         status: 'error',
         message: 'Erreur lors du téléchargement'
       }]);
+      setIsDownloading(false);
     }
   };
 
@@ -591,12 +615,19 @@ const RegisterClient = () => {
   };
 
   const handleManualDownload = async () => {
+    // Éviter les téléchargements multiples
+    if (isDownloading) {
+      console.log("Téléchargement déjà en cours, ignoré");
+      return;
+    }
+    
     const downloadAction = businessCard?.cardConfig?.actions?.find(action => action.type === 'download');
     if (downloadAction) {
       await handleDownloadAction(downloadAction);
     } else {
       // Téléchargement direct de la carte si aucune action de téléchargement n'est configurée
       try {
+        setIsDownloading(true);
         setExecutionStatus(prev => [...prev, {
           action: 'download',
           status: 'executing',
@@ -693,6 +724,8 @@ const RegisterClient = () => {
                     status: 'completed',
                     message: 'Carte de visite téléchargée avec succès !'
                   }]);
+                  
+                  setIsDownloading(false);
                 };
                 
                 qrImage.src = qrDataUrl;
@@ -710,6 +743,8 @@ const RegisterClient = () => {
                   status: 'completed',
                   message: 'Carte de visite téléchargée (sans QR code)'
                 }]);
+                
+                setIsDownloading(false);
               }
             } else {
               // Télécharger l'image sans QR code
@@ -723,6 +758,8 @@ const RegisterClient = () => {
                 status: 'completed',
                 message: 'Carte de visite téléchargée avec succès !'
               }]);
+              
+              setIsDownloading(false);
             }
           };
           
@@ -739,6 +776,8 @@ const RegisterClient = () => {
               status: 'completed',
               message: 'Carte de visite téléchargée (sans QR code)'
             }]);
+            
+            setIsDownloading(false);
           };
           
           img.src = businessCard.cardImage;
@@ -754,6 +793,8 @@ const RegisterClient = () => {
             status: 'completed',
             message: 'Carte de visite téléchargée (image par défaut)'
           }]);
+          
+          setIsDownloading(false);
         }
       } catch (error) {
         console.error('Erreur téléchargement:', error);
@@ -762,6 +803,7 @@ const RegisterClient = () => {
           status: 'error',
           message: 'Erreur lors du téléchargement'
         }]);
+        setIsDownloading(false);
       }
     }
   };
