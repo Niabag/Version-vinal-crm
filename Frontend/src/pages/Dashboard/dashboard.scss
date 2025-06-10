@@ -4,6 +4,7 @@
   height: 100vh;
   background: #f8fafc;
   overflow: hidden;
+  flex-direction: row; /* Assurez-vous que la direction est en ligne */
 }
 
 /* ✅ SIDEBAR MODERNE */
@@ -17,6 +18,7 @@
   position: relative;
   z-index: 100;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  order: -1; /* Force la sidebar à être le premier élément */
 }
 
 .dashboard-sidebar.collapsed {

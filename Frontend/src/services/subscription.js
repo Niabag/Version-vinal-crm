@@ -78,6 +78,7 @@ export const cancelSubscription = async () => {
 export const checkAccess = async () => {
   try {
     const status = await getSubscriptionStatus();
+    // Considérer la période d'essai comme un accès valide
     return status.status === SUBSCRIPTION_STATUS.ACTIVE || 
            status.status === SUBSCRIPTION_STATUS.TRIAL;
   } catch (error) {
