@@ -8,14 +8,13 @@ const BusinessCard = ({ userId, user }) => {
     cardImage: '/images/modern-business-card-design-template-42551612346d5b08984f0b61a8044609_screen.jpg',
     showQR: true,
     qrPosition: 'top-right',
-    qrSize: 150,
+    qrSize: 100,
     actions: []
   });
   
   const [qrValue, setQrValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
-  const [error, setError] = useState(null);
   
   // États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
@@ -151,21 +150,34 @@ const BusinessCard = ({ userId, user }) => {
   const fetchStats = async () => {
     try {
       // Récupérer les statistiques réelles depuis l'API
-      if (userId) {
-        const cardStats = await apiRequest(API_ENDPOINTS.BUSINESS_CARDS.STATS(userId));
-        if (cardStats) {
-          setStats({
-            scansToday: cardStats.scansToday || 0,
-            scansThisMonth: cardStats.scansThisMonth || 0,
-            totalScans: cardStats.totalScans || 0,
-            conversions: cardStats.conversions || 0
-          });
-          console.log("✅ Statistiques de carte chargées:", cardStats);
-        }
+      const cardStats = await apiRequest(API_ENDPOINTS.BUSINESS_CARDS.STATS(userId));
+      
+      if (cardStats) {
+        setStats({
+          scansToday: cardStats.scansToday || 0,
+          scansThisMonth: cardStats.scansThisMonth || 0,
+          totalScans: cardStats.totalScans || 0,
+          conversions: cardStats.conversions || 0
+        });
+        console.log("✅ Statistiques de carte chargées:", cardStats);
+      } else {
+        // Valeurs par défaut si aucune statistique n'est disponible
+        setStats({
+          scansToday: 0,
+          scansThisMonth: 0,
+          totalScans: 0,
+          conversions: 0
+        });
       }
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
-      // En cas d'erreur, on garde les statistiques actuelles
+      // Valeurs par défaut en cas d'erreur
+      setStats({
+        scansToday: 0,
+        scansThisMonth: 0,
+        totalScans: 0,
+        conversions: 0
+      });
     }
   };
 
@@ -252,19 +264,15 @@ const BusinessCard = ({ userId, user }) => {
   const saveBusinessCardToDB = async (cardImage = null, config = null) => {
     try {
       setLoading(true);
-      setError(null);
       
       const configToSave = config || cardConfig;
-      
-      // Assurez-vous que qrSize est au moins 100px (minimum requis par le backend)
-      const qrSize = Math.max(100, Math.min(200, Number(configToSave.qrSize) || 150));
       
       const cleanedConfig = {
         showQR: Boolean(configToSave.showQR !== undefined ? configToSave.showQR : true),
         qrPosition: ['bottom-right', 'bottom-left', 'top-right', 'top-left'].includes(configToSave.qrPosition) 
           ? configToSave.qrPosition 
           : 'top-right',
-        qrSize: qrSize,
+        qrSize: Math.max(100, Math.min(200, Number(configToSave.qrSize) || 100)),
         actions: Array.isArray(configToSave.actions) ? configToSave.actions : []
       };
       
@@ -286,13 +294,9 @@ const BusinessCard = ({ userId, user }) => {
       }));
       console.log('✅ Carte de visite sauvegardée en BDD');
       
-      // Rafraîchir les statistiques après la sauvegarde
-      await fetchStats();
-      
     } catch (error) {
       console.error('❌ Erreur sauvegarde carte de visite:', error);
-      setError(error.message || 'Erreur lors de la sauvegarde');
-      showErrorMessage('❌ Erreur lors de la sauvegarde: ' + (error.message || ''));
+      showErrorMessage('❌ Erreur lors de la sauvegarde');
     } finally {
       setLoading(false);
     }
@@ -349,11 +353,6 @@ const BusinessCard = ({ userId, user }) => {
   };
 
   const handleConfigChange = async (field, value) => {
-    // Pour qrSize, assurez-vous que la valeur est au moins 100px
-    if (field === 'qrSize') {
-      value = Math.max(100, Math.min(200, Number(value) || 150));
-    }
-    
     const newConfig = {
       ...cardConfig,
       [field]: value
@@ -586,7 +585,7 @@ const BusinessCard = ({ userId, user }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>Taille du QR code (min: 100px, max: 200px) :</label>
+                  <label>Taille du QR code :</label>
                   <input
                     type="range"
                     min="100"
@@ -816,15 +815,6 @@ const BusinessCard = ({ userId, user }) => {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Affichage des erreurs */}
-      {error && (
-        <div className="error-message-container">
-          <div className="error-icon">⚠️</div>
-          <div className="error-text">{error}</div>
-          <button onClick={() => setError(null)} className="error-dismiss">Fermer</button>
         </div>
       )}
     </div>

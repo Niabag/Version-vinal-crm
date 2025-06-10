@@ -15,6 +15,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
   const [refreshInterval, setRefreshInterval] = useState(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [nextRefreshIn, setNextRefreshIn] = useState(60);
+  const [notificationSound] = useState(new Audio('/notification.mp3'));
 
   // Charger les notifications au démarrage
   useEffect(() => {
@@ -73,6 +74,19 @@ const Notifications = ({ onNotificationsUpdate }) => {
       }
     }
   }, [notifications, loading, onNotificationsUpdate, lastGeneratedTime, deletedNotificationIds]);
+
+  // Jouer un son de notification quand une nouvelle notification non lue apparaît
+  const playNotificationSound = () => {
+    try {
+      if (notificationSound) {
+        notificationSound.play().catch(e => {
+          console.log("Impossible de jouer le son de notification:", e);
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors de la lecture du son:", error);
+    }
+  };
 
   const loadNotifications = () => {
     setLoading(true);
@@ -135,6 +149,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
       
       const newNotifications = [];
       let notificationId = Date.now();
+      let hasNewNotifications = false;
 
       // ✅ NOTIFICATIONS BASÉES SUR LES STATISTIQUES DE CARTE DE VISITE - Uniquement si des données réelles existent
       if (cardStats) {
@@ -155,6 +170,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               actionUrl: '#carte',
               actionLabel: 'Voir les statistiques'
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -175,6 +191,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               actionUrl: '#clients',
               actionLabel: 'Voir les prospects'
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -203,6 +220,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
                 actionUrl: '#carte',
                 actionLabel: 'Voir les détails'
               });
+              hasNewNotifications = true;
             }
           }
         }
@@ -231,6 +249,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               clientId: client._id,
               clientName: client.name
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -253,6 +272,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               clientId: client._id,
               clientName: client.name
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -275,6 +295,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               clientId: client._id,
               clientName: client.name
             });
+            hasNewNotifications = true;
           }
         }
       });
@@ -304,6 +325,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               devisTitle: devisItem.title,
               clientName: client?.name
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -327,6 +349,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               devisTitle: devisItem.title,
               clientName: client?.name
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -350,6 +373,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
               devisTitle: devisItem.title,
               clientName: client?.name
             });
+            hasNewNotifications = true;
           }
         }
 
@@ -375,6 +399,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
                 devisTitle: devisItem.title,
                 clientName: client?.name
               });
+              hasNewNotifications = true;
             }
           }
         }
@@ -404,6 +429,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             actionUrl: '#dashboard',
             actionLabel: 'Voir le tableau de bord'
           });
+          hasNewNotifications = true;
         }
       }
 
@@ -424,6 +450,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             actionUrl: '#clients',
             actionLabel: 'Voir les prospects'
           });
+          hasNewNotifications = true;
         }
       }
 
@@ -448,6 +475,7 @@ const Notifications = ({ onNotificationsUpdate }) => {
             actionUrl: '#settings',
             actionLabel: 'Exporter les données'
           });
+          hasNewNotifications = true;
         }
       }
 
@@ -472,23 +500,17 @@ const Notifications = ({ onNotificationsUpdate }) => {
       // Trier par date (plus récent en premier)
       filteredNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // Vérifier si de nouvelles notifications non lues ont été ajoutées
-      const oldUnreadCount = existingNotifications.filter(n => !n.read).length;
-      const newUnreadCount = filteredNotifications.filter(n => !n.read).length;
-      
-      // Si de nouvelles notifications non lues ont été ajoutées, jouer un son
-      if (newUnreadCount > oldUnreadCount && !isFirstLoad) {
-        // Émettre un événement pour jouer un son
-        const event = new CustomEvent('newNotification');
-        document.dispatchEvent(event);
-      }
-
       setNotifications(filteredNotifications);
       setLastGeneratedTime(new Date());
       
       // Mettre à jour le compteur dans le parent
       if (onNotificationsUpdate) {
         onNotificationsUpdate();
+      }
+      
+      // Jouer un son si de nouvelles notifications ont été ajoutées
+      if (hasNewNotifications && !isFirstLoad) {
+        playNotificationSound();
       }
     } catch (error) {
       console.error('Erreur lors de la génération des notifications:', error);
