@@ -33,7 +33,12 @@ const InvoicePreview = ({ invoice, devisDetails = [], client = {}, onClose }) =>
     try {
       setPdfMode(true);
       await new Promise(r => setTimeout(r, 100));
-      const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -50,7 +55,7 @@ const InvoicePreview = ({ invoice, devisDetails = [], client = {}, onClose }) =>
   };
 
   return (
-    <div className="invoice-preview">
+    <div className={`invoice-preview ${pdfMode ? 'pdf-mode' : ''}`}>
       <div className="preview-toolbar">
         <button onClick={handleGeneratePDF} className="toolbar-btn pdf-btn">📄 Générer PDF</button>
         <button onClick={onClose} className="toolbar-btn close-btn">✕ Fermer</button>
