@@ -1,20 +1,24 @@
 const express = require('express');
-const {
-  getStatus,
-  startTrial,
-  createCheckoutSession,
-  createPortalSession,
-  cancelSubscription,
-  webhook
-} = require('../controllers/subscriptionController');
-const auth = require('../middleware/auth');
-
 const router = express.Router();
+const { auth } = require('../middleware/auth');
+const subscriptionController = require('../controllers/subscriptionController');
 
-router.get('/status', auth, getStatus);
-router.post('/trial', auth, startTrial);
-router.post('/create-checkout', auth, createCheckoutSession);
-router.post('/create-portal', auth, createPortalSession);
-router.post('/cancel', auth, cancelSubscription);
-router.post('/webhook', webhook);
+// Get subscription status
+router.get('/status', auth, subscriptionController.getSubscriptionStatus);
+
+// Start free trial
+router.post('/trial', auth, subscriptionController.startFreeTrial);
+
+// Create checkout session
+router.post('/create-checkout', auth, subscriptionController.createCheckoutSession);
+
+// Create customer portal session
+router.post('/create-portal', auth, subscriptionController.createPortalSession);
+
+// Cancel subscription
+router.post('/cancel', auth, subscriptionController.cancelSubscription);
+
+// Stripe webhook
+router.post('/webhook', express.raw({ type: 'application/json' }), subscriptionController.handleWebhook);
+
 module.exports = router;
