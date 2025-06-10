@@ -22,6 +22,16 @@ import Gdpr from "./pages/Gdpr/Index";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess/Index";
 import "./utils/styles/global.scss";
 
+// Composant pour gérer l'affichage conditionnel du footer
+const FooterWrapper = () => {
+  const path = window.location.pathname;
+  // Ne pas afficher le footer sur le dashboard
+  if (path === "/dashboard" || path.startsWith("/prospect/edit/")) {
+    return null;
+  }
+  return <Footer />;
+};
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -71,7 +81,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="*" element={<Error />} />
           </Routes>
         </main>
-        <Footer />
+        <FooterWrapper />
       </div>
     </BrowserRouter>
   </React.StrictMode>
