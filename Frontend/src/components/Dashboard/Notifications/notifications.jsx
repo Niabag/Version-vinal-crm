@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './notifications.scss';
 
-const Notifications = () => {
+const Notifications = ({ onNotificationsUpdate }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, unread, read
   const [typeFilter, setTypeFilter] = useState('all'); // all, client, devis, system
   const [sortBy, setSortBy] = useState('date'); // date, type, priority
   const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [error, setError] = useState(null);
 
+  // Charger les notifications au démarrage
   useEffect(() => {
     loadNotifications();
   }, []);
@@ -18,29 +20,41 @@ const Notifications = () => {
   useEffect(() => {
     if (!loading) {
       localStorage.setItem('notificationsData', JSON.stringify(notifications));
+      
+      // Mettre à jour le compteur de notifications non lues dans le parent
+      if (onNotificationsUpdate) {
+        onNotificationsUpdate();
+      }
     }
-  }, [notifications, loading]);
+  }, [notifications, loading, onNotificationsUpdate]);
 
   const loadNotifications = () => {
     setLoading(true);
+    setError(null);
     
-    // Récupérer les notifications stockées
-    const stored = localStorage.getItem('notificationsData');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const withDates = parsed.map((n) => ({
-          ...n,
-          date: n.date ? new Date(n.date) : new Date(),
-        }));
-        setNotifications(withDates);
-        setLoading(false);
-      } catch (err) {
-        console.error('Failed to parse notifications from localStorage', err);
+    try {
+      // Récupérer les notifications stockées
+      const stored = localStorage.getItem('notificationsData');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          // S'assurer que les dates sont des objets Date
+          const withDates = parsed.map((n) => ({
+            ...n,
+            date: n.date ? new Date(n.date) : new Date(),
+          }));
+          setNotifications(withDates);
+          setLoading(false);
+        } catch (err) {
+          console.error('Failed to parse notifications from localStorage', err);
+          generateNotifications();
+        }
+      } else {
         generateNotifications();
       }
-    } else {
-      generateNotifications();
+    } catch (err) {
+      setError("Erreur lors du chargement des notifications");
+      setLoading(false);
     }
   };
 
@@ -269,8 +283,14 @@ const Notifications = () => {
 
       setNotifications(notifications);
       localStorage.setItem('notificationsData', JSON.stringify(notifications));
+      
+      // Mettre à jour le compteur dans le parent
+      if (onNotificationsUpdate) {
+        onNotificationsUpdate();
+      }
     } catch (error) {
       console.error('Erreur lors de la génération des notifications:', error);
+      setError("Erreur lors du chargement des notifications");
     } finally {
       setLoading(false);
     }
@@ -448,6 +468,10 @@ const Notifications = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
 
+  const handleRefresh = () => {
+    generateNotifications();
+  };
+
   if (loading) {
     return (
       <div className="notifications-loading">
@@ -484,6 +508,15 @@ const Notifications = () => {
         </div>
       </div>
 
+      {/* Afficher l'erreur si présente */}
+      {error && (
+        <div className="error-message-container">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">{error}</div>
+          <button onClick={handleRefresh} className="retry-button">Réessayer</button>
+        </div>
+      )}
+
       {/* Filtres et actions */}
       <div className="notifications-controls">
         <div className="filters-section">
@@ -517,6 +550,10 @@ const Notifications = () => {
         </div>
 
         <div className="actions-section">
+          <button onClick={handleRefresh} className="action-btn refresh-btn">
+            🔄 Actualiser
+          </button>
+          
           {unreadCount > 0 && (
             <button onClick={markAllAsRead} className="action-btn mark-all-read">
               ✓ Tout marquer comme lu ({unreadCount})
