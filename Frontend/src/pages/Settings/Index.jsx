@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
-import { getSubscriptionStatus, createPortalSession, createCheckoutSession, SUBSCRIPTION_STATUS, getTrialDaysRemaining } from '../../services/subscription';
+import { getSubscriptionStatus, createPortalSession, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS, getTrialDaysRemaining, DEFAULT_TRIAL_DAYS } from '../../services/subscription';
 import './settings.scss';
 
 const Settings = () => {
@@ -153,6 +153,20 @@ const Settings = () => {
     }
   };
 
+  const handleStartTrial = async () => {
+    setProcessingCheckout(true);
+    setMessage('');
+    try {
+      await startFreeTrial(DEFAULT_TRIAL_DAYS);
+      await fetchSubscriptionData();
+    } catch (error) {
+      console.error('Error starting free trial:', error);
+      setMessage("❌ Erreur: Impossible de démarrer l'essai gratuit");
+    } finally {
+      setProcessingCheckout(false);
+    }
+  };
+
   const exportData = async () => {
     try {
       setLoading(true);
@@ -264,6 +278,19 @@ const Settings = () => {
                   {new Date(subscription.trialStartDate).toLocaleDateString('fr-FR')} - {new Date(subscription.trialEndDate).toLocaleDateString('fr-FR')}
                 </div>
               </div>
+            )}
+
+            {subscription &&
+              subscription.status !== SUBSCRIPTION_STATUS.ACTIVE &&
+              !subscription.hasHadTrial && (
+                <button
+                  onClick={handleStartTrial}
+                  className="trial-button"
+                  disabled={processingCheckout}
+                >
+                  {processingCheckout ?
+                    'Activation...' : `Commencer l'essai gratuit (${DEFAULT_TRIAL_DAYS} jours)`}
+                </button>
             )}
 
             {subscription && subscription.status !== SUBSCRIPTION_STATUS.ACTIVE && (
