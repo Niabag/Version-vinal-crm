@@ -16,7 +16,7 @@ const BusinessCard = ({ userId, user }) => {
   const [loading, setLoading] = useState(false);
   const [savedCardData, setSavedCardData] = useState(null);
   
-  // ✅ États pour les schémas prédéfinis
+  // États pour les schémas prédéfinis
   const [showSchemasModal, setShowSchemasModal] = useState(false);
   
   const [stats, setStats] = useState({
@@ -26,7 +26,7 @@ const BusinessCard = ({ userId, user }) => {
     conversions: 0
   });
 
-  // ✅ SCHÉMAS CORRIGÉS: Séquences d'actions prédéfinies
+  // SCHÉMAS PRÉDÉFINIS: Séquences d'actions prédéfinies
   const actionSchemas = {
     'website-form': {
       name: 'Site web → Formulaire',
@@ -145,21 +145,7 @@ const BusinessCard = ({ userId, user }) => {
     }
     
     try {
-      const redirectAction = cardConfig.actions.find(action => 
-        action.active && action.type === 'website'
-      );
-      
       const targetUrl = `${FRONTEND_ROUTES.CLIENT_REGISTER(userId)}`;
-
-      if (redirectAction && redirectAction.url) {
-        try {
-          new URL(redirectAction.url); // validation simple
-          console.log("🌐 URL de redirection détectée:", redirectAction.url);
-        } catch (urlError) {
-          console.error("❌ URL invalide:", redirectAction.url);
-        }
-      }
-      
       setQrValue(targetUrl);
       console.log("✅ QR code généré:", targetUrl);
     } catch (error) {
@@ -197,7 +183,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Appliquer un schéma prédéfini
+  // Appliquer un schéma prédéfini
   const handleApplySchema = async (schemaKey) => {
     const schema = actionSchemas[schemaKey];
     if (!schema) return;
@@ -225,7 +211,7 @@ const BusinessCard = ({ userId, user }) => {
     showSuccessMessage(`✅ Schéma "${schema.name}" appliqué avec succès !`);
   };
 
-  // ✅ FONCTION: Réinitialiser toutes les actions
+  // Réinitialiser toutes les actions
   const handleClearAllActions = async () => {
     const confirmClear = window.confirm(
       "❗ Supprimer toutes les actions configurées ?"
@@ -243,7 +229,7 @@ const BusinessCard = ({ userId, user }) => {
     showSuccessMessage('✅ Toutes les actions ont été supprimées');
   };
 
-  // ✅ FONCTION: Modifier l'URL d'un schéma
+  // Modifier l'URL d'un schéma
   const handleEditSchemaUrl = async (actionId, newUrl) => {
     const updatedActions = cardConfig.actions.map(action =>
       action.id === actionId ? { ...action, url: newUrl } : action
@@ -364,7 +350,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Téléchargement de la vraie carte de visite
+  // Téléchargement de la carte de visite
   const downloadBusinessCard = async () => {
     try {
       setLoading(true);
@@ -388,7 +374,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Génération de la vraie carte avec les données utilisateur
+  // Génération de la carte avec les données utilisateur
   const generateBusinessCardWithQR = async () => {
     return new Promise(async (resolve) => {
       try {
@@ -448,7 +434,7 @@ const BusinessCard = ({ userId, user }) => {
     });
   };
 
-  // ✅ NOUVELLE FONCTION: Ajouter les informations utilisateur sur la carte
+  // Ajouter les informations utilisateur sur la carte
   const addUserInfoToCard = async (ctx, canvas) => {
     try {
       // Zone de texte (côté gauche de la carte)
@@ -491,7 +477,7 @@ const BusinessCard = ({ userId, user }) => {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE: Ajouter le QR code sur la carte
+  // Ajouter le QR code sur la carte
   const addQRCodeToCard = async (ctx, canvas) => {
     try {
       const qrSize = cardConfig.qrSize || 120;
@@ -601,7 +587,7 @@ const BusinessCard = ({ userId, user }) => {
     console.log('✅ QR code fallback ajouté');
   };
 
-  // ✅ FONCTION CORRIGÉE: Générer une carte par défaut professionnelle
+  // Générer une carte par défaut professionnelle
   const generateDefaultBusinessCard = async (ctx, canvas) => {
     // Fond dégradé professionnel
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -727,6 +713,42 @@ const BusinessCard = ({ userId, user }) => {
     return fileName || filePath;
   };
 
+  // Rafraîchir les statistiques
+  const refreshStats = async () => {
+    try {
+      setLoading(true);
+      await fetchStats();
+      showSuccessMessage('✅ Statistiques mises à jour !');
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement des statistiques:', error);
+      showErrorMessage('❌ Erreur lors de la mise à jour des statistiques');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Formater le temps écoulé
+  const formatTimeAgo = (date) => {
+    if (!date) return 'Jamais';
+    
+    const now = new Date();
+    const lastScan = new Date(date);
+    const diffMs = now - lastScan;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) {
+      return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    } else if (diffHours > 0) {
+      return `il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    } else if (diffMins > 0) {
+      return `il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    } else {
+      return 'à l\'instant';
+    }
+  };
+
   return (
     <div className="business-card-container">
       {/* Statistiques en haut */}
@@ -757,6 +779,61 @@ const BusinessCard = ({ userId, user }) => {
               <p>Conversions</p>
               <span className="stat-trend">Prospects inscrits</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dernière activité */}
+      <div className="last-activity-section">
+        <div className="last-activity-card">
+          <div className="last-activity-header">
+            <h3>📱 Dernière Activité</h3>
+          </div>
+          <div className="last-activity-content">
+            {stats.lastScan ? (
+              <>
+                <div className="last-scan-info">
+                  <span className="last-scan-icon">👁️</span>
+                  <span className="last-scan-text">
+                    Dernier scan de votre QR code: <strong>{formatTimeAgo(stats.lastScan)}</strong>
+                  </span>
+                </div>
+                
+                <div className="conversion-rate">
+                  <span className="rate-label">Taux de conversion</span>
+                  <span className="rate-value">
+                    {stats.totalScans > 0 
+                      ? `${Math.round((stats.conversions / stats.totalScans) * 100)}%` 
+                      : '0%'}
+                  </span>
+                  <div className="rate-bar">
+                    <div 
+                      className="rate-fill" 
+                      style={{ 
+                        width: `${stats.totalScans > 0 
+                          ? Math.round((stats.conversions / stats.totalScans) * 100) 
+                          : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="no-activity">
+                <span className="no-activity-icon">⏳</span>
+                <span className="no-activity-text">
+                  Aucune activité enregistrée pour le moment. Partagez votre QR code pour commencer à suivre les scans.
+                </span>
+              </div>
+            )}
+            
+            <button 
+              onClick={refreshStats} 
+              className="refresh-stats-btn"
+              disabled={loading}
+            >
+              {loading ? '⏳ Actualisation...' : '🔄 Actualiser les statistiques'}
+            </button>
           </div>
         </div>
       </div>
@@ -853,7 +930,7 @@ const BusinessCard = ({ userId, user }) => {
             )}
           </div>
 
-          {/* ✅ SECTION CORRIGÉE: Schémas prédéfinis professionnels */}
+          {/* Section des schémas prédéfinis */}
           <div className="config-section">
             <h3>🚀 Schémas de Conversion</h3>
             <p className="section-description">
@@ -884,19 +961,20 @@ const BusinessCard = ({ userId, user }) => {
                 <h4>🎯 Stratégie Active :</h4>
                 <div className="schema-sequence">
                   {cardConfig.actions
+                    .filter(a => a.active)
                     .sort((a, b) => (a.order || 1) - (b.order || 1))
                     .map((action, index) => (
                       <span key={action.id} className="schema-step">
                         {getActionIcon(action.type)} {getActionLabel(action.type)}
-                        {index < cardConfig.actions.length - 1 && ' → '}
+                        {index < cardConfig.actions.filter(a => a.active).length - 1 && ' → '}
                       </span>
                     ))}
                 </div>
                 
-                {/* ✅ Édition rapide des URLs */}
+                {/* Édition rapide des URLs */}
                 <div className="schema-edit-section">
                   {cardConfig.actions
-                    .filter(action => action.type === 'website')
+                    .filter(action => action.type === 'website' && action.active)
                     .map(action => (
                       <div key={action.id} className="url-edit-group">
                         <label>🌐 URL du site web :</label>
@@ -1021,7 +1099,7 @@ const BusinessCard = ({ userId, user }) => {
         </div>
       </div>
 
-      {/* ✅ MODAL CORRIGÉE: Sélection de schémas professionnels */}
+      {/* Modal de sélection de schémas */}
       {showSchemasModal && (
         <div className="modal-overlay" onClick={() => setShowSchemasModal(false)}>
           <div className="modal-content schemas-modal" onClick={(e) => e.stopPropagation()}>
@@ -1078,3 +1156,5 @@ const BusinessCard = ({ userId, user }) => {
 };
 
 export default BusinessCard;
+
+export default BusinessCard
