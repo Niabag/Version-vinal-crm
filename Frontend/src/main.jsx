@@ -15,7 +15,6 @@ import Error from "./pages/Error/Index";
 import ProtectedRoute from "./components/ProtectedRoute/Index";
 import Features from "./pages/Features/Index";
 import Pricing from "./pages/Pricing/Index";
-import Help from "./pages/Help/Index";
 import About from "./pages/About/Index";
 import Contact from "./pages/Contact/Index";
 import Cookies from "./pages/Cookies/Index";
@@ -41,7 +40,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/features" element={<Features />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/help" element={<Help />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/cookies" element={<Cookies />} />
