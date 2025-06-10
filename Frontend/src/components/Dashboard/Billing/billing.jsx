@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
+import InvoicePreview from './invoicePreview';
 import './billing.scss';
 
 const Billing = ({ clients = [], onRefresh }) => {
@@ -11,6 +12,10 @@ const Billing = ({ clients = [], onRefresh }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
+  const [previewDevis, setPreviewDevis] = useState([]);
+  const [previewClient, setPreviewClient] = useState({});
   const [newInvoice, setNewInvoice] = useState({
     clientId: '',
     devisIds: [],
@@ -229,6 +234,33 @@ const Billing = ({ clients = [], onRefresh }) => {
     } catch (error) {
       console.error('Erreur lors de la création de la facture:', error);
       alert('❌ Erreur lors de la création de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewInvoice = async (invoice) => {
+    try {
+      setLoading(true);
+      const devisDetails = await Promise.all(
+        invoice.devisIds.map(async (id) => {
+          try {
+            return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
+          } catch (err) {
+            console.error('Erreur récupération devis:', err);
+            return null;
+          }
+        })
+      );
+      const validDevis = devisDetails.filter(Boolean);
+      const client = clients.find(c => c._id === invoice.clientId) || {};
+
+      setPreviewInvoice(invoice);
+      setPreviewDevis(validDevis);
+      setPreviewClient(client);
+      setShowInvoicePreview(true);
+    } catch (err) {
+      console.error('Erreur affichage facture:', err);
     } finally {
       setLoading(false);
     }
@@ -591,7 +623,11 @@ const Billing = ({ clients = [], onRefresh }) => {
                 </div>
 
                 <div className="invoice-actions">
-                  <button className="action-btn view-btn" title="Voir la facture">
+                  <button
+                    onClick={() => handleViewInvoice(invoice)}
+                    className="action-btn view-btn"
+                    title="Voir la facture"
+                  >
                     👁️
                   </button>
                   <button
@@ -728,6 +764,25 @@ const Billing = ({ clients = [], onRefresh }) => {
               >
                 {loading ? 'Création...' : '💰 Créer la facture'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInvoicePreview && (
+        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📄 Aperçu de la facture</h3>
+              <button onClick={() => setShowInvoicePreview(false)} className="modal-close">✕</button>
+            </div>
+            <div className="modal-body">
+              <InvoicePreview
+                invoice={previewInvoice}
+                devisDetails={previewDevis}
+                client={previewClient}
+                onClose={() => setShowInvoicePreview(false)}
+              />
             </div>
           </div>
         </div>
