@@ -57,30 +57,28 @@ const InvoicePreview = ({ invoice, devisDetails = [], client = {}, onClose }) =>
       </div>
       <div className={`preview-content ${pdfMode ? 'pdf-mode' : ''}`} ref={previewRef}>
         <div className="document-header">
-          <div className="document-title">
-            <h1>FACTURE {invoice.invoiceNumber}</h1>
-            <p>Émise le : {formatDate(invoice.createdAt)}</p>
-            <p>Échéance : {formatDate(invoice.dueDate)}</p>
-          </div>
-        </div>
-
-        <div className="parties-info">
-          <div className="entreprise-section">
-            <h3>Émetteur</h3>
-            <p>{devisDetails[0]?.entrepriseName}</p>
+          <div className="header-left">
+            <h2 className="company-name">{devisDetails[0]?.entrepriseName}</h2>
             <p>{devisDetails[0]?.entrepriseAddress}</p>
             <p>{devisDetails[0]?.entrepriseCity}</p>
             <p>{devisDetails[0]?.entrepriseEmail}</p>
             <p>{devisDetails[0]?.entreprisePhone}</p>
           </div>
-          <div className="client-section">
-            <h3>Client</h3>
-            <p>{client.name || invoice.clientName}</p>
-            <p>{client.address || ''}</p>
-            <p>{client.postalCode ? `${client.postalCode} ${client.city}` : client.city}</p>
-            <p>{client.email}</p>
-            <p>{client.phone}</p>
+          <div className="header-right">
+            <h1>FACTURE</h1>
+            <p className="invoice-number">N° {invoice.invoiceNumber}</p>
+            <p>Émise le : {formatDate(invoice.createdAt)}</p>
+            <p>Échéance : {formatDate(invoice.dueDate)}</p>
           </div>
+        </div>
+
+        <div className="client-section">
+          <h3>Client</h3>
+          <p>{client.name || invoice.clientName}</p>
+          <p>{client.address || ''}</p>
+          <p>{client.postalCode ? `${client.postalCode} ${client.city}` : client.city}</p>
+          <p>{client.email}</p>
+          <p>{client.phone}</p>
         </div>
 
         <div className="articles-section">
@@ -101,7 +99,7 @@ const InvoicePreview = ({ invoice, devisDetails = [], client = {}, onClose }) =>
                 const total = price * qty;
                 return (
                   <tr key={idx}>
-                    <td>{a.description}</td>
+                    <td className="description-cell">{a.description}</td>
                     <td>{qty}</td>
                     <td>{price.toFixed(2)} €</td>
                     <td>{a.tvaRate || 0}%</td>
