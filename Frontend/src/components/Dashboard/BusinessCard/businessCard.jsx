@@ -61,7 +61,7 @@ const BusinessCard = ({ userId, user }) => {
       ]
     },
     'funnel-site-last': {
-      name: '🎯 Site en Dernier',
+      name: '🎯 Formulaire → Carte → Site',
       description: 'Formulaire puis téléchargement avant d\'ouvrir le site web',
       icon: '📝📥🌐',
       sequence: 'Formulaire (1s) → Carte (2s) → Site web (3s)',
@@ -134,21 +134,7 @@ const BusinessCard = ({ userId, user }) => {
     }
     
     try {
-      const redirectAction = cardConfig.actions.find(action => 
-        action.active && action.type === 'website'
-      );
-      
       const targetUrl = `${FRONTEND_ROUTES.CLIENT_REGISTER(userId)}`;
-
-      if (redirectAction && redirectAction.url) {
-        try {
-          new URL(redirectAction.url); // validation simple
-          console.log("🌐 URL de redirection détectée:", redirectAction.url);
-        } catch (urlError) {
-          console.error("❌ URL invalide:", redirectAction.url);
-        }
-      }
-      
       setQrValue(targetUrl);
       console.log("✅ QR code généré:", targetUrl);
     } catch (error) {
@@ -844,7 +830,7 @@ const BusinessCard = ({ userId, user }) => {
 
           {/* ✅ SECTION CORRIGÉE: Schémas prédéfinis professionnels */}
           <div className="config-section">
-            <h3>🚀 Schémas de Conversion</h3>
+            <h3>🚀 Stratégies de Conversion</h3>
             <p className="section-description">
               Choisissez une stratégie optimisée pour maximiser vos conversions
             </p>
