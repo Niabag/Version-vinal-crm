@@ -310,35 +310,6 @@ const RegisterClient = () => {
     }));
   };
 
-  const getSchemaName = () => {
-    switch (schemaType) {
-      case 'website-only': return '🌐 Site Web Direct';
-      case 'form-only': return '📝 Formulaire Simple';
-      case 'download-only': return '📥 Carte de Visite';
-      case 'form-website': return '📝 Formulaire puis Site';
-      case 'form-download': return '📝 Contact → Carte';
-      case 'complete-funnel': return '🎯 Tunnel Complet';
-      case 'custom': return '🔧 Stratégie Personnalisée';
-      default: return 'Configuration par défaut';
-    }
-  };
-
-  const getSchemaSequence = () => {
-    if (!businessCard?.cardConfig?.actions) return [];
-    
-    return businessCard.cardConfig.actions
-      .filter(a => a.active)
-      .sort((a, b) => (a.order || 1) - (b.order || 1))
-      .map(action => {
-        switch (action.type) {
-          case 'website': return '🌐 Site web';
-          case 'form': return '📝 Formulaire contact';
-          case 'download': return '📥 Téléchargement carte';
-          default: return '❓ Action inconnue';
-        }
-      });
-  };
-
   if (loading && !showForm) {
     return (
       <div className="professional-contact-page">
@@ -374,36 +345,6 @@ const RegisterClient = () => {
           <h1 className="contact-title">💼 CRM Pro</h1>
           <p className="contact-subtitle">Découvrez nos services et entrons en contact</p>
         </div>
-
-        {/* Affichage du schéma actif */}
-        {businessCard?.cardConfig?.actions && (
-          <div className="schema-display">
-            <h3 className="schema-title">🎯 Stratégie Active : {getSchemaName()}</h3>
-            <div className="schema-sequence">
-              {getSchemaSequence().map((step, index) => (
-                <span key={index} className="schema-step">
-                  {step}
-                  {index < getSchemaSequence().length - 1 && ' →'}
-                </span>
-              ))}
-            </div>
-            
-            {/* Affichage de l'URL du site web si configurée */}
-            {businessCard.cardConfig.actions.some(a => a.type === 'website' && a.active) && (
-              <div className="website-info">
-                <div className="website-label">🌐 URL du site web :</div>
-                <a 
-                  href={businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="website-link"
-                >
-                  {businessCard.cardConfig.actions.find(a => a.type === 'website')?.url || 'https://www.votre-site.com'}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Message de redirection depuis le site web */}
         {hasRedirectedFromWebsite && showForm && (
