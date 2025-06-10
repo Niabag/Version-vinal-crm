@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import InvoicePreview from './InvoicePreview';
+import DynamicInvoice from '../Billing/DynamicInvoice';
 import './clientBilling.scss';
 
 const ClientBilling = ({ client, onBack }) => {
@@ -11,12 +12,30 @@ const ClientBilling = ({ client, onBack }) => {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date');
+  const [selectedDevisForInvoice, setSelectedDevisForInvoice] = useState([]);
+  const [dynamicPreview, setDynamicPreview] = useState(true);
+  const previewContainerRef = useRef(null);
 
   useEffect(() => {
     if (client && client._id) {
       fetchClientData();
     }
   }, [client]);
+
+  // Effet pour prévisualiser automatiquement quand des devis sont sélectionnés
+  useEffect(() => {
+    if (selectedDevisForInvoice.length > 0 && dynamicPreview) {
+      // Faire défiler jusqu'à la prévisualisation si elle est visible
+      if (previewContainerRef.current) {
+        setTimeout(() => {
+          previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
+    }
+  }, [selectedDevisForInvoice, dynamicPreview]);
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -118,6 +137,7 @@ const ClientBilling = ({ client, onBack }) => {
     setInvoices(prev => [newInvoice, ...prev]);
     setShowInvoicePreview(false);
     setSelectedInvoice(null);
+    setSelectedDevisForInvoice([]);
     
     alert("✅ Facture créée avec succès");
   };
@@ -125,6 +145,21 @@ const ClientBilling = ({ client, onBack }) => {
   const handleDeleteInvoice = (invoiceId) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette facture ?")) {
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    }
+  };
+
+  const handleSelectDevis = (devisId) => {
+    setSelectedDevisForInvoice(prev => 
+      prev.includes(devisId) 
+        ? prev.filter(id => id !== devisId)
+        : [...prev, devisId]
+    );
+    
+    // Faire défiler jusqu'à la prévisualisation si elle est visible
+    if (dynamicPreview && previewContainerRef.current) {
+      setTimeout(() => {
+        previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
     }
   };
 
@@ -194,6 +229,34 @@ const ClientBilling = ({ client, onBack }) => {
   const totalAmount = devis.reduce((sum, d) => sum + calculateTTC(d), 0);
   const paidAmount = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0);
   const pendingAmount = invoices.filter(i => i.status === 'pending').reduce((sum, i) => sum + i.amount, 0);
+
+  // Filtrer les devis
+  const filteredDevis = devis
+    .filter(devisItem => {
+      const matchesSearch = devisItem.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           devisItem.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || 
+                           (statusFilter === 'nouveau' && devisItem.status === 'nouveau') ||
+                           (statusFilter === 'en_attente' && devisItem.status === 'en_attente') ||
+                           (statusFilter === 'fini' && devisItem.status === 'fini') ||
+                           (statusFilter === 'inactif' && devisItem.status === 'inactif');
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return (a.title || "").localeCompare(b.title || "");
+        case 'client':
+          return client.name.localeCompare(client.name);
+        case 'amount':
+          return calculateTTC(b) - calculateTTC(a);
+        case 'date':
+        default:
+          return new Date(b.dateDevis || 0) - new Date(a.dateDevis || 0);
+      }
+    });
 
   if (loading) {
     return (
@@ -281,6 +344,68 @@ const ClientBilling = ({ client, onBack }) => {
         </div>
       </div>
 
+      {/* Filtres et recherche */}
+      <div className="filters-section">
+        <div className="search-bar">
+          <div className="search-input-wrapper">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Rechercher par titre, client ou description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+
+        <div className="filters-row">
+          <div className="filter-group">
+            <label>Statut :</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Tous</option>
+              <option value="nouveau">🔵 Nouveaux</option>
+              <option value="en_attente">🟣 En attente</option>
+              <option value="fini">🟢 Finalisés</option>
+              <option value="inactif">🔴 Inactifs</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Trier par :</label>
+            <select 
+              value={sortBy} 
+              onChange={(e) => setSortBy(e.target.value)}
+              className="filter-select"
+            >
+              <option value="date">Plus récent</option>
+              <option value="title">Titre A-Z</option>
+              <option value="client">Client A-Z</option>
+              <option value="amount">Montant décroissant</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label className="auto-preview-toggle">
+              <input 
+                type="checkbox" 
+                checked={dynamicPreview} 
+                onChange={() => setDynamicPreview(!dynamicPreview)}
+              />
+              <span className="toggle-label">Affichage dynamique</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="pagination-info">
+          <span>Affichage de 1 à {filteredDevis.length} sur {filteredDevis.length} devis</span>
+        </div>
+      </div>
+
       {/* Section des devis */}
       <div className="devis-section">
         <h3>📄 Devis du client</h3>
@@ -293,47 +418,93 @@ const ClientBilling = ({ client, onBack }) => {
           </div>
         ) : (
           <div className="devis-grid">
-            {devis.map((devisItem) => {
+            {filteredDevis.map((devisItem) => {
               const ttc = calculateTTC(devisItem);
               
               return (
-                <div key={devisItem._id} className="devis-card">
-                  <div className="devis-card-header">
-                    <h3 className="devis-card-title">{devisItem.title || "Sans titre"}</h3>
-                    <div className="devis-card-meta">
-                      <span>📅 {formatDate(devisItem.dateDevis)}</span>
-                      <span className="devis-card-amount">
-                        💰 {ttc.toFixed(2)} € TTC
-                      </span>
+                <div 
+                  key={devisItem._id} 
+                  className={`devis-card ${selectedDevisForInvoice.includes(devisItem._id) ? 'selected' : ''}`}
+                  onClick={() => handleSelectDevis(devisItem._id)}
+                >
+                  <div className="card-top-section">
+                    <div className="devis-avatar">
+                      {devisItem.title ? devisItem.title.charAt(0).toUpperCase() : "D"}
+                    </div>
+                    
+                    <div 
+                      className="status-indicator clickable"
+                      style={{ 
+                        backgroundColor: getDevisStatusColor(devisItem.status),
+                        position: 'absolute',
+                        top: '1rem',
+                        right: '1rem'
+                      }}
+                      title={`Statut: ${getDevisStatusLabel(devisItem.status)}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      {getDevisStatusIcon(devisItem.status)}
                     </div>
                   </div>
                   
-                  <div className="status-text">
-                    <span 
-                      className="status-badge"
-                      style={{ 
-                        backgroundColor: getDevisStatusColor(devisItem.status),
-                        color: 'white'
-                      }}
-                    >
-                      {getDevisStatusIcon(devisItem.status)} {getDevisStatusLabel(devisItem.status)}
-                    </span>
-                  </div>
-                  
-                  <div className="devis-card-actions">
-                    <button 
-                      className="card-btn card-btn-edit"
-                      onClick={() => handleViewDevis(devisItem)}
-                    >
-                      👁️ Voir
-                    </button>
+                  <div className="card-content">
+                    <h3 className="devis-card-title">{devisItem.title || "Devis sans titre"}</h3>
                     
-                    <button 
-                      className="card-btn card-btn-invoice"
-                      onClick={() => handleCreateInvoice(devisItem)}
-                    >
-                      📋 Facturer
-                    </button>
+                    <div className="devis-card-meta">
+                      <div className="devis-card-date">
+                        <span>📅</span>
+                        <span>{formatDate(devisItem.dateDevis)}</span>
+                      </div>
+                      <div className="devis-card-amount">
+                        <span>💰</span>
+                        <span>{ttc.toFixed(2)} € TTC</span>
+                      </div>
+                    </div>
+
+                    <div className="devis-client-info">
+                      <span className="devis-client-icon">👤</span>
+                      <span className="devis-client-name">{client.name}</span>
+                    </div>
+
+                    <div className="devis-status-badge" style={{ backgroundColor: getDevisStatusColor(devisItem.status), color: 'white' }}>
+                      {getDevisStatusIcon(devisItem.status)} {getDevisStatusLabel(devisItem.status)}
+                    </div>
+
+                    <div className="devis-card-actions">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDevis(devisItem);
+                        }}
+                        className="card-btn card-btn-edit"
+                      >
+                        ✏️
+                      </button>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Télécharger directement le PDF
+                        }}
+                        className="card-btn card-btn-pdf"
+                        disabled={loading}
+                      >
+                        {loading ? "⏳" : "📄"}
+                      </button>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Supprimer le devis
+                        }}
+                        className="card-btn card-btn-delete"
+                        title="Supprimer"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -341,6 +512,30 @@ const ClientBilling = ({ client, onBack }) => {
           </div>
         )}
       </div>
+
+      {/* Prévisualisation dynamique de la facture */}
+      {dynamicPreview && selectedDevisForInvoice.length > 0 && (
+        <div className="dynamic-preview-container" ref={previewContainerRef}>
+          <div className="dynamic-preview-header">
+            <h2>📋 Prévisualisation de la facture</h2>
+            <p>Modifiez directement les informations ci-dessous</p>
+          </div>
+          
+          <div className="dynamic-preview-content">
+            <DynamicInvoice
+              invoice={{
+                invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
+                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                createdAt: new Date().toISOString().split('T')[0],
+                devisIds: selectedDevisForInvoice
+              }}
+              client={client}
+              devisDetails={devis.filter(d => selectedDevisForInvoice.includes(d._id))}
+              onSave={handleSaveInvoice}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Section des factures */}
       <div className="invoices-section">
