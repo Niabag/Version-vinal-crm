@@ -4,6 +4,7 @@ import Devis from "../../components/Dashboard/Devis/devisPage";
 import DevisListPage from "../../components/Dashboard/Devis/devisListPage";
 import ProspectsPage from "../../components/Dashboard/Prospects/prospectsPage";
 import ProspectEditPage from "../../components/Dashboard/Prospects/prospectEditPage";
+import ClientBilling from "../../components/Dashboard/ClientBilling/clientBilling";
 import Analytics from "../../components/Dashboard/Analytics/analytics";
 import Settings from "../../components/Dashboard/Settings/settings";
 import Notifications from "../../components/Dashboard/Notifications/notifications";
@@ -23,12 +24,12 @@ const Dashboard = () => {
   const [userId, setUserId] = useState(null);
   const [user, setUser] = useState({});
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
+  const [selectedClientForBilling, setSelectedClientForBilling] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const userMenuRef = useRef(null);
-  const socketRef = useRef(null);
   const [notificationSound] = useState(new Audio('/notification-sound.mp3'));
 
   // Fermer le menu utilisateur quand on clique ailleurs
@@ -63,9 +64,6 @@ const Dashboard = () => {
       const decodedToken = decodeToken(token);
       if (decodedToken && decodedToken.userId) {
         setUserId(decodedToken.userId);
-        
-        // ✅ NOUVEAU: Initialiser la connexion WebSocket
-        initializeSocket(decodedToken.userId);
       } else {
         console.error("❌ Impossible de décoder userId du token");
       }
@@ -80,75 +78,7 @@ const Dashboard = () => {
     if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
-    
-    // Nettoyage à la déconnexion
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
   }, [location]);
-
-  // ✅ NOUVELLE FONCTION: Initialiser la connexion WebSocket
-  const initializeSocket = (userId) => {
-    try {
-      // Importer dynamiquement socket.io-client
-      import('socket.io-client').then(({ io }) => {
-        const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        
-        // Créer la connexion
-        const socket = io(SOCKET_URL, {
-          withCredentials: true,
-          transports: ['websocket']
-        });
-        
-        // Stocker la référence du socket
-        socketRef.current = socket;
-        
-        // Événements de connexion
-        socket.on('connect', () => {
-          console.log('✅ Connecté au serveur de notifications en temps réel');
-          
-          // Authentifier l'utilisateur
-          socket.emit('authenticate', userId);
-          console.log('🔐 Authentification socket envoyée pour userId:', userId);
-        });
-        
-        // Écouter les nouvelles notifications
-        socket.on('notification', (notification) => {
-          console.log('🔔 Nouvelle notification reçue:', notification);
-          
-          // Jouer le son de notification
-          try {
-            notificationSound.play();
-          } catch (error) {
-            console.error("Erreur lors de la lecture du son:", error);
-          }
-          
-          // Mettre à jour le compteur de notifications non lues
-          setUnreadNotifications(prev => prev + 1);
-          
-          // Si on est sur l'onglet notifications, actualiser les notifications
-          if (activeTab === 'notifications') {
-            updateUnreadNotifications();
-          }
-        });
-        
-        // Erreurs de connexion
-        socket.on('connect_error', (error) => {
-          console.error('❌ Erreur de connexion au serveur de notifications:', error);
-        });
-        
-        socket.on('disconnect', () => {
-          console.log('❌ Déconnecté du serveur de notifications');
-        });
-      }).catch(err => {
-        console.error('❌ Erreur lors du chargement de socket.io-client:', err);
-      });
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'initialisation du socket:', error);
-    }
-  };
 
   const fetchUserData = async () => {
     try {
@@ -182,6 +112,11 @@ const Dashboard = () => {
     setActiveTab("devis-creation");
   };
 
+  const handleViewClientBilling = (client) => {
+    setSelectedClientForBilling(client);
+    setActiveTab("client-billing");
+  };
+
   const handleEditDevisFromList = (devis) => {
     setEditingDevis(devis);
     setActiveTab("devis-creation");
@@ -197,7 +132,6 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    setUser(null);
     navigate("/");
   };
 
@@ -215,17 +149,31 @@ const Dashboard = () => {
     if (storedNotifications) {
       try {
         const notifications = JSON.parse(storedNotifications);
-        const unreadCount = notifications.filter(n => !n.read).length;
-        setUnreadNotifications(unreadCount);
+        const previousUnread = unreadNotifications;
+        const newUnread = notifications.filter(n => !n.read).length;
+        
+        setUnreadNotifications(newUnread);
+        
+        // Jouer un son si le nombre de notifications non lues a augmenté
+        if (newUnread > previousUnread && previousUnread !== 0) {
+          notificationSound.play().catch(e => console.log("Erreur lecture son:", e));
+        }
       } catch (err) {
         console.error('Erreur lors du calcul des notifications non lues:', err);
       }
     }
   };
 
-  // Mettre à jour le compteur au chargement
+  // Mettre à jour le compteur au chargement et toutes les 30 secondes
   useEffect(() => {
     updateUnreadNotifications();
+    
+    // Mettre à jour les notifications toutes les 30 secondes
+    const interval = setInterval(() => {
+      updateUnreadNotifications();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Gérer l'édition d'un prospect
@@ -267,6 +215,7 @@ const Dashboard = () => {
       case "devis": return "Mes Devis";
       case "devis-creation": return "Création de Devis";
       case "billing": return "Facturation";
+      case "client-billing": return `Factures de ${selectedClientForBilling?.name || 'Client'}`;
       case "notifications": return "Notifications";
       case "carte": return "Carte de Visite";
       case "settings": return "Paramètres";
@@ -282,6 +231,7 @@ const Dashboard = () => {
       case "devis": return "📄";
       case "devis-creation": return "📝";
       case "billing": return "💰";
+      case "client-billing": return "💰";
       case "notifications": return "🔔";
       case "carte": return "💼";
       case "settings": return "⚙️";
@@ -313,7 +263,8 @@ const Dashboard = () => {
                   className={`nav-item ${
                     activeTab === item.id || 
                     (activeTab === "devis-creation" && item.id === "devis") ||
-                    (activeTab === "prospect-edit" && item.id === "clients")
+                    (activeTab === "prospect-edit" && item.id === "clients") ||
+                    (activeTab === "client-billing" && item.id === "billing")
                       ? "active" 
                       : ""
                   }`}
@@ -327,6 +278,9 @@ const Dashboard = () => {
                     }
                     if (item.id !== "clients" && item.id !== "prospect-edit") {
                       setSelectedProspect(null);
+                    }
+                    if (item.id !== "billing" && item.id !== "client-billing") {
+                      setSelectedClientForBilling(null);
                     }
                   }}
                   title={item.label}
@@ -448,6 +402,7 @@ const Dashboard = () => {
                 clients={clients}
                 onRefresh={fetchClients}
                 onViewClientDevis={handleViewClientDevis}
+                onViewClientBilling={handleViewClientBilling}
                 onEditProspect={handleEditProspect}
               />
             )}
@@ -488,6 +443,16 @@ const Dashboard = () => {
                   setEditingDevis(null);
                   setActiveTab("devis");
                 } : null}
+              />
+            )}
+
+            {activeTab === "client-billing" && selectedClientForBilling && (
+              <ClientBilling 
+                client={selectedClientForBilling}
+                onBack={() => {
+                  setSelectedClientForBilling(null);
+                  setActiveTab("clients");
+                }}
               />
             )}
 
