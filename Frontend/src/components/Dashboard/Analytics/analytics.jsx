@@ -119,7 +119,7 @@ const Analytics = () => {
       const tauxConversion = totalClients > 0 ? (totalDevis / totalClients) * 100 : 0;
       const tauxReussite = totalDevis > 0 ? (finiDevis / totalDevis) * 100 : 0;
 
-      // ✅ STATISTIQUES CARTE DE VISITE
+      // ✅ STATISTIQUES CARTE DE VISITE - UTILISER LES VRAIES DONNÉES
       let cardScansTotal = 0;
       let cardScansToday = 0;
       let cardScansThisMonth = 0;
@@ -127,10 +127,21 @@ const Analytics = () => {
       let cardConversionRate = 0;
       
       if (cardStatsData) {
+        // Utiliser les vraies données du backend
         cardScansTotal = cardStatsData.totalScans || 0;
         cardScansToday = cardStatsData.scansToday || 0;
         cardScansThisMonth = cardStatsData.scansThisMonth || 0;
-        cardConversions = cardStatsData.conversions || 0;
+        
+        // Pour les conversions, utiliser le nombre de clients créés récemment (7 derniers jours)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        cardConversions = clients.filter(client => {
+          const createdAt = new Date(client.createdAt);
+          return createdAt >= sevenDaysAgo;
+        }).length;
+        
+        // Calculer le taux de conversion (éviter division par zéro)
         cardConversionRate = cardScansTotal > 0 ? (cardConversions / cardScansTotal) * 100 : 0;
         
         // Stocker les statistiques de carte pour utilisation ultérieure
@@ -185,9 +196,9 @@ const Analytics = () => {
           company: c.company
         }));
 
-      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE
+      // ✅ AJOUTER LES SCANS RÉCENTS DE CARTE DE VISITE (seulement s'il y a des données réelles)
       let cardActivity = [];
-      if (cardStatsData && cardStatsData.lastScan) {
+      if (cardStatsData && cardStatsData.lastScan && cardScansTotal > 0) {
         cardActivity = [{
           type: 'card',
           title: 'Scan de QR code',

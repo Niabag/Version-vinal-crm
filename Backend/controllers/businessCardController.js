@@ -346,7 +346,7 @@ const updateCardConfig = async (req, res) => {
   }
 };
 
-// ✅ NOUVELLE FONCTION: Suivre les vues de la carte de visite
+// ✅ FONCTION CORRIGÉE: Suivre les vues de la carte de visite
 const trackCardView = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -395,7 +395,7 @@ const trackCardView = async (req, res) => {
   }
 };
 
-// ✅ NOUVELLE FONCTION: Obtenir les statistiques de la carte
+// ✅ FONCTION CORRIGÉE: Obtenir les statistiques de la carte
 const getCardStats = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -430,16 +430,22 @@ const getCardStats = async (req, res) => {
     const scansToday = viewDates.filter(date => date >= today).length;
     const scansThisMonth = viewDates.filter(date => date >= thisMonth).length;
     
-    // Calculer les conversions (nombre de clients créés via cette carte)
-    // Pour l'instant, on renvoie une valeur fictive
-    const conversions = Math.floor(businessCard.stats.views * 0.3); // 30% de taux de conversion
+    // Récupérer les clients récents (7 derniers jours) pour calculer les conversions
+    const Client = require("../models/client");
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentClients = await Client.countDocuments({
+      userId: req.userId,
+      createdAt: { $gte: sevenDaysAgo }
+    });
     
     const stats = {
       totalScans: businessCard.stats.views || 0,
       scansToday,
       scansThisMonth,
       lastScan: businessCard.stats.lastViewed || null,
-      conversions
+      conversions: recentClients
     };
     
     console.log("✅ Statistiques calculées:", stats);
