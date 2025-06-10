@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import './prospects.scss';
 
-const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProspect }) => {
+const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProspect, onViewClientBilling }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -546,6 +546,15 @@ const ProspectsPage = ({ clients = [], onRefresh, onViewClientDevis, onEditProsp
                       title="Voir les devis"
                     >
                       📄
+                    </button>
+                    
+                    {/* NOUVEAU: Bouton pour les factures */}
+                    <button 
+                      onClick={() => onViewClientBilling && onViewClientBilling(prospect)}
+                      className="action-btn billing-action"
+                      title="Voir les factures"
+                    >
+                      💰
                     </button>
                     
                     <button 
