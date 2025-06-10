@@ -4,6 +4,7 @@ import Devis from "../../components/Dashboard/Devis/devisPage";
 import DevisListPage from "../../components/Dashboard/Devis/devisListPage";
 import ProspectsPage from "../../components/Dashboard/Prospects/prospectsPage";
 import ProspectEditPage from "../../components/Dashboard/Prospects/prospectEditPage";
+import ClientBilling from "../../components/Dashboard/ClientBilling/clientBilling";
 import Analytics from "../../components/Dashboard/Analytics/analytics";
 import Settings from "../../components/Dashboard/Settings/settings";
 import Notifications from "../../components/Dashboard/Notifications/notifications";
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [userId, setUserId] = useState(null);
   const [user, setUser] = useState({});
   const [selectedClientForDevis, setSelectedClientForDevis] = useState(null);
+  const [selectedClientForBilling, setSelectedClientForBilling] = useState(null);
   const [editingDevis, setEditingDevis] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -72,7 +74,7 @@ const Dashboard = () => {
     
     // Vérifier si un onglet est spécifié dans l'URL (hash)
     const hash = location.hash.replace('#', '');
-    if (hash && ['dashboard', 'clients', 'devis', 'billing', 'notifications', 'carte', 'settings'].includes(hash)) {
+    if (hash && ['dashboard', 'clients', 'devis', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location]);
@@ -107,6 +109,11 @@ const Dashboard = () => {
   const handleViewClientDevis = (client) => {
     setSelectedClientForDevis(client);
     setActiveTab("devis-creation");
+  };
+
+  const handleViewClientBilling = (client) => {
+    setSelectedClientForBilling(client);
+    setActiveTab("client-billing");
   };
 
   const handleEditDevisFromList = (devis) => {
@@ -191,7 +198,7 @@ const Dashboard = () => {
       case "clients": return "Mes Prospects";
       case "devis": return "Devis et Facturation";
       case "devis-creation": return "Création de Devis";
-      case "billing": return "Facturation";
+      case "client-billing": return `Facturation - ${selectedClientForBilling?.name || 'Client'}`;
       case "notifications": return "Notifications";
       case "carte": return "Carte de Visite";
       case "settings": return "Paramètres";
@@ -206,7 +213,7 @@ const Dashboard = () => {
       case "clients": return "👥";
       case "devis": return "📄";
       case "devis-creation": return "📝";
-      case "billing": return "💰";
+      case "client-billing": return "💰";
       case "notifications": return "🔔";
       case "carte": return "💼";
       case "settings": return "⚙️";
@@ -239,7 +246,7 @@ const Dashboard = () => {
                     activeTab === item.id || 
                     (activeTab === "devis-creation" && item.id === "devis") ||
                     (activeTab === "prospect-edit" && item.id === "clients") ||
-                    (activeTab === "billing" && item.id === "devis")
+                    (activeTab === "client-billing" && item.id === "devis")
                       ? "active" 
                       : ""
                   }`}
@@ -253,6 +260,9 @@ const Dashboard = () => {
                     }
                     if (item.id !== "clients" && item.id !== "prospect-edit") {
                       setSelectedProspect(null);
+                    }
+                    if (item.id !== "client-billing") {
+                      setSelectedClientForBilling(null);
                     }
                   }}
                   title={item.label}
@@ -374,6 +384,7 @@ const Dashboard = () => {
                 clients={clients}
                 onRefresh={fetchClients}
                 onViewClientDevis={handleViewClientDevis}
+                onViewClientBilling={handleViewClientBilling}
                 onEditProspect={handleEditProspect}
               />
             )}
@@ -417,10 +428,13 @@ const Dashboard = () => {
               />
             )}
 
-            {activeTab === "billing" && (
-              <Billing 
-                clients={clients}
-                onRefresh={fetchClients}
+            {activeTab === "client-billing" && selectedClientForBilling && (
+              <ClientBilling 
+                client={selectedClientForBilling}
+                onBack={() => {
+                  setSelectedClientForBilling(null);
+                  setActiveTab("clients");
+                }}
               />
             )}
 
