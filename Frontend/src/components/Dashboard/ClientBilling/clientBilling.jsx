@@ -10,7 +10,6 @@ const ClientBilling = ({ client, onBack }) => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDevis, setSelectedDevis] = useState(null);
-  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     totalDevis: 0,
@@ -103,7 +102,6 @@ const ClientBilling = ({ client, onBack }) => {
 
   const handleCreateInvoice = (devis) => {
     setSelectedDevis(devis);
-    setShowInvoicePreview(true);
   };
 
   const handleSaveInvoice = (invoice) => {
@@ -122,7 +120,6 @@ const ClientBilling = ({ client, onBack }) => {
     };
     
     setInvoices(prev => [newInvoice, ...prev]);
-    setShowInvoicePreview(false);
     setSelectedDevis(null);
     
     // Mettre à jour les statistiques
@@ -547,54 +544,9 @@ const ClientBilling = ({ client, onBack }) => {
       </div>
 
       <div className="client-billing-actions">
-        <button className="create-invoice-btn">
+        <button className="create-invoice-btn" onClick={() => setSelectedDevis(devisList[0])}>
           + Créer une nouvelle facture
         </button>
-      </div>
-
-      {/* Filtres et recherche */}
-      <div className="filters-section">
-        <div className="search-bar">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Rechercher par titre, client ou description..."
-              className="search-input"
-            />
-          </div>
-        </div>
-
-        <div className="filters-row">
-          <div className="filter-group">
-            <label>Statut :</label>
-            <select className="filter-select">
-              <option value="all">Tous</option>
-              <option value="nouveau">🔵 Nouveaux</option>
-              <option value="en_attente">🟣 En attente</option>
-              <option value="fini">🟢 Finalisés</option>
-              <option value="inactif">🔴 Inactifs</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label>Trier par :</label>
-            <select className="filter-select">
-              <option value="date">Plus récent</option>
-              <option value="title">Titre A-Z</option>
-              <option value="client">Client A-Z</option>
-              <option value="amount">Montant décroissant</option>
-            </select>
-          </div>
-
-          <div className="filter-actions">
-            <button className="cta-button">✨ Créer un devis</button>
-          </div>
-        </div>
-
-        <div className="pagination-info">
-          <span>Affichage de 1 à {devisList.length} sur {devisList.length} devis</span>
-        </div>
       </div>
 
       {/* Section des devis */}
@@ -787,22 +739,25 @@ const ClientBilling = ({ client, onBack }) => {
         )}
       </div>
 
-      {/* Modal de prévisualisation de facture */}
-      {showInvoicePreview && selectedDevis && (
-        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
-          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <DynamicInvoice
-              invoice={{
-                invoiceNumber: `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                createdAt: new Date().toISOString().split('T')[0]
-              }}
-              client={client}
-              devisDetails={[selectedDevis]}
-              onSave={handleSaveInvoice}
-              onCancel={() => setShowInvoicePreview(false)}
-            />
+      {/* Affichage de la facture directement dans la page */}
+      {selectedDevis && (
+        <div className="invoice-preview-section">
+          <div className="section-header">
+            <h3>Création de facture</h3>
+            <p>Basée sur le devis: {selectedDevis.title}</p>
           </div>
+          
+          <DynamicInvoice
+            invoice={{
+              invoiceNumber: `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+              dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              createdAt: new Date().toISOString().split('T')[0]
+            }}
+            client={client}
+            devisDetails={[selectedDevis]}
+            onSave={handleSaveInvoice}
+            onCancel={() => setSelectedDevis(null)}
+          />
         </div>
       )}
     </div>
