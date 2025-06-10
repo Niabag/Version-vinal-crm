@@ -11,6 +11,7 @@ const userRoutes = require("./routes/userRoutes");
 const clientRoutes = require("./routes/clientRoutes");
 const devisRoutes = require("./routes/devisRoutes");
 const businessCardRoutes = require("./routes/businessCardRoutes"); // ✅ NOUVEAU
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/devis", devisRoutes);
 app.use("/api/business-cards", businessCardRoutes); // ✅ NOUVEAU
+app.use("/api/subscription", subscriptionRoutes);
 
 // ✅ Route de vérification du serveur
 app.get("/", (req, res) => {
