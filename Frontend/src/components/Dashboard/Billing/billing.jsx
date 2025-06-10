@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import InvoicePreview from './invoicePreview';
 import InvoiceTemplate from './InvoiceTemplate';
+import DynamicInvoice from './DynamicInvoice';
 import './billing.scss';
 
 const Billing = ({ clients = [], onRefresh }) => {
@@ -743,7 +744,7 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
           
           <div className="dynamic-preview-content">
-            <InvoicePreview
+            <DynamicInvoice
               invoice={{
                 invoiceNumber: `FACT-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -758,9 +759,7 @@ const Billing = ({ clients = [], onRefresh }) => {
                 return clients.find(c => c._id === clientId) || {};
               })()}
               devisDetails={devisList.filter(d => selectedDevis.includes(d._id))}
-              onClose={() => setSelectedDevis([])}
               onSave={saveInvoice}
-              editable={true}
             />
           </div>
         </div>

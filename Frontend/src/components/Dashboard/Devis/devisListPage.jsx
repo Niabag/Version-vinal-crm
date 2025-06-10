@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS, apiRequest } from "../../../config/api";
+import DynamicInvoice from "../Billing/DynamicInvoice";
 import "./devis.scss";
 
 const formatDate = (dateStr) => {
@@ -40,6 +41,11 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
   // États pour pagination
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
+
+  // États pour la prévisualisation de facture
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [selectedDevisForInvoice, setSelectedDevisForInvoice] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   useEffect(() => {
     fetchAllDevis();
@@ -311,6 +317,14 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
     }
   };
 
+  // Prévisualiser la facture pour un devis
+  const handlePreviewInvoice = (devis) => {
+    const client = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId));
+    setSelectedDevisForInvoice(devis);
+    setSelectedClient(client);
+    setShowInvoicePreview(true);
+  };
+
   // ✅ GÉNÉRATION PDF AVEC COUPURES AU NIVEAU DES LIGNES DE TABLEAU
   const handleDownloadPDF = async (devis) => {
     try {
@@ -547,15 +561,15 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 0.75rem; align-self: end;">
-            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 8px; font-weight: 500; min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
               <span>Total HT :</span>
               <span>${totalHT.toFixed(2)} €</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 8px; font-weight: 500; min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; font-weight: 500; min-width: 250px;">
               <span>Total TVA :</span>
               <span>${totalTVA.toFixed(2)} €</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 700; font-size: 1.1rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 700; font-size: 1.1rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); min-width: 250px;">
               <span>Total TTC :</span>
               <span>600.00 €</span>
             </div>
@@ -613,6 +627,14 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Créer une facture à partir d'un devis
+  const handleCreateInvoice = (devis) => {
+    const client = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId));
+    setSelectedDevisForInvoice(devis);
+    setSelectedClient(client);
+    setShowInvoicePreview(true);
   };
 
   if (loading && devisList.length === 0) {
@@ -881,6 +903,15 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
                         {loading ? "⏳" : "📄"} PDF
                       </button>
                       
+                      {devisItem.status === 'fini' && (
+                        <button 
+                          onClick={() => handleCreateInvoice(devisItem)}
+                          className="card-btn card-btn-invoice"
+                        >
+                          💰 Facturer
+                        </button>
+                      )}
+                      
                       <button 
                         onClick={() => handleDelete(devisItem._id)}
                         className="card-btn card-btn-delete"
@@ -966,6 +997,36 @@ const DevisListPage = ({ clients = [], onEditDevis, onCreateDevis }) => {
             </div>
           )}
         </>
+      )}
+
+      {/* Prévisualisation de facture */}
+      {showInvoicePreview && selectedDevisForInvoice && (
+        <div className="modal-overlay" onClick={() => setShowInvoicePreview(false)}>
+          <div className="modal-content invoice-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>💰 Créer une facture à partir du devis</h3>
+              <button onClick={() => setShowInvoicePreview(false)} className="modal-close">✕</button>
+            </div>
+            <div className="modal-body">
+              <DynamicInvoice
+                invoice={{
+                  invoiceNumber: `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                  createdAt: new Date().toISOString().split('T')[0],
+                  status: 'draft',
+                  devisIds: [selectedDevisForInvoice._id]
+                }}
+                client={selectedClient}
+                devisDetails={[selectedDevisForInvoice]}
+                onSave={(invoice) => {
+                  alert('✅ Facture créée avec succès !');
+                  setShowInvoicePreview(false);
+                }}
+                onCancel={() => setShowInvoicePreview(false)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
