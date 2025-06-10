@@ -22,7 +22,8 @@ exports.getSubscriptionStatus = async (req, res) => {
       currentPeriodEnd: user.subscriptionEndDate,
       trialStartDate: user.trialStartDate,
       trialEndDate: user.trialEndDate,
-      hasHadTrial: user.hasHadTrial
+      hasHadTrial: user.hasHadTrial,
+      trialDays: parseInt(process.env.TRIAL_PERIOD_DAYS, 10) || 14
     });
   } catch (error) {
     console.error('Error getting subscription status:', error);
@@ -44,10 +45,15 @@ exports.startFreeTrial = async (req, res) => {
       return res.status(400).json({ message: 'You have already used your free trial' });
     }
     
-    // Set trial period (14 days)
+    // Set trial period based on body param or env var
+    const daysFromBody = parseInt(req.body.trialDays, 10);
+    const trialDays = isNaN(daysFromBody)
+      ? parseInt(process.env.TRIAL_PERIOD_DAYS, 10) || 14
+      : daysFromBody;
+
     const trialStartDate = new Date();
     const trialEndDate = new Date(trialStartDate);
-    trialEndDate.setDate(trialEndDate.getDate() + 14);
+    trialEndDate.setDate(trialEndDate.getDate() + trialDays);
     
     // Update user with trial information
     user.subscriptionStatus = 'trial';
@@ -60,7 +66,8 @@ exports.startFreeTrial = async (req, res) => {
     return res.json({
       status: 'trial',
       trialStartDate,
-      trialEndDate
+      trialEndDate,
+      trialDays
     });
   } catch (error) {
     console.error('Error starting free trial:', error);
