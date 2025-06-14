@@ -18,6 +18,7 @@ import Contact from "./pages/Contact/Index";
 import Cookies from "./pages/Cookies/Index";
 import Gdpr from "./pages/Gdpr/Index";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess/Index";
+import PaymentSuccess from "./pages/PaymentSuccess/Index";
 import "./utils/styles/global.scss";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -43,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/gdpr" element={<Gdpr />} />
             <Route path="/subscription-success" element={<SubscriptionSuccess />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
             
             {/* Routes protégées */}
             <Route
