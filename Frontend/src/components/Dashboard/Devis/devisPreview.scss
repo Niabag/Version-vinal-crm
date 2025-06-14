@@ -7,6 +7,8 @@
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 /* Barre d'outils */
@@ -14,11 +16,11 @@
   display: flex;
   justify-content: center;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
   flex-wrap: wrap;
   padding: 1rem;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
+  border-radius: 12px 12px 0 0;
 }
 
 .toolbar-btn {
@@ -58,10 +60,9 @@
 .preview-content {
   background: white;
   padding: 3rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  margin: 1rem 0;
-  min-height: 800px;
+  border: 2px solid #f1f5f9;
+  border-radius: 0 0 12px 12px;
+  margin: 0;
 }
 
 /* En-tête du document */
@@ -71,11 +72,12 @@
   align-items: flex-start;
   margin-bottom: 3rem;
   padding-bottom: 2rem;
-  border-bottom: 3px solid #e2e8f0;
+  border-bottom: 3px solid #f1f5f9;
 }
 
-.logo-section {
+.company-info {
   flex: 1;
+  max-width: 50%;
 }
 
 .company-logo {
@@ -83,7 +85,7 @@
   max-height: 100px;
   object-fit: contain;
   border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
 }
 
 .logo-upload-area {
@@ -101,6 +103,7 @@
   color: #718096;
   text-align: center;
   padding: 1rem;
+  margin-bottom: 1rem;
 }
 
 .logo-upload-area:hover {
@@ -109,57 +112,132 @@
   color: #667eea;
 }
 
-.document-title {
+.company-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.company-name {
+  font-weight: 600 !important;
+  font-size: 1.2rem !important;
+  color: #0f172a !important;
+}
+
+.document-info {
   flex: 1;
+  max-width: 45%;
   text-align: right;
 }
 
-.document-title h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  margin: 0;
-  color: #2d3748;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+.document-info h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1e40af;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
   letter-spacing: 2px;
 }
 
-/* Informations des parties */
-.parties-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
+.document-number {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.document-date, 
+.document-validity {
+  color: #475569;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.date-input {
+  border: 1px dashed #cbd5e0;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  color: #0f172a;
+  width: 150px;
+}
+
+.date-input:focus {
+  border-color: #667eea;
+  background: white;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Section client */
+.client-section {
   margin-bottom: 3rem;
 }
 
-.entreprise-section,
-.client-section {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 2rem;
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
+}
+
+.client-details {
+  background: #f8fafc;
+  padding: 1.5rem;
   border-radius: 12px;
   border-left: 4px solid #667eea;
 }
 
-.entreprise-section h3,
-.client-section h3 {
-  margin: 0 0 1.5rem 0;
-  color: #2d3748;
-  font-size: 1.2rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.info-group {
+.client-info-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.company-name,
+.client-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.client-info-label {
+  width: 100px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.client-info-value {
+  flex: 1;
+}
+
+.client-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px dashed #cbd5e0;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.client-select:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .client-name {
   font-weight: 600 !important;
-  font-size: 1.1rem !important;
-  color: #2d3748 !important;
+  color: #0f172a !important;
 }
 
 /* Style pour le champ d'adresse client */
@@ -187,41 +265,6 @@
   background: rgba(255, 255, 255, 0.95) !important;
 }
 
-/* Métadonnées du devis */
-.devis-metadata {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 3rem;
-}
-
-.metadata-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.metadata-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.metadata-item label {
-  font-weight: 600;
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-
-.devis-number,
-.client-id {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
 /* Section prestations */
 .prestations-section {
   margin-bottom: 3rem;
@@ -229,7 +272,7 @@
 
 .prestations-section h3 {
   margin: 0 0 1.5rem 0;
-  color: #2d3748;
+  color: #0f172a;
   font-size: 1.3rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -247,19 +290,18 @@
 }
 
 .prestations-table th {
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: white;
-  padding: 1rem 0.75rem;
-  text-align: center;
-  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
   font-size: 0.9rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .prestations-table td {
-  padding: 1rem 0.75rem;
-  text-align: center;
+  padding: 1rem;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
 }
@@ -367,7 +409,7 @@
 
 .totaux-detail h4 {
   margin: 0 0 1rem 0;
-  color: #2d3748;
+  color: #0f172a;
   font-weight: 600;
 }
 
@@ -406,7 +448,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: #f8f9fa;
+  background: #f8fafc;
   border-radius: 6px;
   font-weight: 500;
 }
@@ -421,7 +463,7 @@
 
 /* Conditions et signature */
 .conditions-section {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
   padding: 2rem;
   border-radius: 12px;
   border-left: 4px solid #667eea;
@@ -503,13 +545,32 @@
     text-align: center;
   }
   
-  .parties-info {
-    grid-template-columns: 1fr;
-    gap: 2rem;
+  .company-info,
+  .document-info {
+    max-width: 100%;
+    width: 100%;
   }
   
-  .metadata-grid {
-    grid-template-columns: 1fr;
+  .document-info {
+    text-align: center;
+  }
+  
+  .document-date, 
+  .document-validity {
+    justify-content: center;
+  }
+  
+  .client-section {
+    margin-bottom: 2rem;
+  }
+  
+  .client-info-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .client-info-label {
+    width: auto;
   }
   
   .prestations-table {
@@ -531,7 +592,7 @@
     gap: 1rem;
   }
   
-  .document-title h1 {
+  .document-info h1 {
     font-size: 2rem;
   }
 
