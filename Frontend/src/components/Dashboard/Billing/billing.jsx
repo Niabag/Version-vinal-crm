@@ -2,9 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import DynamicInvoice from './DynamicInvoice';
-import PaymentModal from './PaymentModal';
 import './billing.scss';
-import { calculateTTC, calculateHT, calculateTVA, calculateTVABreakdown } from '../../../utils/calculateTTC';
 
 const Billing = ({ clients = [], onRefresh }) => {
   const navigate = useNavigate();
@@ -30,15 +28,9 @@ const Billing = ({ clients = [], onRefresh }) => {
   const previewContainerRef = useRef(null);
   // État pour la prévisualisation dynamique
   const [dynamicPreview, setDynamicPreview] = useState(true);
-<<<<<<< HEAD
   // État pour la facture sélectionnée
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
-=======
-  // État pour la modal de paiement
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null);
->>>>>>> e9bdef42741fa5b5ae245e91d059ba281226a9ed
 
   useEffect(() => {
     const loadData = async () => {
@@ -132,6 +124,21 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
+  const calculateTTC = (devis) => {
+    if (!devis || !Array.isArray(devis.articles)) return 0;
+    
+    return devis.articles.reduce((total, article) => {
+      const price = parseFloat(article.unitPrice || 0);
+      const qty = parseFloat(article.quantity || 0);
+      const tva = parseFloat(article.tvaRate || 0);
+      
+      if (isNaN(price) || isNaN(qty) || isNaN(tva)) return total;
+      
+      const ht = price * qty;
+      return total + ht + (ht * tva / 100);
+    }, 0);
+  };
+
   const getFinishedDevis = () => {
     // Retourner tous les devis, pas seulement ceux qui sont finalisés
     return devisList;
@@ -222,12 +229,7 @@ const Billing = ({ clients = [], onRefresh }) => {
       const invoiceToSave = updatedInvoice || newInvoice;
       const client = clients.find(c => c._id === invoiceToSave.clientId);
       const selectedDevisData = devisList.filter(d => invoiceToSave.devisIds.includes(d._id));
-      
-      // Calculer le montant total correctement
-      const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateHT(devis), 0);
-      const totalTVA = selectedDevisData.reduce((sum, devis) => sum + calculateTVA(devis), 0);
-      const discountAmount = subtotal * (invoiceToSave.discount / 100);
-      const total = subtotal - discountAmount + totalTVA;
+      const total = updatedInvoice ? updatedInvoice.amount : calculateInvoiceTotal();
 
       // Préparer les données de la facture
       const invoiceData = {
@@ -359,103 +361,52 @@ const Billing = ({ clients = [], onRefresh }) => {
       const client = clients.find(c => c._id === invoice.clientId) || {};
 
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 10;
-      let currentY = margin;
 
-      // Fonction pour ajouter une section au PDF
-      const addSectionToPDF = (content, fontSize = 12, isBold = false) => {
-        pdf.setFontSize(fontSize);
-        if (isBold) pdf.setFont(undefined, 'bold');
-        else pdf.setFont(undefined, 'normal');
-        
-        const textLines = pdf.splitTextToSize(content, pageWidth - 2 * margin);
-        
-        // Vérifier si on a besoin d'une nouvelle page
-        if (currentY + textLines.length * fontSize * 0.3528 > pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
-        
-        pdf.text(textLines, margin, currentY);
-        currentY += textLines.length * fontSize * 0.3528 + 5;
-      };
+      pdf.setFontSize(18);
+      pdf.text(`Facture ${invoice.invoiceNumber}`, 105, 20, { align: 'center' });
 
-      // En-tête
-      addSectionToPDF(`FACTURE ${invoice.invoiceNumber}`, 18, true);
-      currentY += 10;
+      pdf.setFontSize(12);
+      pdf.text(`Client : ${client.name || invoice.clientName}`, 20, 40);
+      pdf.text(`Émise le : ${formatDate(invoice.createdAt)}`, 20, 48);
+      pdf.text(`Échéance : ${formatDate(invoice.dueDate)}`, 20, 56);
 
-      // Informations client et entreprise
-      addSectionToPDF(`Client : ${client.name || invoice.clientName}`, 12);
-      addSectionToPDF(`Émise le : ${formatDate(invoice.createdAt)}`, 12);
-      addSectionToPDF(`Échéance : ${formatDate(invoice.dueDate)}`, 12);
-      currentY += 10;
+      let currentY = 70;
+      pdf.text('Articles :', 20, currentY);
+      currentY += 8;
 
-      // Tableau des articles
-      addSectionToPDF("Articles :", 14, true);
-      currentY += 5;
-
-      // En-tête du tableau
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(margin, currentY, pageWidth - 2 * margin, 10, 'F');
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
-      pdf.setFont(undefined, 'bold');
-      pdf.text("Description", margin + 2, currentY + 7);
-      pdf.text("Qté", margin + 100, currentY + 7, { align: 'center' });
-      pdf.text("Prix unitaire", margin + 130, currentY + 7, { align: 'center' });
-      pdf.text("TVA", margin + 160, currentY + 7, { align: 'center' });
-      pdf.text("Total HT", margin + 185, currentY + 7, { align: 'right' });
-      currentY += 15;
-
-      // Lignes du tableau
-      pdf.setFont(undefined, 'normal');
       articles.forEach((article) => {
         const price = parseFloat(article.unitPrice || 0);
         const qty = parseFloat(article.quantity || 0);
-        const lineTotal = isNaN(price) || isNaN(qty) ? 0 : price * qty;
-        
-        // Vérifier si on a besoin d'une nouvelle page
-        if (currentY + 10 > pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
-        
-        pdf.text(article.description || "", margin + 2, currentY);
-        pdf.text(`${qty}`, margin + 100, currentY, { align: 'center' });
-        pdf.text(`${price.toFixed(2)} €`, margin + 130, currentY, { align: 'center' });
-        pdf.text(`${article.tvaRate || 0}%`, margin + 160, currentY, { align: 'center' });
-        pdf.text(`${lineTotal.toFixed(2)} €`, margin + 185, currentY, { align: 'right' });
-        
-        currentY += 10;
+        const total = price * qty;
+
+        pdf.text(article.description || '', 20, currentY);
+        pdf.text(`${qty}`, 110, currentY, { align: 'right' });
+        pdf.text(`${price.toFixed(2)} €`, 130, currentY, { align: 'right' });
+        pdf.text(`${total.toFixed(2)} €`, 190, currentY, { align: 'right' });
+
+        currentY += 6;
+        if (currentY > 280) { pdf.addPage(); currentY = 20; }
       });
 
-      currentY += 10;
-
-      // Calcul des totaux
       const totalHT = articles.reduce(
         (sum, a) => sum + parseFloat(a.unitPrice || 0) * parseFloat(a.quantity || 0),
         0
       );
-      
       const totalTVA = articles.reduce(
         (sum, a) => sum + (
           parseFloat(a.unitPrice || 0) * parseFloat(a.quantity || 0) * (parseFloat(a.tvaRate || 0) / 100)
         ),
         0
       );
-      
       const totalTTC = totalHT + totalTVA;
 
-      // Affichage des totaux
-      pdf.setFont(undefined, 'bold');
-      pdf.text(`Total HT : ${totalHT.toFixed(2)} €`, margin, currentY);
+      currentY += 10;
+      pdf.text(`Total HT : ${totalHT.toFixed(2)} €`, 20, currentY);
       currentY += 8;
-      pdf.text(`Total TVA : ${totalTVA.toFixed(2)} €`, margin, currentY);
+      pdf.text(`Total TVA : ${totalTVA.toFixed(2)} €`, 20, currentY);
       currentY += 8;
       pdf.setFontSize(14);
-      pdf.text(`Total TTC : ${totalTTC.toFixed(2)} €`, margin, currentY);
+      pdf.text(`Total TTC : ${totalTTC.toFixed(2)} €`, 20, currentY);
 
       pdf.save(`${invoice.invoiceNumber}.pdf`);
     } catch (error) {
@@ -564,11 +515,6 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
-  const handlePayInvoice = (invoice) => {
-    setSelectedInvoiceForPayment(invoice);
-    setPaymentModalOpen(true);
-  };
-
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     try {
@@ -580,20 +526,9 @@ const Billing = ({ clients = [], onRefresh }) => {
 
   const calculateInvoiceTotal = () => {
     const selectedDevisData = devisList.filter(d => selectedDevis.includes(d._id));
-    
-    // Calculer le sous-total HT
-    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateHT(devis), 0);
-    
-    // Calculer la TVA
-    const totalTVA = selectedDevisData.reduce((sum, devis) => sum + calculateTVA(devis), 0);
-    
-    // Appliquer la remise sur le HT
+    const subtotal = selectedDevisData.reduce((sum, devis) => sum + calculateTTC(devis), 0);
     const discountAmount = subtotal * (newInvoice.discount / 100);
-    
-    // Calculer le total TTC
-    const total = subtotal - discountAmount + totalTVA;
-    
-    return total;
+    return subtotal - discountAmount;
   };
 
   const getStatusColor = (status) => {
@@ -714,7 +649,6 @@ const Billing = ({ clients = [], onRefresh }) => {
           <div className="devis-grid">
             {filteredDevis.map((devis) => {
               const client = clients.find(c => c._id === (typeof devis.clientId === "object" ? devis.clientId?._id : devis.clientId));
-              const ttc = calculateTTC(devis);
               
               return (
                 <div 
@@ -739,7 +673,7 @@ const Billing = ({ clients = [], onRefresh }) => {
 
                     <div className="devis-amount">
                       <span className="amount-label">Montant TTC :</span>
-                      <span className="amount-value">{ttc.toFixed(2)} €</span>
+                      <span className="amount-value">{calculateTTC(devis).toFixed(2)} €</span>
                     </div>
 
                     <div className="devis-card-actions">
@@ -940,27 +874,8 @@ const Billing = ({ clients = [], onRefresh }) => {
                     className="bg-green-50 text-green-600 hover:bg-green-100 rounded px-3 py-1 text-sm"
                     title="Télécharger PDF"
                   >
-<<<<<<< HEAD
                     📥 PDF
-=======
-                    📥
                   </button>
-                  <button 
-                    className="action-btn send-btn" 
-                    title="Envoyer par email"
-                  >
-                    📧
->>>>>>> e9bdef42741fa5b5ae245e91d059ba281226a9ed
-                  </button>
-                  {invoice.status === 'pending' && (
-                    <button
-                      onClick={() => handlePayInvoice(invoice)}
-                      className="action-btn pay-btn"
-                      title="Payer la facture"
-                    >
-                      💳
-                    </button>
-                  )}
                   <button
                     className="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 rounded px-3 py-1 text-sm"
                     title="Envoyer par email"
@@ -984,17 +899,6 @@ const Billing = ({ clients = [], onRefresh }) => {
           </div>
         )}
       </div>
-
-      {/* Modal de paiement */}
-      {paymentModalOpen && selectedInvoiceForPayment && (
-        <PaymentModal 
-          invoice={selectedInvoiceForPayment}
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setSelectedInvoiceForPayment(null);
-          }}
-        />
-      )}
     </div>
   );
 };
@@ -1071,6 +975,15 @@ const handleDownloadPDF = async (devis) => {
     `, true);
 
     // 2. INFORMATIONS PARTIES
+    const clientInfo = {
+      name: "Client",
+      email: "client@example.com",
+      phone: "06 12 34 56 78",
+      address: "123 Rue Client",
+      postalCode: "75000",
+      city: "Paris"
+    };
+    
     await addSectionToPDF(`
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 30px;">
         <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
@@ -1087,10 +1000,11 @@ const handleDownloadPDF = async (devis) => {
         <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
           <h3 style="margin: 0 0 1.5rem 0; color: #2d3748; font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">DESTINATAIRE</h3>
           <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${devis.clientName || 'Nom du client'}</div>
-            <div>${devis.clientEmail || 'Email du client'}</div>
-            <div>${devis.clientPhone || 'Téléphone du client'}</div>
-            <div>${devis.clientAddress || 'Adresse du client'}</div>
+            <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
+            <div>${clientInfo.email || devis.clientEmail || 'Email du client'}</div>
+            <div>${clientInfo.phone || devis.clientPhone || 'Téléphone du client'}</div>
+            <div>${devis.clientAddress || clientInfo.address || 'Adresse du client'}</div>
+            <div>${clientInfo.postalCode || ''} ${clientInfo.city || ''}</div>
           </div>
         </div>
       </div>
@@ -1114,7 +1028,7 @@ const handleDownloadPDF = async (devis) => {
           </div>
           <div>
             <div style="font-weight: 600; font-size: 0.9rem; color: #64748b;">Client :</div>
-            <div style="font-weight: 600; color: #0f172a;">${devis.clientName || 'Client non défini'}</div>
+            <div style="font-weight: 600; color: #0f172a;">${clientInfo.name || devis.clientName || 'Client non défini'}</div>
           </div>
         </div>
       </div>
@@ -1167,11 +1081,27 @@ const handleDownloadPDF = async (devis) => {
     }
 
     // 5. TOTAUX
-    // Utiliser les fonctions de calcul pour obtenir des montants précis
-    const totalHT = calculateHT(devis);
-    const totalTVA = calculateTVA(devis);
-    const totalTTC = calculateTTC(devis);
-    const tvaBreakdown = calculateTVABreakdown(devis);
+    const tauxTVA = {
+      "20": { ht: 0, tva: 0 },
+      "10": { ht: 0, tva: 0 },
+      "5.5": { ht: 0, tva: 0 },
+    };
+
+    devis.articles.forEach((item) => {
+      const price = parseFloat(item.unitPrice || "0");
+      const qty = parseFloat(item.quantity || "0");
+      const taux = item.tvaRate || "20";
+
+      if (!isNaN(price) && !isNaN(qty) && tauxTVA[taux]) {
+        const ht = price * qty;
+        tauxTVA[taux].ht += ht;
+        tauxTVA[taux].tva += ht * (parseFloat(taux) / 100);
+      }
+    });
+
+    const totalHT = Object.values(tauxTVA).reduce((sum, t) => sum + t.ht, 0);
+    const totalTVA = Object.values(tauxTVA).reduce((sum, t) => sum + t.tva, 0);
+    const totalTTC = totalHT + totalTVA;
 
     await addSectionToPDF(`
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 30px 0;">
@@ -1187,7 +1117,8 @@ const handleDownloadPDF = async (devis) => {
               </tr>
             </thead>
             <tbody>
-              ${Object.entries(tvaBreakdown)
+              ${Object.entries(tauxTVA)
+                .filter(([, { ht }]) => ht > 0)
                 .map(([rate, { ht, tva }]) => `
                   <tr>
                     <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${ht.toFixed(2)} €</td>
