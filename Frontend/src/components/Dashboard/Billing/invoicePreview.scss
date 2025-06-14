@@ -1,11 +1,10 @@
-.invoice-preview {
+.invoice-preview-container {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: white;
-  color: #0f172a;
+  color: #000;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f1f5f9;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   max-width: 1000px;
   margin: 0 auto;
 }
