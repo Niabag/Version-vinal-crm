@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../../config/api';
 import DynamicInvoice from './DynamicInvoice';
 import './billing.scss';
 
 const Billing = ({ clients = [], onRefresh }) => {
+  const navigate = useNavigate();
   const [devisList, setDevisList] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,6 +28,9 @@ const Billing = ({ clients = [], onRefresh }) => {
   const previewContainerRef = useRef(null);
   // État pour la prévisualisation dynamique
   const [dynamicPreview, setDynamicPreview] = useState(true);
+  // État pour la facture sélectionnée
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,6 +52,15 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   }, [selectedDevis, dynamicPreview]);
 
+  // Effet pour prévisualiser automatiquement quand une facture est sélectionnée
+  useEffect(() => {
+    if (selectedInvoice && previewContainerRef.current) {
+      setTimeout(() => {
+        previewContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [selectedInvoice]);
+
   const fetchDevis = async () => {
     try {
       setLoading(true);
@@ -61,7 +75,13 @@ const Billing = ({ clients = [], onRefresh }) => {
 
   const fetchInvoices = async () => {
     try {
-      // Simulation des factures - à remplacer par un vrai endpoint
+      setLoading(true);
+      // Récupérer les factures depuis l'API
+      const data = await apiRequest(API_ENDPOINTS.INVOICES.BASE);
+      setInvoices(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des factures:', error);
+      // En cas d'erreur, utiliser des données simulées
       const mockInvoices = [
         {
           id: 'INV-001',
@@ -99,8 +119,8 @@ const Billing = ({ clients = [], onRefresh }) => {
       ];
 
       setInvoices(mockInvoices);
-    } catch (error) {
-      console.error('Erreur lors du chargement des factures:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,6 +168,37 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   });
 
+  // Filtrer et trier les factures
+  const filteredInvoices = invoices.filter(invoice => {
+    const client = clients.find(c => c._id === (typeof invoice.clientId === "object" ? invoice.clientId?._id : invoice.clientId));
+    const clientName = client?.name || invoice.clientName || "Client inconnu";
+    
+    const matchesSearch = invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'paid' && invoice.status === 'paid') ||
+                         (statusFilter === 'pending' && invoice.status === 'pending') ||
+                         (statusFilter === 'overdue' && invoice.status === 'overdue') ||
+                         (statusFilter === 'draft' && invoice.status === 'draft');
+    
+    return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'number':
+        return (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "");
+      case 'client':
+        const clientA = clients.find(c => c._id === (typeof a.clientId === "object" ? a.clientId?._id : a.clientId))?.name || a.clientName || "";
+        const clientB = clients.find(c => c._id === (typeof b.clientId === "object" ? b.clientId?._id : b.clientId))?.name || b.clientName || "";
+        return clientA.localeCompare(clientB);
+      case 'amount':
+        return b.amount - a.amount;
+      case 'date':
+      default:
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    }
+  });
+
   const handleSelectDevis = (devisId) => {
     setSelectedDevis(prev => 
       prev.includes(devisId) 
@@ -180,27 +231,38 @@ const Billing = ({ clients = [], onRefresh }) => {
       const selectedDevisData = devisList.filter(d => invoiceToSave.devisIds.includes(d._id));
       const total = updatedInvoice ? updatedInvoice.amount : calculateInvoiceTotal();
 
-      const invoice = {
-        id: `INV-${Date.now()}`,
-        clientId: invoiceToSave.clientId,
-        clientName: client?.name || 'Client inconnu',
-        amount: total,
-        status: invoiceToSave.status || 'pending',
-        dueDate: invoiceToSave.dueDate,
-        createdAt: invoiceToSave.createdAt || new Date().toISOString(),
+      // Préparer les données de la facture
+      const invoiceData = {
         invoiceNumber: invoiceToSave.invoiceNumber,
+        clientId: invoiceToSave.clientId,
         devisIds: invoiceToSave.devisIds,
+        amount: total,
+        status: invoiceToSave.status || 'draft',
+        dueDate: invoiceToSave.dueDate,
         notes: invoiceToSave.notes,
         paymentTerms: invoiceToSave.paymentTerms,
         discount: invoiceToSave.discount,
-        taxRate: invoiceToSave.taxRate
+        taxRate: invoiceToSave.taxRate,
+        entrepriseName: invoiceToSave.entrepriseName,
+        entrepriseAddress: invoiceToSave.entrepriseAddress,
+        entrepriseCity: invoiceToSave.entrepriseCity,
+        entreprisePhone: invoiceToSave.entreprisePhone,
+        entrepriseEmail: invoiceToSave.entrepriseEmail,
+        logoUrl: invoiceToSave.logoUrl
       };
 
-      // Ajouter à la liste locale (en attendant l'API)
-      setInvoices(prev => [invoice, ...prev]);
+      // Envoyer la requête à l'API
+      const response = await apiRequest(API_ENDPOINTS.INVOICES.BASE, {
+        method: 'POST',
+        body: JSON.stringify(invoiceData)
+      });
+
+      // Ajouter la nouvelle facture à la liste
+      setInvoices(prev => [response.invoice, ...prev]);
       
       // Réinitialiser
       setSelectedDevis([]);
+      setSelectedInvoice(null);
       setNewInvoice({
         clientId: '',
         devisIds: [],
@@ -216,6 +278,57 @@ const Billing = ({ clients = [], onRefresh }) => {
     } catch (error) {
       console.error('Erreur lors de la création de la facture:', error);
       alert('❌ Erreur lors de la création de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateInvoice = async (updatedInvoice) => {
+    try {
+      setLoading(true);
+      
+      // Préparer les données de la facture
+      const invoiceData = {
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        clientId: updatedInvoice.clientId,
+        devisIds: updatedInvoice.devisIds,
+        amount: updatedInvoice.amount,
+        status: updatedInvoice.status || 'draft',
+        dueDate: updatedInvoice.dueDate,
+        notes: updatedInvoice.notes,
+        paymentTerms: updatedInvoice.paymentTerms,
+        discount: updatedInvoice.discount,
+        taxRate: updatedInvoice.taxRate,
+        entrepriseName: updatedInvoice.entrepriseName,
+        entrepriseAddress: updatedInvoice.entrepriseAddress,
+        entrepriseCity: updatedInvoice.entrepriseCity,
+        entreprisePhone: updatedInvoice.entreprisePhone,
+        entrepriseEmail: updatedInvoice.entrepriseEmail,
+        logoUrl: updatedInvoice.logoUrl
+      };
+
+      // Envoyer la requête à l'API
+      const response = await apiRequest(API_ENDPOINTS.INVOICES.UPDATE(updatedInvoice._id || updatedInvoice.id), {
+        method: 'PUT',
+        body: JSON.stringify(invoiceData)
+      });
+
+      // Mettre à jour la liste des factures
+      setInvoices(prev => 
+        prev.map(invoice => 
+          (invoice._id === updatedInvoice._id || invoice.id === updatedInvoice.id) 
+            ? response.invoice 
+            : invoice
+        )
+      );
+      
+      // Réinitialiser
+      setSelectedInvoice(null);
+
+      alert('✅ Facture mise à jour avec succès !');
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la facture:', error);
+      alert('❌ Erreur lors de la mise à jour de la facture');
     } finally {
       setLoading(false);
     }
@@ -304,13 +417,64 @@ const Billing = ({ clients = [], onRefresh }) => {
     }
   };
 
-  const handleDeleteInvoice = (invoiceId) => {
+  const handleSelectInvoice = (invoice) => {
+    // Trouver le client correspondant
+    const client = clients.find(c => c._id === (typeof invoice.clientId === 'object' ? invoice.clientId._id : invoice.clientId));
+    setSelectedClient(client);
+    
+    // Récupérer les devis associés
+    const getDevisDetails = async () => {
+      try {
+        setLoading(true);
+        const devisDetails = await Promise.all(
+          invoice.devisIds.map(async (id) => {
+            try {
+              return await apiRequest(API_ENDPOINTS.DEVIS.BY_ID(id));
+            } catch (err) {
+              console.error('Erreur récupération devis:', err);
+              return null;
+            }
+          })
+        );
+        
+        const validDevis = devisDetails.filter(Boolean);
+        
+        // Mettre à jour la facture sélectionnée avec les devis
+        setSelectedInvoice({
+          ...invoice,
+          devisDetails: validDevis
+        });
+        
+      } catch (error) {
+        console.error('Erreur lors de la récupération des devis:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getDevisDetails();
+  };
+
+  const handleDeleteInvoice = async (invoiceId) => {
     if (window.confirm("Supprimer cette facture ?")) {
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      try {
+        setLoading(true);
+        await apiRequest(API_ENDPOINTS.INVOICES.DELETE(invoiceId), {
+          method: 'DELETE'
+        });
+        
+        setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && inv._id !== invoiceId));
+        alert('✅ Facture supprimée avec succès');
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        alert('❌ Erreur lors de la suppression de la facture');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleInvoiceStatusClick = (invoiceId, currentStatus) => {
+  const handleInvoiceStatusClick = async (invoiceId, currentStatus) => {
     let newStatus;
     switch (currentStatus) {
       case 'draft':
@@ -329,13 +493,26 @@ const Billing = ({ clients = [], onRefresh }) => {
         newStatus = 'pending';
     }
 
-    setInvoices(prev =>
-      prev.map(inv =>
-        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
-      )
-    );
+    try {
+      setLoading(true);
+      await apiRequest(API_ENDPOINTS.INVOICES.UPDATE_STATUS(invoiceId), {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      setInvoices(prev =>
+        prev.map(inv =>
+          (inv.id === invoiceId || inv._id === invoiceId) ? { ...inv, status: newStatus } : inv
+        )
+      );
 
-    alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+      alert(`Statut de la facture mis à jour : ${getStatusLabel(newStatus)}`);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      alert('❌ Erreur lors de la mise à jour du statut');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -403,46 +580,7 @@ const Billing = ({ clients = [], onRefresh }) => {
     <div className="billing-container">
       {/* En-tête avec statistiques */}
       <div className="billing-header">
-        <div className="header-content">
-          <h1 className="page-title">💰 Facturation</h1>
-          <div className="billing-stats">
-            <div className="stat-card revenue">
-              <div className="stat-icon">💰</div>
-              <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} € TTC</h3>
-                <p>Chiffre d'affaires</p>
-                <span className="stat-trend">Factures payées</span>
-              </div>
-            </div>
-            
-            <div className="stat-card pending">
-              <div className="stat-icon">⏳</div>
-              <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} € TTC</h3>
-                <p>En attente</p>
-                <span className="stat-trend">À encaisser</span>
-              </div>
-            </div>
-            
-            <div className="stat-card overdue">
-              <div className="stat-icon">⚠️</div>
-              <div className="stat-content">
-                <h3>{invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('fr-FR')} € TTC</h3>
-                <p>En retard</p>
-                <span className="stat-trend">Relances nécessaires</span>
-              </div>
-            </div>
-            
-            <div className="stat-card total">
-              <div className="stat-icon">📊</div>
-              <div className="stat-content">
-                <h3>{invoices.length}</h3>
-                <p>Factures totales</p>
-                <span className="stat-trend">Toutes périodes</span>
-              </div>
-            </div>
-          </div>
-        </div>
+     <div class="prospects-header"><div class="header-content"><h1 class="page-title">📄 Factures</h1><div class="stats-summary"><div class="stat-item"><span class="stat-number">41</span><span class="stat-label">Total</span></div><div class="stat-item"><span class="stat-number">41</span><span class="stat-label">Affichés</span></div><div class="stat-item"><span class="stat-number">16</span><span class="stat-label">🔵 Nouveaux</span></div><div class="stat-item"><span class="stat-number">9</span><span class="stat-label">🟣 En attente</span></div><div class="stat-item"><span class="stat-number">7</span><span class="stat-label">🟢 Finalisés</span></div><div class="stat-item"><span class="stat-number">9</span><span class="stat-label">🔴 Inactifs</span></div></div></div></div>
       </div>
 
       {/* Section de création de factures */}
@@ -545,7 +683,7 @@ const Billing = ({ clients = [], onRefresh }) => {
                           // Télécharger directement le PDF
                           handleDownloadPDF(devis);
                         }}
-                        className="card-btn card-btn-pdf"
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 rounded px-3 py-1 text-sm"
                         disabled={loading}
                       >
                         {loading ? "⏳" : "📄"} PDF
@@ -559,7 +697,7 @@ const Billing = ({ clients = [], onRefresh }) => {
         )}
       </div>
 
-      {/* Prévisualisation dynamique de la facture */}
+      {/* Prévisualisation dynamique de la facture à partir des devis sélectionnés */}
       {dynamicPreview && selectedDevis.length > 0 && (
         <div className="dynamic-preview-container" ref={previewContainerRef}>
           <div className="dynamic-preview-header">
@@ -588,6 +726,26 @@ const Billing = ({ clients = [], onRefresh }) => {
         </div>
       )}
 
+      {/* Prévisualisation dynamique de la facture sélectionnée */}
+      {selectedInvoice && (
+        <div className="dynamic-preview-container" ref={previewContainerRef}>
+          <div className="dynamic-preview-header">
+            <h2>📋 Modification de la facture</h2>
+            <p>Modifiez directement les informations ci-dessous</p>
+          </div>
+          
+          <div className="dynamic-preview-content">
+            <DynamicInvoice
+              invoice={selectedInvoice}
+              client={selectedClient}
+              devisDetails={selectedInvoice.devisDetails || []}
+              onSave={handleUpdateInvoice}
+              onCancel={() => setSelectedInvoice(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Section des factures existantes */}
       <div className="billing-section">
         <div className="section-header">
@@ -595,34 +753,99 @@ const Billing = ({ clients = [], onRefresh }) => {
           <p>Historique de vos factures</p>
         </div>
 
+        {/* Filtres pour les factures */}
+        <div className="filters-section">
+          <div className="search-bar">
+            <div className="search-input-wrapper">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Rechercher par numéro ou client..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+
+          <div className="filters-row">
+            <div className="filter-group">
+              <label>Statut :</label>
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">Tous</option>
+                <option value="draft">Brouillon</option>
+                <option value="pending">En attente</option>
+                <option value="paid">Payée</option>
+                <option value="overdue">En retard</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Trier par :</label>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="filter-select"
+              >
+                <option value="date">Plus récent</option>
+                <option value="number">Numéro</option>
+                <option value="client">Client A-Z</option>
+                <option value="amount">Montant décroissant</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {invoices.length === 0 ? (
-          <div className="empty-state">
+          <div className="empty-state small">
             <div className="empty-icon">📋</div>
             <h3>Aucune facture émise</h3>
             <p>Vos factures créées apparaîtront ici</p>
           </div>
         ) : (
           <div className="invoices-grid">
-            {invoices.map((invoice) => (
-              <div key={invoice.id} className="invoice-card">
+            {filteredInvoices.map((invoice) => (
+              <div
+                key={invoice.id || invoice._id}
+                className="invoice-card"
+                onClick={() => handleSelectInvoice(invoice)}
+              >
+                <div
+                  className="status-indicator clickable"
+                  style={{
+                    backgroundColor: getStatusColor(invoice.status),
+                    position: 'absolute',
+                    top: '1rem',
+                    right: '1rem'
+                  }}
+                  title={getNextStatusLabel(invoice.status)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInvoiceStatusClick(invoice.id || invoice._id, invoice.status);
+                  }}
+                >
+                  {getStatusIcon(invoice.status)}
+                </div>
                 <div className="invoice-header">
                   <div className="invoice-number">{invoice.invoiceNumber}</div>
                   <div
                     className="invoice-status clickable"
                     style={{ backgroundColor: getStatusColor(invoice.status), color: 'white' }}
                     title={getNextStatusLabel(invoice.status)}
-                    onClick={() => handleInvoiceStatusClick(invoice.id, invoice.status)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInvoiceStatusClick(invoice.id || invoice._id, invoice.status);
+                    }}
                   >
                     {getStatusIcon(invoice.status)} {getStatusLabel(invoice.status)}
                   </div>
                 </div>
 
                 <div className="invoice-content">
-                  <div className="invoice-client">
-                    <span className="client-icon">👤</span>
-                    <span>{invoice.clientName}</span>
-                  </div>
-
                   <div className="invoice-amount">
                     <span className="amount-label">Montant TTC :</span>
                     <span className="amount-value">{invoice.amount.toFixed(2)} €</span>
@@ -638,27 +861,37 @@ const Billing = ({ clients = [], onRefresh }) => {
                   </div>
 
                   <div className="invoice-devis">
-                    <span>📄 Devis inclus : {invoice.devisIds.length}</span>
+                    <span>📄 Devis inclus : {invoice.devisIds?.length || 0}</span>
                   </div>
                 </div>
 
-                <div className="invoice-actions">
+                <div className="invoice-actions flex gap-2">
                   <button
-                    onClick={() => handleDownloadInvoicePDF(invoice)}
-                    className="action-btn download-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadInvoicePDF(invoice);
+                    }}
+                    className="bg-green-50 text-green-600 hover:bg-green-100 rounded px-3 py-1 text-sm"
                     title="Télécharger PDF"
                   >
-                    📥
-                  </button>
-                  <button className="action-btn send-btn" title="Envoyer par email">
-                    📧
+                    📥 PDF
                   </button>
                   <button
-                    onClick={() => handleDeleteInvoice(invoice.id)}
-                    className="action-btn delete-btn"
+                    className="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 rounded px-3 py-1 text-sm"
+                    title="Envoyer par email"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    📧 Envoyer
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteInvoice(invoice.id || invoice._id);
+                    }}
+                    className="bg-red-50 text-red-600 hover:bg-red-100 rounded px-3 py-1 text-sm"
                     title="Supprimer la facture"
                   >
-                    🗑️
+                    🗑️ Supprimer
                   </button>
                 </div>
               </div>
@@ -735,7 +968,7 @@ const handleDownloadPDF = async (devis) => {
             ${devis.logoUrl ? `<img src="${devis.logoUrl}" alt="Logo" style="max-width: 200px; max-height: 100px; object-fit: contain; border-radius: 8px;">` : ''}
           </div>
           <div style="flex: 1; text-align: right;">
-            <h1 style="font-size: 3rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: 2px;">FACTURE</h1>
+            <h1 style="font-size: 3rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: 2px;">DEVIS</h1>
           </div>
         </div>
       </div>
@@ -937,7 +1170,7 @@ const handleDownloadPDF = async (devis) => {
     await addSectionToPDF(`
       <div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; text-align: center;">
         <p style="font-size: 0.85rem; color: #64748b; font-style: italic; margin: 0;">
-          ${devis.footerText || `${devis.entrepriseName || 'Votre entreprise'} - ${devis.entrepriseAddress || 'Adresse'} - ${devis.entrepriseCity || 'Ville'}`}
+          ${devis.footerText || `${devis.entrepriseName || 'Cartisy'} - ${devis.entrepriseAddress || 'Adresse'} - ${devis.entrepriseCity || 'Ville'}`}
         </p>
       </div>
     `);

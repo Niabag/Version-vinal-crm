@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { clearNotificationsStorage } from "../../utils/notifications";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
 import "./navbar.scss";
 
@@ -7,9 +8,13 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const userMenuRef = useRef(null);
 
   useEffect(() => {
@@ -17,6 +22,15 @@ const Navbar = () => {
       fetchUser();
     }
   }, [token]);
+
+  // Update user info when profile changes elsewhere
+  useEffect(() => {
+    const handleUserUpdated = (e) => {
+      setUser(e.detail);
+    };
+    window.addEventListener('userUpdated', handleUserUpdated);
+    return () => window.removeEventListener('userUpdated', handleUserUpdated);
+  }, []);
 
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
@@ -32,10 +46,16 @@ const Navbar = () => {
     };
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   const fetchUser = async () => {
     try {
       const userData = await apiRequest(API_ENDPOINTS.AUTH.ME);
       setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error("Erreur lors du chargement de l'utilisateur:", error);
       handleLogout();
@@ -45,6 +65,7 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    clearNotificationsStorage();
     setUser(null);
     navigate("/");
   };
@@ -59,6 +80,10 @@ const Navbar = () => {
 
   const toggleUserMenu = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
+  };
+
+  const toggleThemeMode = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   // Masquer la navbar sur la page dashboard et sur les pages de scan QR code
@@ -77,7 +102,7 @@ const Navbar = () => {
         </div>
 
         {/* Menu burger pour mobile */}
-        <button 
+        <button
           className={`menu-toggle ${isMenuOpen ? 'active' : ''}`}
           onClick={toggleMenu}
           aria-label="Toggle menu"
@@ -87,10 +112,18 @@ const Navbar = () => {
           <span></span>
         </button>
 
+        <button
+          className="theme-toggle"
+          onClick={toggleThemeMode}
+          aria-label="Toggle theme"
+        >
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
           {!token ? (
             <>
-              <Link to="/\" className="nav-link\" onClick={closeMenu}>
+              <Link to="/" className="nav-link" onClick={closeMenu}>
                 🏠 Accueil
               </Link>
               <Link to="/pricing" className="nav-link" onClick={closeMenu}>

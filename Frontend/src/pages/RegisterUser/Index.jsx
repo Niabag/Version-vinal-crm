@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
+import { clearNotificationsStorage } from "../../utils/notifications";
 import { startFreeTrial, DEFAULT_TRIAL_DAYS } from "../../services/subscription";
 import "./registerUser.scss";
 
@@ -95,9 +96,11 @@ const RegisterUser = () => {
         }),
       });
 
-      // 2. Store the token
+      // 2. Clear previous notifications and store the token
+      clearNotificationsStorage();
       localStorage.setItem("token", userData.token);
       localStorage.setItem("user", JSON.stringify(userData.user));
+      window.dispatchEvent(new CustomEvent('userUpdated', { detail: userData.user }));
       
       // 3. Start the free trial
       await startFreeTrial(DEFAULT_TRIAL_DAYS);

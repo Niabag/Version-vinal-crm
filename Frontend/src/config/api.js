@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     DELETE: (clientId) => `${API_CONFIG.BASE_URL}/clients/${clientId}`,
     UPDATE: (clientId) => `${API_CONFIG.BASE_URL}/clients/${clientId}`,
     UPDATE_STATUS: (clientId) => `${API_CONFIG.BASE_URL}/clients/${clientId}/status`,
+    IMPORT: `${API_CONFIG.BASE_URL}/clients/import`,
   },
   
   // Devis
@@ -35,6 +36,7 @@ export const API_ENDPOINTS = {
     UPDATE: (devisId) => `${API_CONFIG.BASE_URL}/devis/${devisId}`,
     UPDATE_STATUS: (devisId) => `${API_CONFIG.BASE_URL}/devis/${devisId}/status`,
     DELETE: (devisId) => `${API_CONFIG.BASE_URL}/devis/${devisId}`,
+    SEND_BY_EMAIL: (devisId) => `${API_CONFIG.BASE_URL}/devis/${devisId}/send`,
   },
 
   // Factures
@@ -45,6 +47,8 @@ export const API_ENDPOINTS = {
     UPDATE: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}`,
     UPDATE_STATUS: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}/status`,
     DELETE: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}`,
+    SEND_BY_EMAIL: (invoiceId) => `${API_CONFIG.BASE_URL}/invoices/${invoiceId}/send`,
+    STATS: `${API_CONFIG.BASE_URL}/invoices/stats/summary`,
   },
 
   // Cartes de visite

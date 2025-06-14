@@ -60,12 +60,6 @@ const Settings = ({ onDataImported }) => {
     }
   };
 
-  const scrollToSubscriptionSection = () => {
-    if (subscriptionSectionRef.current) {
-      subscriptionSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -694,16 +688,14 @@ const Settings = ({ onDataImported }) => {
                   <div className="notice-content">
                     <h5>Fonctionnalité Premium</h5>
                     <p>L'importation de prospects est disponible uniquement avec un abonnement actif.</p>
-                    <button
-                      onClick={scrollToSubscriptionSection}
+                    <button 
+                      onClick={handleSubscribe}
                       className="upgrade-btn"
                       disabled={processingCheckout}
                     >
-                      {processingCheckout
-                        ? 'Chargement...'
-                        : subscription && !subscription.hasHadTrial
-                          ? `Commencer l'essai gratuit (${DEFAULT_TRIAL_DAYS} jours)`
-                          : "S'abonner maintenant"}
+                      {processingCheckout 
+                        ? 'Chargement...' 
+                        : "S'abonner maintenant"}
                     </button>
                   </div>
                 </div>

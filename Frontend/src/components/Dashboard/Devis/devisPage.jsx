@@ -1,20 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DevisPreview from "./devisPreview";
 import DevisCard from "./DevisCard";
+import DynamicInvoice from "../Billing/DynamicInvoice";
 import { API_ENDPOINTS, apiRequest } from "../../../config/api";
 import { DEFAULT_DEVIS } from "./constants";
 import "./devis.scss";
 import { calculateTTC } from "../../../utils/calculateTTC";
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return "";
-  try {
-    return new Date(dateStr).toLocaleDateString("fr-FR");
-  } catch (error) {
-    return "";
-  }
-};
-
 
 const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedClientId = null }) => {
   const normalizeClientId = (c) => {
@@ -35,6 +26,11 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Prévisualisation de facture
+  const [selectedDevisForInvoice, setSelectedDevisForInvoice] = useState(null);
+  const [selectedClientForInvoice, setSelectedClientForInvoice] = useState(null);
+  const invoicePreviewRef = useRef(null);
 
   useEffect(() => {
     const fetchDevis = async () => {
@@ -80,6 +76,15 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
       }));
     }
   }, [selectedClientId]);
+
+  // Faire défiler vers la prévisualisation de facture lorsqu'un devis est sélectionné
+  useEffect(() => {
+    if (selectedDevisForInvoice && invoicePreviewRef.current) {
+      setTimeout(() => {
+        invoicePreviewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [selectedDevisForInvoice]);
 
   const handleSelectDevis = (devis) => {
     const normalizedClientId = normalizeClientId(devis.clientId);
@@ -238,8 +243,6 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
       await addSectionToPDF(generateMetadataHTML(devis));
 
       // ✅ 4. TABLEAU - TRAITEMENT LIGNE PAR LIGNE
-      const clientInfo = clients.find(c => c._id === devis.clientId) || {};
-      
       // En-tête du tableau
       await addSectionToPDF(generateTableHeaderHTML());
 
@@ -307,7 +310,8 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
   `;
 
   const generatePartiesHTML = (devis) => {
-    const clientInfo = clients.find(c => c._id === devis.clientId) || {};
+    const clientInfo = clients.find(c => c._id === (typeof devis.clientId === 'object' ? devis.clientId?._id : devis.clientId)) || {};
+    
     return `
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 30px;">
         <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;">
@@ -327,7 +331,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
             <div style="font-weight: 600; font-size: 1.1rem; color: #2d3748;">${clientInfo.name || devis.clientName || 'Nom du client'}</div>
             <div>${clientInfo.email || devis.clientEmail || 'Email du client'}</div>
             <div>${clientInfo.phone || devis.clientPhone || 'Téléphone du client'}</div>
-            <div>${devis.clientAddress || 'Adresse du client'}</div>
+            <div>${devis.clientAddress || clientInfo.address || 'Adresse du client'}</div>
           </div>
         </div>
       </div>
@@ -335,7 +339,8 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
   };
 
   const generateMetadataHTML = (devis) => {
-    const clientInfo = clients.find(c => c._id === devis.clientId) || {};
+    const clientInfo = clients.find(c => c._id === (typeof devis.clientId === 'object' ? devis.clientId?._id : devis.clientId)) || {};
+    
     return `
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 30px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -419,10 +424,10 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
                 .filter(([, { ht }]) => ht > 0)
                 .map(([rate, { ht, tva }]) => `
                   <tr>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0;">${ht.toFixed(2)} €</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0;">${rate}%</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0;">${tva.toFixed(2)} €</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #e2e8f0;">${(ht + tva).toFixed(2)} €</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${ht.toFixed(2)} €</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${rate}%</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${tva.toFixed(2)} €</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #f1f5f9;">${(ht + tva).toFixed(2)} €</td>
                   </tr>
                 `).join('')}
             </tbody>
@@ -505,6 +510,31 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
     setCurrentDevis(updated);
   };
 
+  const handleCreateInvoice = (devis) => {
+    const clientInfo = clients.find(c => c._id === (typeof devis.clientId === 'object' ? devis.clientId?._id : devis.clientId));
+    setSelectedDevisForInvoice(devis);
+    setSelectedClientForInvoice(clientInfo);
+  };
+
+  const handleSaveInvoice = async (invoiceData) => {
+    if (!selectedClientForInvoice) return;
+    try {
+      await apiRequest(API_ENDPOINTS.INVOICES.BASE, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...invoiceData,
+          clientId: selectedClientForInvoice._id,
+        }),
+      });
+      alert('✅ Facture créée avec succès !');
+      setSelectedDevisForInvoice(null);
+      setSelectedClientForInvoice(null);
+    } catch (err) {
+      console.error('Erreur création facture:', err);
+      alert(`❌ Erreur lors de la création de la facture: ${err.message}`);
+    }
+  };
+
   const totalTTC = calculateTTC(currentDevis);
 
   const filteredDevisList = filterClientId 
@@ -514,7 +544,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
       })
     : devisList;
 
-  const selectedClient = filterClientId 
+  const selectedClient = filterClientId
     ? clients.find(c => c._id === filterClientId)
     : null;
 
@@ -572,6 +602,7 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
                   onEdit={() => handleSelectDevis(devis)}
                   onPdf={() => handleDownloadPDF(devis)}
                   onDelete={handleDelete}
+                  onInvoice={() => handleCreateInvoice(devis)}
                   loading={loading}
                 />
               ))}
@@ -624,6 +655,27 @@ const Devis = ({ clients = [], initialDevisFromClient = null, onBack, selectedCl
           />
         )}
       </div>
+
+      {/* Prévisualisation dynamique de la facture */}
+      {selectedDevisForInvoice && (
+        <div className="invoice-preview-section" ref={invoicePreviewRef}>
+          <DynamicInvoice
+            invoice={{
+              invoiceNumber: `FACT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+              dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              createdAt: new Date().toISOString().split('T')[0],
+              devisIds: [selectedDevisForInvoice._id]
+            }}
+            client={selectedClientForInvoice}
+            devisDetails={[selectedDevisForInvoice]}
+            onSave={handleSaveInvoice}
+            onCancel={() => {
+              setSelectedDevisForInvoice(null);
+              setSelectedClientForInvoice(null);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

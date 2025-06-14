@@ -65,7 +65,7 @@ const Features = () => {
         "Conversion devis en facture",
         "Suivi des paiements",
         "Rappels automatiques",
-        "Export comptable"
+        "Import de prospects (CSV/Excel avec abonnement)"
       ]
     }
   ];

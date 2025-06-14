@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
 import { getSubscriptionStatus, createPortalSession, createCheckoutSession, startFreeTrial, SUBSCRIPTION_STATUS, getTrialDaysRemaining, DEFAULT_TRIAL_DAYS } from '../../services/subscription';
+import { generateExportPdf } from '../../utils/generateExportPdf';
 
 import './settings.scss';
 
@@ -37,6 +38,8 @@ const Settings = () => {
         email: userData.email || '',
         profileImage: userData.profileImage || ''
       }));
+      localStorage.setItem('user', JSON.stringify(userData));
+      window.dispatchEvent(new CustomEvent('userUpdated', { detail: userData }));
     } catch (error) {
       console.error('Erreur lors du chargement des données utilisateur:', error);
     }
@@ -199,36 +202,92 @@ const Settings = () => {
     }
   };
 
+  const [exportFormat, setExportFormat] = useState('json');
+  const [importFormat, setImportFormat] = useState('csv');
+  const fileInputRef = useRef(null);
+
   const exportData = async () => {
     try {
       setLoading(true);
-      const [clients, devis] = await Promise.all([
+      const [clients, devis, invoices] = await Promise.all([
         apiRequest(API_ENDPOINTS.CLIENTS.BASE),
-        apiRequest(API_ENDPOINTS.DEVIS.BASE)
+        apiRequest(API_ENDPOINTS.DEVIS.BASE),
+        apiRequest(API_ENDPOINTS.INVOICES.BASE)
       ]);
 
       const exportData = {
         user: user,
         clients: clients,
         devis: devis,
+        invoices: invoices,
         exportDate: new Date().toISOString()
       };
 
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `crm-export-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      
-      URL.revokeObjectURL(url);
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      if (exportFormat === 'pdf') {
+        await generateExportPdf(exportData, dateStr);
+      } else if (exportFormat === 'xlsx') {
+        const XLSX = await import('xlsx');
+        const wb = XLSX.utils.book_new();
+        const wsClients = XLSX.utils.json_to_sheet(clients);
+        XLSX.utils.book_append_sheet(wb, wsClients, 'Clients');
+        const wsDevis = XLSX.utils.json_to_sheet(devis);
+        XLSX.utils.book_append_sheet(wb, wsDevis, 'Devis');
+        const wsInvoices = XLSX.utils.json_to_sheet(invoices);
+        XLSX.utils.book_append_sheet(wb, wsInvoices, 'Factures');
+        XLSX.writeFile(wb, `crm-export-${dateStr}.xlsx`);
+      } else if (exportFormat === 'vcf') {
+        const vcardStr = clients.map(c => `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name}\nEMAIL:${c.email}\nTEL:${c.phone}\nORG:${c.company || ''}\nEND:VCARD`).join('\n');
+        const blob = new Blob([vcardStr], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `crm-export-${dateStr}.vcf`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `crm-export-${dateStr}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
       setMessage('✅ Données exportées avec succès');
     } catch (error) {
       setMessage(`❌ Erreur lors de l'export: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const importData = async () => {
+    const file = fileInputRef.current?.files[0];
+    if (!file) {
+      setMessage('❌ Sélectionnez un fichier à importer');
+      return;
+    }
+    setLoading(true);
+    setMessage('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('format', importFormat);
+      await apiRequest(API_ENDPOINTS.CLIENTS.IMPORT, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: form,
+      });
+      setMessage('✅ Prospects importés avec succès');
+    } catch (error) {
+      setMessage(`❌ Erreur lors de l'import: ${error.message}`);
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -446,14 +505,46 @@ const Settings = () => {
         <section className="settings-section">
           <h3>📊 Gestion des données</h3>
           <div className="data-actions">
-            <button onClick={exportData} disabled={loading} className="export-btn">
-              📥 Exporter mes données
-            </button>
-            <p className="help-text">
-              Téléchargez toutes vos données (clients, devis) au format JSON
-            </p>
-          </div>
-        </section>
+            <div className="export-options">
+              <select value={exportFormat} onChange={e => setExportFormat(e.target.value)}>
+                <option value="json">JSON</option>
+                <option value="pdf">PDF</option>
+                <option value="xlsx">Excel</option>
+                <option value="vcf">vCard</option>
+              </select>
+              <button onClick={exportData} disabled={loading} className="export-btn">
+                📥 Exporter mes données
+              </button>
+            </div>
+              <p className="help-text">
+                Téléchargez toutes vos données (clients, devis) dans le format sélectionné
+              </p>
+              <div className="import-options" style={{ marginTop: '0.5rem' }}>
+                <select value={importFormat} onChange={e => setImportFormat(e.target.value)}>
+                  <option value="csv">CSV</option>
+                  <option value="xlsx">Excel</option>
+                  <option value="json">JSON</option>
+                  <option value="pdf">PDF</option>
+                  <option value="vcf">vCard</option>
+                </select>
+              </div>
+              <div className="file-upload" style={{ marginTop: '0.5rem' }}>
+                <input
+                  type="file"
+                  id="prospects-file"
+                  ref={fileInputRef}
+                  accept={importFormat === 'vcf' ? '.vcf,.vcard' : `.${importFormat}`}
+                  disabled={loading}
+                />
+                <label htmlFor="prospects-file" className="upload-btn">
+                  📂 Choisir un fichier
+                </label>
+              </div>
+              <button onClick={importData} disabled={loading} className="import-btn" style={{ marginTop: '0.5rem' }}>
+                📤 Importer des prospects
+              </button>
+            </div>
+          </section>
 
         <section className="settings-section">
           <h3>ℹ️ Informations de l'application</h3>

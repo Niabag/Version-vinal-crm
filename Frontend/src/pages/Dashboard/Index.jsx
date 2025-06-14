@@ -5,6 +5,7 @@ import DevisListPage from "../../components/Dashboard/Devis/devisListPage";
 import ProspectsPage from "../../components/Dashboard/Prospects/prospectsPage";
 import ProspectEditPage from "../../components/Dashboard/Prospects/prospectEditPage";
 import ProspectCreatePage from "../../components/Dashboard/Prospects/prospectCreatePage";
+import ProspectDetailsPage from "../../components/Dashboard/Prospects/prospectDetailsPage";
 import ClientBilling from "../../components/Dashboard/ClientBilling/clientBilling";
 import Analytics from "../../components/Dashboard/Analytics/analytics";
 import Settings from "../../components/Dashboard/Settings/settings";
@@ -12,6 +13,7 @@ import Notifications from "../../components/Dashboard/Notifications/notification
 import BusinessCard from "../../components/Dashboard/BusinessCard/businessCard";
 import Billing from "../../components/Dashboard/Billing/billing";
 import { API_ENDPOINTS, apiRequest } from "../../config/api";
+import { clearNotificationsStorage } from "../../utils/notifications";
 import "./dashboard.scss";
 
 const Dashboard = () => {
@@ -47,6 +49,15 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Mettre à jour l'utilisateur lorsque son profil change ailleurs
+  useEffect(() => {
+    const handleUserUpdated = (e) => {
+      setUser(e.detail);
+    };
+    window.addEventListener('userUpdated', handleUserUpdated);
+    return () => window.removeEventListener('userUpdated', handleUserUpdated);
+  }, []);
+
   // Extraire l'ID utilisateur du token JWT
   const decodeToken = (token) => {
     try {
@@ -76,7 +87,7 @@ const Dashboard = () => {
     
     // Vérifier si un onglet est spécifié dans l'URL (hash)
     const hash = location.hash.replace('#', '');
-    if (hash && ['dashboard', 'clients', 'devis', 'notifications', 'carte', 'settings'].includes(hash)) {
+    if (hash && ['dashboard', 'clients', 'devis', 'factures', 'notifications', 'carte', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location]);
@@ -110,6 +121,7 @@ const Dashboard = () => {
 
   const handleViewClientDevis = (client) => {
     setSelectedClientForDevis(client);
+    // Aller directement à la création d'un devis pour ce prospect
     setActiveTab("devis-creation");
   };
 
@@ -138,6 +150,7 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    clearNotificationsStorage();
     navigate("/");
   };
 
@@ -220,6 +233,11 @@ const Dashboard = () => {
     setActiveTab("prospect-edit");
   };
 
+  const handleViewProspect = (prospect) => {
+    setSelectedProspect(prospect);
+    setActiveTab("prospect-view");
+  };
+
   // Définition des sections de navigation
   const navSections = [
     {
@@ -227,7 +245,8 @@ const Dashboard = () => {
       items: [
         { id: "dashboard", icon: "📊", label: "Tableau de bord" },
         { id: "clients", icon: "👥", label: "Prospects" },
-        { id: "devis", icon: "📄", label: "Devis et Facturation" },
+        { id: "devis", icon: "📄", label: "Devis" },
+        { id: "factures", icon: "💰", label: "Factures" },
       ]
     },
     {
@@ -249,7 +268,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case "dashboard": return "Tableau de bord";
       case "clients": return "Mes Prospects";
-      case "devis": return "Devis et Facturation";
+      case "devis": return "Devis";
+      case "factures": return "Factures";
       case "devis-creation": return "Création de Devis";
       case "client-billing": return `Facturation - ${selectedClientForBilling?.name || 'Client'}`;
       case "notifications": return "Notifications";
@@ -257,7 +277,8 @@ const Dashboard = () => {
       case "settings": return "Paramètres";
       case "prospect-edit": return "Modification Prospect";
       case "prospect-create": return "Nouveau Prospect";
-      default: return "CRM Pro";
+      case "prospect-view": return "Détails Prospect";
+      default: return "Cartisy";
     }
   };
 
@@ -266,6 +287,7 @@ const Dashboard = () => {
       case "dashboard": return "📊";
       case "clients": return "👥";
       case "devis": return "📄";
+      case "factures": return "💰";
       case "devis-creation": return "📝";
       case "client-billing": return "💰";
       case "notifications": return "🔔";
@@ -273,6 +295,7 @@ const Dashboard = () => {
       case "settings": return "⚙️";
       case "prospect-edit": return "✏️";
       case "prospect-create": return "➕";
+      case "prospect-view": return "👁️";
       default: return "📊";
     }
   };
@@ -285,7 +308,7 @@ const Dashboard = () => {
         <div className="sidebar-header">
           <div className="sidebar-brand">
             <div className="brand-logo">CRM</div>
-            <div className="brand-text">CRM Pro</div>
+            <div className="brand-text">Cartisy</div>
           </div>
         </div>
         
@@ -302,6 +325,7 @@ const Dashboard = () => {
                     (activeTab === "devis-creation" && item.id === "devis") ||
                     (activeTab === "prospect-edit" && item.id === "clients") ||
                     (activeTab === "prospect-create" && item.id === "clients") ||
+                    (activeTab === "prospect-view" && item.id === "clients") ||
                     (activeTab === "client-billing" && item.id === "devis")
                       ? "active"
                       : ""
@@ -314,7 +338,7 @@ const Dashboard = () => {
                       setSelectedClientForDevis(null);
                       setEditingDevis(null);
                     }
-                    if (item.id !== "clients" && item.id !== "prospect-edit" && item.id !== "prospect-create") {
+                    if (item.id !== "clients" && item.id !== "prospect-edit" && item.id !== "prospect-create" && item.id !== "prospect-view") {
                       setSelectedProspect(null);
                     }
                     if (item.id !== "client-billing") {
@@ -354,7 +378,7 @@ const Dashboard = () => {
               <span>{getPageIcon()}</span> {getPageTitle()}
             </h1>
             <div className="page-breadcrumb">
-              <span>CRM Pro</span>
+              <span>Cartisy</span>
               <span className="breadcrumb-separator">/</span>
               <span>{getPageTitle()}</span>
             </div>
@@ -438,6 +462,7 @@ const Dashboard = () => {
                 onViewClientBilling={handleViewClientBilling}
                 onEditProspect={handleEditProspect}
                 onCreateProspect={handleCreateProspect}
+                onViewProspect={handleViewProspect}
               />
             )}
 
@@ -452,6 +477,19 @@ const Dashboard = () => {
                   fetchClients();
                   setSelectedProspect(null);
                   setActiveTab("clients");
+                }}
+              />
+            )}
+
+            {activeTab === "prospect-view" && selectedProspect && (
+              <ProspectDetailsPage
+                prospect={selectedProspect}
+                onBack={() => {
+                  setSelectedProspect(null);
+                  setActiveTab("clients");
+                }}
+                onEdit={() => {
+                  setActiveTab("prospect-edit");
                 }}
               />
             )}
@@ -473,6 +511,10 @@ const Dashboard = () => {
                 onEditDevis={handleEditDevisFromList}
                 onCreateDevis={handleCreateNewDevis}
               />
+            )}
+
+            {activeTab === "factures" && (
+              <Billing clients={clients} />
             )}
 
             {activeTab === "devis-creation" && (
@@ -507,7 +549,14 @@ const Dashboard = () => {
               />
             )}
             
-            {activeTab === "settings" && <Settings />}
+            {activeTab === "settings" && (
+              <Settings
+                onDataImported={() => {
+                  fetchClients();
+                  setActiveTab("clients");
+                }}
+              />
+            )}
             
             {activeTab === "carte" && (
               <BusinessCard 

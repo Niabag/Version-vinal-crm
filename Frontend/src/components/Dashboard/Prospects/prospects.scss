@@ -268,6 +268,7 @@
 .prospect-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
 }
 
 .prospect-card.selected {
@@ -378,7 +379,10 @@
   padding: 0.25rem 0.5rem;
   background: #f8fafc;
   border-radius: 6px;
-  width: 100%;
+
+  width: auto;
+  flex: 1 1 auto;
+
 }
 
 .contact-icon {
@@ -939,5 +943,10 @@
   .contact-info {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .contact-item {
+
+    width: 100%;
+
   }
 }
